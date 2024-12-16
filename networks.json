@@ -1,0 +1,8 @@
+{
+  "base": {
+    "OptimismMintableERC20": {
+      "address": "0xaB36452DbAC151bE02b16Ca17d8919826072f64a",
+      "startBlock": 2933733
+    }
+  }
+}
