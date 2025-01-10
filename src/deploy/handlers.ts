@@ -18,6 +18,9 @@ export function _handleFolioDeployed(
   folio.blockNumber = blockNumber;
   folio.timestamp = timestamp;
   folio.save();
+
+  // Track folio erc20 events
+  TokenTemplate.create(folioAddress);
 }
 
 export function _handleGovernedFolioDeployed(

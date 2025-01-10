@@ -42,6 +42,7 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - DAORegistry
+        - Token
       abis:
         - name: erc20
           file: ./abis/erc20.json
@@ -59,7 +60,7 @@ templates:
       abi: erc20
     mapping:
       kind: ethereum/events
-      apiVersion: 0.0.6
+      apiVersion: 0.0.7
       language: wasm/assemblyscript
       file: ./src/token/mappings.ts
       entities:
