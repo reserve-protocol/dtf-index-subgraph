@@ -5,31 +5,68 @@ schema:
   file: ./schema.graphql
 dataSources:
   - kind: ethereum
-    name: OptimismMintableERC20
+    name: FolioDeployer
     network: base
     source:
-      address: "0xaB36452DbAC151bE02b16Ca17d8919826072f64a"
-      abi: OptimismMintableERC20
-      startBlock: 2933733
+      address: "0xF15BE15D944E73a47C7810CfdD0Adf6c5370B726"
+      abi: FolioDeployer
+      startBlock: 24865810
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - Approval
-        - Burn
-        - Mint
-        - Transfer
+        - Folio
+        - Token
       abis:
-        - name: OptimismMintableERC20
-          file: ./abis/OptimismMintableERC20.json
+        - name: FolioDeployer
+          file: ./abis/folio-deployer.json
+        - name: ERC20
+          file: ./abis/erc20.json
       eventHandlers:
-        - event: Approval(indexed address,indexed address,uint256)
-          handler: handleApproval
-        - event: Burn(indexed address,uint256)
-          handler: handleBurn
-        - event: Mint(indexed address,uint256)
-          handler: handleMint
+        - event: FolioDeployed(indexed address,indexed address,address)
+          handler: handleFolioDeployed
+        - event: GovernedFolioDeployed(indexed address,indexed address,address,address,address,address)
+          handler: handleGovernedFolioDeployed
+      file: ./src/deploy/mappings.ts
+  - kind: ethereum
+    name: GovernanceDeployer
+    network: base
+    source:
+      address: "0x85546cc9Ac4ecC2443875d19429A9B209c53D994"
+      abi: GovernanceDeployer
+      startBlock: 24865810
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - DAORegistry
+      abis:
+        - name: erc20
+          file: ./abis/erc20.json
+        - name: GovernanceDeployer
+          file: ./abis/governance-deployer.json
+      eventHandlers:
+        - event: DeployedGovernedStakingToken(indexed address,indexed address,address,address)
+          handler: handleDeployedGovernedStakingToken
+      file: ./src/deploy/mappings.ts
+templates:
+  - name: Token
+    kind: ethereum/contract
+    network: base
+    source:
+      abi: erc20
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      file: ./src/token/mappings.ts
+      entities:
+        - TransferEvent
+      abis:
+        - name: erc20
+          file: ./abis/erc20.json
+      eventHandlers:
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
-      file: ./src/optimism-mintable-erc-20.ts
