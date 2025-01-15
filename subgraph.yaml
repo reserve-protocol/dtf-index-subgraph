@@ -68,7 +68,6 @@ templates:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
-      file: ./src/dtf/mappings.ts
       entities:
         - Trade
       abis:
@@ -87,6 +86,11 @@ templates:
           handler: handleBid
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
+        - event: FolioFeePaid(indexed address,uint256)
+          handler: handleFolioFeePaid
+        - event: ProtocolFeePaid(indexed address,uint256)
+          handler: handleProtocolFeePaid
+      file: ./src/dtf/mappings.ts
   - name: StakingToken
     kind: ethereum/contract
     network: base
@@ -96,7 +100,6 @@ templates:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
-      file: ./src/staking-token/mappings.ts
       entities:
         - StakingToken
         - Delegate
@@ -111,6 +114,7 @@ templates:
       eventHandlers:
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
+      file: ./src/staking-token/mappings.ts
   - name: Governance
     kind: ethereum/contract
     network: base

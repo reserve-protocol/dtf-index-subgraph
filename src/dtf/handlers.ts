@@ -2,12 +2,10 @@ import { Address, BigInt, ethereum } from "@graphprotocol/graph-ts";
 import { getOrCreateToken } from "../utils/getters";
 import { BIGINT_ZERO, TradeState } from "../utils/constants";
 import { TradeApprovedTradeStruct } from "../../generated/templates/DTF/DTF";
-import { Trade } from "../../generated/schema";
+import { DTF, Trade } from "../../generated/schema";
+import { getGovernance } from "../governance/handlers";
 
-export function getTrade(dtfAddress: Address, tradeId: BigInt): Trade {
-  return Trade.load(`${dtfAddress.toHexString()}-${tradeId.toString()}`)!;
-}
-
+// TRADES
 export function _handleTradeApproved(
   dtfAddress: Address,
   tradeId: BigInt,
@@ -105,4 +103,47 @@ export function _handleTradeKilled(
   trade.state = TradeState.CLOSED;
 
   trade.save();
+}
+
+// FEES
+export function _handleProtocolFeePaid(
+  dtfAddress: Address,
+  amount: BigInt
+): void {
+  let dtf = getDTF(dtfAddress);
+  dtf.totalRevenue = dtf.totalRevenue.plus(amount);
+  dtf.protocolRevenue = dtf.protocolRevenue.plus(amount);
+  dtf.save();
+}
+
+export function _handleFolioFeePaid(
+  dtfAddress: Address,
+  recipient: Address,
+  amount: BigInt
+): void {
+  let dtf = getDTF(dtfAddress);
+  dtf.totalRevenue = dtf.totalRevenue.plus(amount);
+
+  // Check if recipient is governance token to properly track revenue type
+  const isGovernanceToken = dtf.ownerGovernance
+    ? getGovernance(dtf.ownerGovernance).token == recipient.toHexString()
+    : false;
+
+  if (isGovernanceToken) {
+    dtf.governanceRevenue = dtf.governanceRevenue.plus(amount);
+  } else {
+    dtf.externalRevenue = dtf.externalRevenue.plus(amount);
+  }
+
+  dtf.save();
+}
+
+// getters
+
+export function getTrade(dtfAddress: Address, tradeId: BigInt): Trade {
+  return Trade.load(`${dtfAddress.toHexString()}-${tradeId.toString()}`)!;
+}
+
+export function getDTF(dtfAddress: Address): DTF {
+  return DTF.load(dtfAddress.toHexString())!;
 }

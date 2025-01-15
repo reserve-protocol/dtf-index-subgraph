@@ -10,6 +10,18 @@ type DTF @entity {
   " Folio ERC20 token address "
   token: Token!
 
+  " Revenue "
+  totalRevenue: BigInt!
+
+  " Protocol revenue "
+  protocolRevenue: BigInt!
+
+  " Governance revenue "
+  governanceRevenue: BigInt!
+
+  " External recipients revenue "
+  externalRevenue: BigInt!
+
   " Folio deployer address "
   deployer: Bytes!
 
