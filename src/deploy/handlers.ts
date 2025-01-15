@@ -119,6 +119,7 @@ export function createGovernance(
   governance.votingPeriod = contract.votingPeriod();
   governance.proposalThreshold = contract.proposalThreshold();
   governance.quorumDenominator = contract.quorumDenominator();
+  governance.quorumNumerator = BIGINT_ZERO;
   governance.proposalCount = BIGINT_ZERO;
   governance.proposalsQueued = BIGINT_ZERO;
   governance.proposalsExecuted = BIGINT_ZERO;

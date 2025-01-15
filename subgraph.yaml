@@ -87,6 +87,30 @@ templates:
           handler: handleBid
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
+  - name: StakingToken
+    kind: ethereum/contract
+    network: base
+    source:
+      abi: StakingVault
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      file: ./src/staking-token/mappings.ts
+      entities:
+        - StakingToken
+        - Delegate
+        - Token
+        - Account
+        - AccountBalance
+      abis:
+        - name: StakingVault
+          file: ./abis/staking-vault.json
+        - name: ERC20
+          file: ./abis/erc20.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTransfer
   - name: Governance
     kind: ethereum/contract
     network: base
@@ -97,14 +121,14 @@ templates:
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - DTF
+        - StakingToken
+        - Token
         - Governance
         - GovernanceTimelock
         - Proposal
         - Vote
         - AccountBalance
         - Delegate
-        - TimelockProposal
       abis:
         - name: Governor
           file: ./abis/governor.json
@@ -123,8 +147,6 @@ templates:
           handler: handleProposalThresholdSet
         - event: QuorumNumeratorUpdated(uint256,uint256)
           handler: handleQuorumNumeratorUpdated
-        - event: TimelockChange(address,address)
-          handler: handleTimelockChange
         - event: VoteCast(indexed address,uint256,uint8,uint256,string)
           handler: handleVoteCast
         - event: VotingDelaySet(uint256,uint256)
@@ -142,34 +164,15 @@ templates:
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - RToken
-        - RTokenContract
-        - TimelockProposal
-        - Proposal
+        - GovernanceTimelock
       abis:
         - name: Timelock
-          file: ./abis/Timelock.json
+          file: ./abis/timelock.json
       eventHandlers:
         - event: RoleGranted(indexed bytes32,indexed address,indexed address)
           handler: handleTimelockRoleGranted
         - event: RoleRevoked(indexed bytes32,indexed address,indexed address)
           handler: handleTimelockRoleRevoked
+        - event: MinDelayChange(uint256,uint256)
+          handler: handleTimelockMinDelayChange
       file: ./src/governance/mappings.ts
-  - name: Token
-    kind: ethereum/contract
-    network: base
-    source:
-      abi: ERC20
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      file: ./src/token/mappings.ts
-      entities:
-        - TransferEvent
-      abis:
-        - name: ERC20
-          file: ./abis/erc20.json
-      eventHandlers:
-        - event: Transfer(indexed address,indexed address,uint256)
-          handler: handleTransfer

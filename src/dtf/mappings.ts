@@ -3,7 +3,9 @@ import {
   TradeApproved,
   TradeKilled,
   TradeOpened,
+  Transfer,
 } from "../../generated/templates/DTF/DTF";
+import { _handleTransfer } from "../token/mappings";
 import { BIGINT_ZERO } from "../utils/constants";
 import {
   _handleBid,
@@ -43,4 +45,8 @@ export function handleBid(event: Bid): void {
 
 export function handleTradeKilled(event: TradeKilled): void {
   _handleTradeKilled(event.address, event.params.tradeId, event);
+}
+
+export function handleTransfer(event: Transfer): void {
+  _handleTransfer(event);
 }

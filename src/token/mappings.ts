@@ -26,7 +26,7 @@ import {
 } from "../account/mappings";
 import { getOrCreateToken } from "../utils/getters";
 
-export function handleTransfer(event: Transfer): void {
+export function _handleTransfer(event: Transfer): void {
   let token = getOrCreateToken(event.address);
 
   if (event.params.value == BIGINT_ZERO) {
