@@ -153,8 +153,6 @@ export function handleTimelockRoleGranted(event: RoleGranted): void {
   let guardianRole = timelockContract.CANCELLER_ROLE();
 
   if (event.params.role.equals(guardianRole)) {
-    // TODO: guardians should be related to the governanceFramework and not the Governance entity
-    // TODO: Leave it on the governance entity in the meantime, the issue is getting the proposal role from timelock and figure out the proposal address
     let current = timelock.get("guardians")!.toStringArray();
     current.push(event.params.account.toHexString());
     timelock.guardians = current;

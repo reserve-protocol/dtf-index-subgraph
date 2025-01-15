@@ -1,19 +1,22 @@
 import { Address, BigInt } from "@graphprotocol/graph-ts";
-import { Timelock } from "./../../generated/templates/Governance/Timelock";
 import {
   DTF,
   Governance,
   GovernanceTimelock,
-  StakingToken,
+  UnstakingManager,
 } from "../../generated/schema";
 import {
   DTF as DTFTemplate,
-  Timelock as TimelockTemplate,
   Governance as GovernanceTemplate,
+  StakingToken as StakingTokenTemplate,
+  Timelock as TimelockTemplate,
+  UnstakingManager as UnstakingManagerTemplate,
 } from "../../generated/templates";
 import { Governor } from "../../generated/templates/Governance/Governor";
+import { StakingVault } from "../../generated/templates/StakingToken/StakingVault";
+import { BIGINT_ZERO, TokenType } from "../utils/constants";
 import { getOrCreateStakingToken, getOrCreateToken } from "../utils/getters";
-import { BIGINT_ZERO } from "../utils/constants";
+import { Timelock } from "./../../generated/templates/Governance/Timelock";
 
 export function _handleDTFDeployed(
   dtfAddress: Address,
@@ -23,7 +26,7 @@ export function _handleDTFDeployed(
   timestamp: BigInt
 ): void {
   let dtf = new DTF(dtfAddress.toHexString());
-  dtf.token = getOrCreateToken(dtfAddress).id;
+  dtf.token = getOrCreateToken(dtfAddress, TokenType.DTF).id;
   dtf.deployer = deployer;
   dtf.proxyAdmin = proxyAdmin;
   dtf.blockNumber = blockNumber;
@@ -78,9 +81,18 @@ export function _handleDeployedGovernedStakingToken(
   ).id;
   stakingToken.save();
 
-  // TODO: track staking token events
-  // Track stToken events
-  // TokenTemplate.create(stTokenAddress);
+  StakingTokenTemplate.create(stTokenAddress);
+
+  // Track unstaking manager events
+  let contract = StakingVault.bind(stTokenAddress);
+  let unstakingManagerAddress = contract.unstakingManager();
+  let unstakingManager = new UnstakingManager(
+    unstakingManagerAddress.toHexString()
+  );
+  unstakingManager.token = stakingToken.id;
+  unstakingManager.save();
+
+  UnstakingManagerTemplate.create(unstakingManagerAddress);
 }
 
 export function createTimelock(

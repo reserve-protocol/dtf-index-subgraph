@@ -161,6 +161,12 @@ type Trade @entity {
 ####### Token Metadata ######
 #############################
 
+enum TokenType {
+  DTF
+  VOTE
+  ASSET
+}
+
 type Token @entity {
   " Smart contract address of the token "
   id: ID!
@@ -200,6 +206,9 @@ type Token @entity {
 
   " Total token minted "
   totalMinted: BigInt!
+
+  " Token type "
+  type: TokenType!
 
   " List of token transfers "
   transfers: [TransferEvent!]! @derivedFrom(field: "token")
@@ -388,6 +397,9 @@ type Account @entity {
 
   " Token balances that this account holds "
   balances: [AccountBalance!]! @derivedFrom(field: "account")
+
+  " Locks "
+  locks: [Lock!]! @derivedFrom(field: "account")
 
   " Token balances snapshot that this account holds "
   balancesSnapshot: [AccountBalanceDailySnapshot!]!
@@ -676,6 +688,60 @@ type StakingToken @entity {
 
   " Governance frameworks "
   daos: [Governance!]! @derivedFrom(field: "token")
+}
+
+type UnstakingManager @entity {
+  " Unstaking manager address "
+  id: ID!
+  " Staking token "
+  token: StakingToken!
+}
+
+type Lock @entity {
+  " { StakingToken Address }-{ Lock ID } "
+  id: ID!
+
+  " Lock id "
+  lockId: BigInt!
+
+  "Token address"
+  token: StakingToken!
+
+  "Amount of votes delegated to this delegate to be used on proposal votings expressed in the smallest unit of the token"
+  amount: BigInt!
+
+  "Account"
+  account: Account!
+
+  "Unlock time"
+  unlockTime: BigInt!
+
+  " created block "
+  createdBlock: BigInt!
+
+  " created timestamp "
+  createdTimestamp: BigInt!
+
+  " created txn hash "
+  createdTxnHash: String!
+
+  " cancelled block "
+  cancelledBlock: BigInt
+
+  " cancelled timestamp "
+  cancelledTimestamp: BigInt
+
+  " cancelled txn hash "
+  cancelledTxnHash: String
+
+  " claimed block "
+  claimedBlock: BigInt
+
+  " claimed timestamp "
+  claimedTimestamp: BigInt
+
+  " claimed txn hash "
+  claimedTxnHash: String
 }
 
 type Delegate @entity {

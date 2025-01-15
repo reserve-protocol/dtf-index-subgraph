@@ -1,6 +1,6 @@
-import { BIGINT_ONE } from "../utils/constants";
+import { BIGINT_ONE, TokenType } from "../utils/constants";
 import { Address, BigInt, ethereum } from "@graphprotocol/graph-ts";
-import { AccountBalance } from "../../generated/schema";
+import { AccountBalance, Lock, UnstakingManager } from "../../generated/schema";
 import {
   getOrCreateAccount,
   getOrCreateAccountBalance,
@@ -19,7 +19,7 @@ function getOrCreateStakeTokenHolder(
   tokenAddress: Address
 ): AccountBalance {
   const account = getOrCreateAccount(Address.fromString(delegator));
-  const token = getOrCreateToken(tokenAddress);
+  const token = getOrCreateToken(tokenAddress, TokenType.VOTE);
   return getOrCreateAccountBalance(account, token);
 }
 
@@ -99,4 +99,58 @@ export function _handleDelegateVotesChanged(
     stakingToken.delegatedVotesRaw.plus(votesDifference);
   stakingToken.delegatedVotes = toDecimal(stakingToken.delegatedVotesRaw);
   stakingToken.save();
+}
+
+export function _handleLockCreated(
+  manager: Address,
+  lockId: BigInt,
+  amount: BigInt,
+  user: Address,
+  unlockTime: BigInt,
+  event: ethereum.Event
+): void {
+  let token = getTokenFromManager(manager);
+  let lock = new Lock(manager.toHexString() + "-" + lockId.toString());
+  lock.token = token;
+  lock.account = getOrCreateAccount(user).id;
+  lock.amount = amount;
+  lock.unlockTime = unlockTime;
+  lock.createdBlock = event.block.number;
+  lock.createdTimestamp = event.block.timestamp;
+  lock.createdTxnHash = event.transaction.hash.toHexString();
+  lock.save();
+}
+
+export function _handleLockCancelled(
+  manager: Address,
+  lockId: BigInt,
+  event: ethereum.Event
+): void {
+  let lock = Lock.load(manager.toHexString() + "-" + lockId.toString());
+  if (!lock) {
+    return;
+  }
+  lock.cancelledBlock = event.block.number;
+  lock.cancelledTimestamp = event.block.timestamp;
+  lock.cancelledTxnHash = event.transaction.hash.toHexString();
+  lock.save();
+}
+
+export function _handleLockClaimed(
+  manager: Address,
+  lockId: BigInt,
+  event: ethereum.Event
+): void {
+  let lock = Lock.load(manager.toHexString() + "-" + lockId.toString());
+  if (!lock) {
+    return;
+  }
+  lock.claimedBlock = event.block.number;
+  lock.claimedTimestamp = event.block.timestamp;
+  lock.claimedTxnHash = event.transaction.hash.toHexString();
+  lock.save();
+}
+
+export function getTokenFromManager(manager: Address): string {
+  return UnstakingManager.load(manager.toHexString())!.token;
 }

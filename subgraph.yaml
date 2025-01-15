@@ -20,6 +20,7 @@ dataSources:
         - Token
         - Governance
         - GovernanceTimelock
+        - StakingToken
       abis:
         - name: FolioDeployer
           file: ./abis/folio-deployer.json
@@ -47,13 +48,20 @@ dataSources:
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - DAORegistry
+        - StakingToken
+        - Governance
         - Token
       abis:
         - name: ERC20
           file: ./abis/erc20.json
+        - name: Governor
+          file: ./abis/governor.json
+        - name: Timelock
+          file: ./abis/timelock.json
         - name: GovernanceDeployer
           file: ./abis/governance-deployer.json
+        - name: StakingVault
+          file: ./abis/staking-vault.json
       eventHandlers:
         - event: DeployedGovernedStakingToken(indexed address,indexed address,address,address)
           handler: handleDeployedGovernedStakingToken
@@ -69,6 +77,8 @@ templates:
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
+        - DTF
+        - Governance
         - Trade
       abis:
         - name: DTF
@@ -112,8 +122,39 @@ templates:
         - name: ERC20
           file: ./abis/erc20.json
       eventHandlers:
+        - event: DelegateChanged(indexed address,indexed address,indexed address)
+          handler: handleDelegateChanged
+        - event: DelegateVotesChanged(indexed address,uint256,uint256)
+          handler: handleDelegateVotesChanged
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
+      file: ./src/staking-token/mappings.ts
+  - name: UnstakingManager
+    kind: ethereum/contract
+    network: base
+    source:
+      abi: UnstakingManager
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - StakingToken
+        - Token
+        - Account
+        - Lock
+      abis:
+        - name: UnstakingManager
+          file: ./abis/unstaking-manager.json
+        - name: ERC20
+          file: ./abis/erc20.json
+      eventHandlers:
+        - event: LockCreated(uint256,address,uint256,uint256)
+          handler: handleLockCreated
+        - event: LockCancelled(uint256)
+          handler: handleLockCancelled
+        - event: LockClaimed(uint256)
+          handler: handleLockClaimed
       file: ./src/staking-token/mappings.ts
   - name: Governance
     kind: ethereum/contract

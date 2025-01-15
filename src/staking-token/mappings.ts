@@ -1,3 +1,8 @@
+import {
+  LockCancelled,
+  LockClaimed,
+  LockCreated,
+} from "./../../generated/templates/UnstakingManager/UnstakingManager";
 import { _handleTransfer } from "../token/mappings";
 import {
   DelegateChanged,
@@ -7,6 +12,9 @@ import {
 import {
   _handleDelegateChanged,
   _handleDelegateVotesChanged,
+  _handleLockCancelled,
+  _handleLockClaimed,
+  _handleLockCreated,
 } from "./handlers";
 
 // DelegateChanged(indexed address,indexed address,indexed address)
@@ -28,6 +36,25 @@ export function handleDelegateVotesChanged(event: DelegateVotesChanged): void {
     event.params.newVotes,
     event
   );
+}
+
+export function handleLockCreated(event: LockCreated): void {
+  _handleLockCreated(
+    event.address,
+    event.params.lockId,
+    event.params.amount,
+    event.params.user,
+    event.params.unlockTime,
+    event
+  );
+}
+
+export function handleLockCancelled(event: LockCancelled): void {
+  _handleLockCancelled(event.address, event.params.lockId, event);
+}
+
+export function handleLockClaimed(event: LockClaimed): void {
+  _handleLockClaimed(event.address, event.params.lockId, event);
 }
 
 export function handleTransfer(event: Transfer): void {

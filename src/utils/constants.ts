@@ -12,6 +12,12 @@ export const BIGINT_TWO = BigInt.fromI32(2);
 export const BIGDECIMAL_ZERO = new BigDecimal(BIGINT_ZERO);
 export const BIGDECIMAL_ONE = new BigDecimal(BIGINT_ONE);
 
+export namespace TokenType {
+  export const DTF = "DTF";
+  export const VOTE = "VOTE";
+  export const ASSET = "ASSET";
+}
+
 export namespace TradeState {
   export const APPROVED = "APPROVED";
   export const LAUNCHED = "LAUNCHED";
