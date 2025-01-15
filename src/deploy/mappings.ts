@@ -3,10 +3,14 @@ import {
   FolioDeployed,
   GovernedFolioDeployed,
 } from "../../generated/FolioDeployer/FolioDeployer";
-import { _handleDeployedGovernedStakingToken, _handleFolioDeployed, _handleGovernedFolioDeployed } from "./handlers";
+import {
+  _handleDeployedGovernedStakingToken,
+  _handleDTFDeployed,
+  _handleGovernedDTFDeployed,
+} from "./handlers";
 
-export function handleFolioDeployed(event: FolioDeployed): void {
-  _handleFolioDeployed(
+export function handleDTFDeployed(event: FolioDeployed): void {
+  _handleDTFDeployed(
     event.params.folio,
     event.params.folioAdmin,
     event.transaction.from,
@@ -18,7 +22,7 @@ export function handleFolioDeployed(event: FolioDeployed): void {
 export function handleGovernedFolioDeployed(
   event: GovernedFolioDeployed
 ): void {
-  _handleGovernedFolioDeployed(
+  _handleGovernedDTFDeployed(
     event.params.folio,
     event.params.stToken,
     event.params.ownerGovernor,

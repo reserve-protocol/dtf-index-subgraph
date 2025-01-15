@@ -11,3 +11,29 @@ export const BIGINT_ONE = BigInt.fromI32(1);
 export const BIGINT_TWO = BigInt.fromI32(2);
 export const BIGDECIMAL_ZERO = new BigDecimal(BIGINT_ZERO);
 export const BIGDECIMAL_ONE = new BigDecimal(BIGINT_ONE);
+
+export namespace TradeState {
+  export const APPROVED = "APPROVED";
+  export const LAUNCHED = "LAUNCHED";
+  export const CLOSED = "CLOSED";
+}
+
+export namespace ProposalState {
+  export const PENDING = "PENDING";
+  export const ACTIVE = "ACTIVE";
+  export const CANCELED = "CANCELED";
+  export const DEFEATED = "DEFEATED";
+  export const SUCCEEDED = "SUCCEEDED";
+  export const QUEUED = "QUEUED";
+  export const EXPIRED = "EXPIRED";
+  export const EXECUTED = "EXECUTED";
+}
+
+export namespace VoteChoice {
+  export const AGAINST_VALUE = 0;
+  export const FOR_VALUE = 1;
+  export const ABSTAIN_VALUE = 2;
+  export const AGAINST = "AGAINST";
+  export const FOR = "FOR";
+  export const ABSTAIN = "ABSTAIN";
+}

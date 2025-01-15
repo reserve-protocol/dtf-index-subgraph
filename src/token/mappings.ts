@@ -1,6 +1,5 @@
 import { BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
-import { erc20 as ERC20 } from "./../../generated/GovernanceDeployer/erc20";
-import { Transfer } from "./../../generated/OptimismMintableERC20/OptimismMintableERC20";
+import { ERC20, Transfer } from "./../../generated/GovernanceDeployer/ERC20";
 
 import {
   Token,

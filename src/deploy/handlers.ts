@@ -1,69 +1,132 @@
-import { DeployedGovernedStakingToken } from "../../generated/GovernanceDeployer/GovernanceDeployer";
 import { Address, BigInt } from "@graphprotocol/graph-ts";
-import { getOrCreateToken } from "../utils/getters";
-import { DAORegistry, Folio, Token } from "../../generated/schema";
-import { Token as TokenTemplate } from "../../generated/templates";
+import { Timelock } from "./../../generated/templates/Governance/Timelock";
+import {
+  DTF,
+  Governance,
+  GovernanceTimelock,
+  StakingToken,
+} from "../../generated/schema";
+import {
+  DTF as DTFTemplate,
+  Timelock as TimelockTemplate,
+  Governance as GovernanceTemplate,
+} from "../../generated/templates";
+import { Governor } from "../../generated/templates/Governance/Governor";
+import { getOrCreateStakingToken, getOrCreateToken } from "../utils/getters";
+import { BIGINT_ZERO } from "../utils/constants";
 
-export function _handleFolioDeployed(
-  folioAddress: Address,
+export function _handleDTFDeployed(
+  dtfAddress: Address,
   proxyAdmin: Address,
   deployer: Address,
   blockNumber: BigInt,
   timestamp: BigInt
 ): void {
-  let folio = new Folio(folioAddress.toHexString());
-  folio.token = getOrCreateToken(folioAddress).id;
-  folio.deployer = deployer;
-  folio.proxyAdmin = proxyAdmin;
-  folio.blockNumber = blockNumber;
-  folio.timestamp = timestamp;
-  folio.save();
+  let dtf = new DTF(dtfAddress.toHexString());
+  dtf.token = getOrCreateToken(dtfAddress).id;
+  dtf.deployer = deployer;
+  dtf.proxyAdmin = proxyAdmin;
+  dtf.blockNumber = blockNumber;
+  dtf.timestamp = timestamp;
+  dtf.save();
 
-  // Track folio erc20 events
-  TokenTemplate.create(folioAddress);
+  // Track transfer and trade events
+  DTFTemplate.create(dtfAddress);
 }
 
-export function _handleGovernedFolioDeployed(
-  folioAddress: Address,
+export function _handleGovernedDTFDeployed(
+  dtfAddress: Address,
   stToken: Address,
   ownerGovernor: Address,
   ownerTimelock: Address,
   tradingGovernor: Address,
   tradingTimelock: Address
 ): void {
-  let folio = Folio.load(folioAddress.toHexString());
-  if (!folio) {
+  let dtf = DTF.load(dtfAddress.toHexString());
+  if (!dtf) {
     return;
   }
 
-  folio.stToken = stToken.toHexString();
-  folio.ownerGovernor = ownerGovernor;
-  folio.ownerTimelock = ownerTimelock;
-  folio.tradingGovernor = tradingGovernor;
-  folio.tradingTimelock = tradingTimelock;
-  folio.save();
+  dtf.stToken = stToken.toHexString();
+  dtf.stTokenAddress = stToken;
+  dtf.ownerGovernance = createGovernance(
+    ownerGovernor,
+    ownerTimelock,
+    stToken
+  ).id;
+  dtf.tradingGovernance = createGovernance(
+    tradingGovernor,
+    tradingTimelock,
+    stToken
+  ).id;
+  dtf.save();
 }
 
 export function _handleDeployedGovernedStakingToken(
-  underlying: Address,
-  stToken: Address,
+  underlyingAddress: Address,
+  stTokenAddress: Address,
   governor: Address,
   timelock: Address
 ): void {
-  let daoRegistry = DAORegistry.load(stToken.toHexString());
+  let stakingToken = getOrCreateStakingToken(stTokenAddress);
 
-  if (!daoRegistry) {
-    const underlyingToken = getOrCreateToken(underlying);
-    const stakingToken = getOrCreateToken(stToken);
+  stakingToken.underlying = getOrCreateToken(underlyingAddress).id;
+  stakingToken.governance = createGovernance(
+    governor,
+    timelock,
+    stTokenAddress
+  ).id;
+  stakingToken.save();
 
-    daoRegistry = new DAORegistry(stToken.toHexString());
-    daoRegistry.underlying = underlyingToken.id;
-    daoRegistry.stToken = stakingToken.id;
-    daoRegistry.governor = governor;
-    daoRegistry.timelock = timelock;
-    daoRegistry.save();
+  // TODO: track staking token events
+  // Track stToken events
+  // TokenTemplate.create(stTokenAddress);
+}
 
-    // Track stToken events
-    TokenTemplate.create(stToken);
-  }
+export function createTimelock(
+  timelockAddress: Address,
+  governanceId: string
+): GovernanceTimelock {
+  const timelockContract = Timelock.bind(timelockAddress);
+
+  const timelock = new GovernanceTimelock(timelockAddress.toHexString());
+  timelock.governance = governanceId;
+  timelock.guardians = [];
+  timelock.executionDelay = timelockContract.getMinDelay();
+  timelock.save();
+
+  // Track timelock events
+  TimelockTemplate.create(timelockAddress);
+
+  return timelock;
+}
+
+export function createGovernance(
+  governanceAddress: Address,
+  timelockAddress: Address,
+  tokenAddress: Address
+): Governance {
+  let governance = new Governance(governanceAddress.toHexString());
+
+  governance.timelock = createTimelock(timelockAddress, governance.id).id;
+  governance.token = getOrCreateStakingToken(tokenAddress).id;
+
+  const contract = Governor.bind(governanceAddress);
+  // Params
+  governance.name = contract.name();
+  governance.version = contract.version();
+  governance.votingDelay = contract.votingDelay();
+  governance.votingPeriod = contract.votingPeriod();
+  governance.proposalThreshold = contract.proposalThreshold();
+  governance.quorumDenominator = contract.quorumDenominator();
+  governance.proposalCount = BIGINT_ZERO;
+  governance.proposalsQueued = BIGINT_ZERO;
+  governance.proposalsExecuted = BIGINT_ZERO;
+  governance.proposalsCanceled = BIGINT_ZERO;
+  governance.save();
+
+  // Track governor events
+  GovernanceTemplate.create(governanceAddress);
+
+  return governance as Governance;
 }
