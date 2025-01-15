@@ -77,13 +77,13 @@ templates:
         - name: ERC20
           file: ./abis/erc20.json
       eventHandlers:
-        - event: TradeApproved(indexed uint256,indexed address,indexed address,uint256,uint256)
+        - event: TradeApproved(indexed uint256,indexed address,indexed address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
           handler: handleTradeApproved
-        - event: TradeOpened(indexed uint256,uint256,uint256,uint256,uint256)
+        - event: TradeOpened(indexed uint256,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
           handler: handleTradeLaunched
         - event: TradeKilled(indexed uint256)
           handler: handleTradeKilled
-        - event: Bid(indexed uint256,uint256,uint256)
+        - event: TradeBid(indexed uint256,uint256,uint256)
           handler: handleBid
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer

@@ -1,12 +1,11 @@
 import {
-  Bid,
   TradeApproved,
+  TradeBid,
   TradeKilled,
   TradeOpened,
   Transfer,
 } from "../../generated/templates/DTF/DTF";
 import { _handleTransfer } from "../token/mappings";
-import { BIGINT_ZERO } from "../utils/constants";
 import {
   _handleBid,
   _handleTradeApproved,
@@ -15,25 +14,24 @@ import {
 } from "./handlers";
 
 export function handleTradeApproved(event: TradeApproved): void {
-  _handleTradeApproved(event.address, event.params.tradeId, event);
-}
-
-// TODO: Missing updated spots
-export function handleTradeLaunched(event: TradeOpened): void {
-  _handleTradeLaunched(
+  _handleTradeApproved(
     event.address,
     event.params.tradeId,
-    BIGINT_ZERO,
-    BIGINT_ZERO,
-    event.params.startPrice,
-    event.params.endPrice,
-    event.params.start,
-    event.params.end,
+    event.params.trade,
     event
   );
 }
 
-export function handleBid(event: Bid): void {
+export function handleTradeLaunched(event: TradeOpened): void {
+  _handleTradeLaunched(
+    event.address,
+    event.params.tradeId,
+    event.params.trade,
+    event
+  );
+}
+
+export function handleBid(event: TradeBid): void {
   _handleBid(
     event.address,
     event.params.tradeId,
