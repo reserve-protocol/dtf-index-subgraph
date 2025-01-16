@@ -31,6 +31,10 @@ export function _handleDTFDeployed(
   dtf.proxyAdmin = proxyAdmin;
   dtf.blockNumber = blockNumber;
   dtf.timestamp = timestamp;
+  dtf.totalRevenue = BIGINT_ZERO;
+  dtf.protocolRevenue = BIGINT_ZERO;
+  dtf.governanceRevenue = BIGINT_ZERO;
+  dtf.externalRevenue = BIGINT_ZERO;
   dtf.save();
 
   // Track transfer and trade events
