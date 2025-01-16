@@ -1,5 +1,5 @@
-import { BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
-import { ERC20, Transfer } from "./../../generated/GovernanceDeployer/ERC20";
+import { ERC20 } from "./../../generated/templates/Token/erc20";
+import { Address, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
 
 import {
   Token,
@@ -26,32 +26,30 @@ import {
 } from "../account/mappings";
 import { getOrCreateToken } from "../utils/getters";
 
-export function _handleTransfer(event: Transfer): void {
+export function _handleTransfer(
+  from: Address,
+  to: Address,
+  amount: BigInt,
+  event: ethereum.Event
+): void {
   let token = getOrCreateToken(event.address);
 
-  if (event.params.value == BIGINT_ZERO) {
+  if (amount == BIGINT_ZERO) {
     return;
   }
-  let amount = event.params.value;
 
-  let isBurn = event.params.to.toHex() == GENESIS_ADDRESS;
-  let isMint = event.params.from.toHex() == GENESIS_ADDRESS;
+  let isBurn = to.toHex() == GENESIS_ADDRESS;
+  let isMint = from.toHex() == GENESIS_ADDRESS;
   let isTransfer = !isBurn && !isMint;
   let isEventProcessed = false;
 
   if (isBurn) {
-    isEventProcessed = handleBurnEvent(token, amount, event.params.from, event);
+    isEventProcessed = handleBurnEvent(token, amount, from, event);
   } else if (isMint) {
-    isEventProcessed = handleMintEvent(token, amount, event.params.to, event);
+    isEventProcessed = handleMintEvent(token, amount, to, event);
   } else {
     // In this case, it will be a normal transfer event.
-    handleTransferEvent(
-      token,
-      amount,
-      event.params.from,
-      event.params.to,
-      event
-    );
+    handleTransferEvent(token, amount, from, to, event);
   }
 
   // Updates balances of accounts
@@ -59,7 +57,7 @@ export function _handleTransfer(event: Transfer): void {
     return;
   }
   if (isTransfer || isBurn) {
-    let sourceAccount = getOrCreateAccount(event.params.from);
+    let sourceAccount = getOrCreateAccount(from);
 
     let accountBalance = decreaseAccountBalance(
       sourceAccount,
@@ -77,7 +75,7 @@ export function _handleTransfer(event: Transfer): void {
   }
 
   if (isTransfer || isMint) {
-    let destinationAccount = getOrCreateAccount(event.params.to);
+    let destinationAccount = getOrCreateAccount(to);
 
     let accountBalance = increaseAccountBalance(
       destinationAccount,

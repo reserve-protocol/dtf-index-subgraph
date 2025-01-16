@@ -58,5 +58,10 @@ export function handleLockClaimed(event: LockClaimed): void {
 }
 
 export function handleTransfer(event: Transfer): void {
-  _handleTransfer(event);
+  _handleTransfer(
+    event.params.from,
+    event.params.to,
+    event.params.value,
+    event
+  );
 }

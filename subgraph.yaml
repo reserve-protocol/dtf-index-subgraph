@@ -8,7 +8,7 @@ dataSources:
     name: FolioDeployer
     network: base
     source:
-      address: "0xF15BE15D944E73a47C7810CfdD0Adf6c5370B726"
+      address: "0xa38A23f85Bae3f9aCeB7b07de665619016db1a06"
       abi: FolioDeployer
       startBlock: 24865810
     mapping:
@@ -32,15 +32,15 @@ dataSources:
           file: ./abis/timelock.json
       eventHandlers:
         - event: FolioDeployed(indexed address,indexed address,address)
-          handler: handleFolioDeployed
+          handler: handleDTFDeployed
         - event: GovernedFolioDeployed(indexed address,indexed address,address,address,address,address)
-          handler: handleGovernedFolioDeployed
+          handler: handleGovernedDTFDeployed
       file: ./src/deploy/mappings.ts
   - kind: ethereum
     name: GovernanceDeployer
     network: base
     source:
-      address: "0x85546cc9Ac4ecC2443875d19429A9B209c53D994"
+      address: "0x66b553E2DB6645e5badFCFA82A3ADB336502B550"
       abi: GovernanceDeployer
       startBlock: 24865810
     mapping:

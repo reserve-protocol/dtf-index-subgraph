@@ -1,7 +1,10 @@
 import { Address, BigInt, ethereum } from "@graphprotocol/graph-ts";
 import { getOrCreateToken } from "../utils/getters";
 import { BIGINT_ZERO, TradeState } from "../utils/constants";
-import { TradeApprovedTradeStruct } from "../../generated/templates/DTF/DTF";
+import {
+  TradeApprovedTradeStruct,
+  TradeOpenedTradeStruct,
+} from "../../generated/templates/DTF/DTF";
 import { DTF, Trade } from "../../generated/schema";
 import { getGovernance } from "../governance/handlers";
 
@@ -54,7 +57,7 @@ export function _handleTradeApproved(
 export function _handleTradeLaunched(
   dtfAddress: Address,
   tradeId: BigInt,
-  tradeData: TradeApprovedTradeStruct,
+  tradeData: TradeOpenedTradeStruct,
   event: ethereum.Event
 ): void {
   let trade = getTrade(dtfAddress, tradeId);
@@ -126,12 +129,13 @@ export function _handleFolioFeePaid(
 
   // Check if recipient is governance token to properly track revenue type
   const isGovernanceToken = dtf.ownerGovernance
-    ? getGovernance(dtf.ownerGovernance).token == recipient.toHexString()
+    ? getGovernance(dtf.ownerGovernance as string).token ==
+      recipient.toHexString()
     : false;
 
   if (isGovernanceToken) {
     dtf.governanceRevenue = dtf.governanceRevenue.plus(amount);
-  } else {
+} else {
     dtf.externalRevenue = dtf.externalRevenue.plus(amount);
   }
 

@@ -19,9 +19,7 @@ export function handleDTFDeployed(event: FolioDeployed): void {
   );
 }
 
-export function handleGovernedFolioDeployed(
-  event: GovernedFolioDeployed
-): void {
+export function handleGovernedDTFDeployed(event: GovernedFolioDeployed): void {
   _handleGovernedDTFDeployed(
     event.params.folio,
     event.params.stToken,
