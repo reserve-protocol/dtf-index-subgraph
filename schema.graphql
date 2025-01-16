@@ -665,6 +665,9 @@ type StakingToken @entity {
   " Stake token "
   token: Token!
 
+  " Governance "
+  governance: Governance
+
   "Total number of delegates participating on the governance currently"
   currentDelegates: BigInt!
 
