@@ -69,8 +69,8 @@ type Trade @entity {
   " Token to "
   buy: Token!
 
-  " Trade selled amount "
-  selledAmount: BigInt!
+  " Trade sold amount "
+  soldAmount: BigInt!
 
   " Trade bought amount "
   boughtAmount: BigInt!

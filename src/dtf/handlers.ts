@@ -20,7 +20,7 @@ export function _handleTradeApproved(
   trade.dtf = dtfAddress.toHexString();
   trade.sell = getOrCreateToken(tradeData.sell).id;
   trade.buy = getOrCreateToken(tradeData.buy).id;
-  trade.selledAmount = BIGINT_ZERO;
+  trade.soldAmount = BIGINT_ZERO;
   trade.boughtAmount = BIGINT_ZERO;
   trade.startPrice = tradeData.prices.start;
   trade.endPrice = tradeData.prices.end;
@@ -33,7 +33,7 @@ export function _handleTradeApproved(
   trade.approvedSellLimitSpot = tradeData.sellLimit.spot;
   trade.approvedBuyLimitSpot = tradeData.buyLimit.spot;
   trade.approvedStartPrice = tradeData.prices.start;
-  trade.approvedEndPrice = tradeData.prices.start;
+  trade.approvedEndPrice = tradeData.prices.end;
   trade.availableAt = tradeData.availableAt;
   trade.launchTimeout = tradeData.launchTimeout;
   trade.start = BIGINT_ZERO;
@@ -83,7 +83,7 @@ export function _handleBid(
   event: ethereum.Event
 ): void {
   let trade = getTrade(dtfAddress, tradeId);
-  trade.selledAmount = sellAmount;
+  trade.soldAmount = sellAmount;
   trade.boughtAmount = buyAmount;
   trade.closedTimestamp = event.block.timestamp;
   trade.closedBlockNumber = event.block.number;
@@ -135,7 +135,7 @@ export function _handleFolioFeePaid(
 
   if (isGovernanceToken) {
     dtf.governanceRevenue = dtf.governanceRevenue.plus(amount);
-} else {
+  } else {
     dtf.externalRevenue = dtf.externalRevenue.plus(amount);
   }
 
