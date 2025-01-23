@@ -115,6 +115,7 @@ export function _handleLockCreated(
 ): void {
   let token = getTokenFromManager(manager);
   let lock = new Lock(manager.toHexString() + "-" + lockId.toString());
+  lock.lockId = lockId;
   lock.token = token;
   lock.account = getOrCreateAccount(user).id;
   lock.amount = amount;
