@@ -122,7 +122,7 @@ export function getProposal(id: string): Proposal {
 export function getOrCreateDelegate(token: string, address: string): Delegate {
   let delegate = Delegate.load(`${token}-${address}`);
   if (!delegate) {
-    delegate = new Delegate(address);
+    delegate = new Delegate(`${token}-${address}`);
     delegate.address = address;
     delegate.token = token;
     delegate.delegatedVotesRaw = BIGINT_ZERO;
