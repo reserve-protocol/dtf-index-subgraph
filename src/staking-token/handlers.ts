@@ -1,4 +1,4 @@
-import { BIGINT_ONE, TokenType } from "../utils/constants";
+import { BIGINT_ONE, GENESIS_ADDRESS, TokenType } from "../utils/constants";
 import { Address, BigInt, ethereum } from "@graphprotocol/graph-ts";
 import { AccountBalance, Lock, UnstakingManager } from "../../generated/schema";
 import {
@@ -30,10 +30,18 @@ export function _handleDelegateChanged(
   event: ethereum.Event
 ): void {
   const tokenHolder = getOrCreateStakeTokenHolder(delegator, event.address);
-  const previousDelegate = getOrCreateDelegate(
-    event.address.toHexString(),
-    fromDelegate
-  );
+
+  if (fromDelegate != GENESIS_ADDRESS) {
+    const previousDelegate = getOrCreateDelegate(
+      event.address.toHexString(),
+      fromDelegate
+    );
+
+    previousDelegate.tokenHoldersRepresentedAmount =
+      previousDelegate.tokenHoldersRepresentedAmount - 1;
+    previousDelegate.save();
+  }
+
   const newDelegate = getOrCreateDelegate(
     event.address.toHexString(),
     toDelegate
@@ -41,10 +49,6 @@ export function _handleDelegateChanged(
 
   tokenHolder.delegate = newDelegate.id;
   tokenHolder.save();
-
-  previousDelegate.tokenHoldersRepresentedAmount =
-    previousDelegate.tokenHoldersRepresentedAmount - 1;
-  previousDelegate.save();
 
   newDelegate.tokenHoldersRepresentedAmount =
     newDelegate.tokenHoldersRepresentedAmount + 1;
