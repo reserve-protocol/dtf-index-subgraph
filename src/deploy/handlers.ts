@@ -14,7 +14,7 @@ import {
 } from "../../generated/templates";
 import { Governor } from "../../generated/templates/Governance/Governor";
 import { StakingVault } from "../../generated/templates/StakingToken/StakingVault";
-import { BIGINT_ZERO, TokenType } from "../utils/constants";
+import { BIGINT_ZERO, GENESIS_ADDRESS, TokenType } from "../utils/constants";
 import { getOrCreateStakingToken, getOrCreateToken } from "../utils/getters";
 import { Timelock } from "./../../generated/templates/Governance/Timelock";
 
@@ -35,6 +35,7 @@ export function _handleDTFDeployed(
   dtf.protocolRevenue = BIGINT_ZERO;
   dtf.governanceRevenue = BIGINT_ZERO;
   dtf.externalRevenue = BIGINT_ZERO;
+  dtf.ownerAddress = deployer;
   dtf.save();
 
   // Track transfer and trade events
@@ -61,11 +62,16 @@ export function _handleGovernedDTFDeployed(
     ownerTimelock,
     stToken
   ).id;
-  dtf.tradingGovernance = createGovernance(
-    tradingGovernor,
-    tradingTimelock,
-    stToken
-  ).id;
+
+  if (tradingTimelock.toHexString() != GENESIS_ADDRESS) {
+    dtf.tradingGovernance = createGovernance(
+      tradingGovernor,
+      tradingTimelock,
+      stToken
+    ).id;
+  }
+
+  dtf.ownerAddress = ownerTimelock;
   dtf.save();
 }
 

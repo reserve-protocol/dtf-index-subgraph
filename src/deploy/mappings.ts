@@ -26,7 +26,7 @@ export function handleGovernedDTFDeployed(event: GovernedFolioDeployed): void {
     event.params.ownerGovernor,
     event.params.ownerTimelock,
     event.params.tradingGovernor,
-    event.params.tradingGovernor
+    event.params.tradingTimelock
   );
 }
 
