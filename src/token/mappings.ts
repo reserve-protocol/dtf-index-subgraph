@@ -1,4 +1,4 @@
-import { ERC20 } from "./../../generated/templates/Token/erc20";
+import { ERC20 } from "./../../generated/GovernanceDeployer/ERC20";
 import { Address, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
 
 import {

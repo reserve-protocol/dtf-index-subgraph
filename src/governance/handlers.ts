@@ -123,6 +123,7 @@ export function getOrCreateDelegate(token: string, address: string): Delegate {
   let delegate = Delegate.load(`${token}-${address}`);
   if (!delegate) {
     delegate = new Delegate(address);
+    delegate.address = address;
     delegate.token = token;
     delegate.delegatedVotesRaw = BIGINT_ZERO;
     delegate.delegatedVotes = BIGDECIMAL_ZERO;
