@@ -293,9 +293,10 @@ export function _handleVoteCast(
   event: ethereum.Event
 ): void {
   const voteId = voterAddress.concat("-").concat(proposal.id);
+  const tokenId = getGovernance(event.address.toHexString()).token;
   const vote = new Vote(voteId);
   vote.proposal = proposal.id;
-  vote.voter = voterAddress;
+  vote.voter = `${tokenId}-${voterAddress}`;
   vote.weight = weight;
   vote.reason = reason;
   vote.block = event.block.number;
@@ -327,10 +328,7 @@ export function _handleVoteCast(
   proposal.save();
 
   // Add 1 to participant's proposal voting count
-  const voter = getOrCreateDelegate(
-    getGovernance(event.address.toHexString()).token,
-    voterAddress
-  );
+  const voter = getOrCreateDelegate(tokenId, voterAddress);
   voter.numberVotes = voter.numberVotes + 1;
   voter.save();
 

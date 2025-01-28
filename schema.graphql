@@ -619,8 +619,6 @@ type Vote @entity(immutable: true) {
   reason: String
   "Delegate that emitted the vote"
   voter: Delegate!
-  "Token ID of the vote"
-  tokenId: BigInt!
   "Proposal that is being voted on"
   proposal: Proposal!
 
