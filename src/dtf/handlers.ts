@@ -1,4 +1,4 @@
-import { Address, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
+import { Address, BigInt, Bytes, ethereum, log } from "@graphprotocol/graph-ts";
 import { getOrCreateToken } from "../utils/getters";
 import { BIGINT_ZERO, TradeState } from "../utils/constants";
 import { DTF, Trade } from "../../generated/schema";
@@ -155,13 +155,21 @@ export function _handleRoleGranted(
 
   // TODO: Store the roles hex so no need to call the contract
   if (role.equals(dtfContract.AUCTION_APPROVER())) {
-    dtf.auctionApprovers.push(account.toHexString());
+    let current = dtf.auctionApprovers;
+    current.push(account.toHexString());
+    dtf.auctionApprovers = current;
   } else if (role.equals(dtfContract.AUCTION_LAUNCHER())) {
-    dtf.auctionLaunchers.push(account.toHexString());
+    let current = dtf.auctionLaunchers;
+    current.push(account.toHexString());
+    dtf.auctionLaunchers = current;
   } else if (role.equals(dtfContract.BRAND_MANAGER())) {
-    dtf.brandManagers.push(account.toHexString());
+    let current = dtf.brandManagers;
+    current.push(account.toHexString());
+    dtf.brandManagers = current;
   } else if (role.equals(dtfContract.DEFAULT_ADMIN_ROLE())) {
-    dtf.admins.push(account.toHexString());
+    let current = dtf.admins;
+    current.push(account.toHexString());
+    dtf.admins = current;
   }
 
   dtf.save();
