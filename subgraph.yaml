@@ -8,9 +8,9 @@ dataSources:
     name: FolioDeployer
     network: base
     source:
-      address: "0xa38A23f85Bae3f9aCeB7b07de665619016db1a06"
+      address: "0x4c175E9499d08b0ca8206BbfA035f8228A74AC6F"
       abi: FolioDeployer
-      startBlock: 24865810
+      startBlock: 25703976
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -40,9 +40,9 @@ dataSources:
     name: GovernanceDeployer
     network: base
     source:
-      address: "0x66b553E2DB6645e5badFCFA82A3ADB336502B550"
+      address: "0x9f99F37Fe0b419b3661403DeceA09bC44F615D46"
       abi: GovernanceDeployer
-      startBlock: 24865810
+      startBlock: 25703976
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -86,13 +86,13 @@ templates:
         - name: ERC20
           file: ./abis/erc20.json
       eventHandlers:
-        - event: TradeApproved(indexed uint256,indexed address,indexed address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
+        - event: AuctionApproved(indexed uint256,indexed address,indexed address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
           handler: handleTradeApproved
-        - event: TradeOpened(indexed uint256,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
+        - event: AuctionOpened(indexed uint256,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
           handler: handleTradeLaunched
-        - event: TradeKilled(indexed uint256)
+        - event: AuctionClosed(indexed uint256)
           handler: handleTradeKilled
-        - event: TradeBid(indexed uint256,uint256,uint256)
+        - event: AuctionBid(indexed uint256,uint256,uint256)
           handler: handleBid
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
@@ -100,6 +100,10 @@ templates:
           handler: handleFolioFeePaid
         - event: ProtocolFeePaid(indexed address,uint256)
           handler: handleProtocolFeePaid
+        - event: RoleGranted(indexed bytes32,indexed address,indexed address)
+          handler: handleRoleGranted
+        - event: RoleRevoked(indexed bytes32,indexed address,indexed address)
+          handler: handleRoleRevoked
       file: ./src/dtf/mappings.ts
   - name: StakingToken
     kind: ethereum/contract

@@ -1,18 +1,20 @@
-import { Address, BigInt, ethereum } from "@graphprotocol/graph-ts";
+import { Address, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
 import { getOrCreateToken } from "../utils/getters";
 import { BIGINT_ZERO, TradeState } from "../utils/constants";
-import {
-  TradeApprovedTradeStruct,
-  TradeOpenedTradeStruct,
-} from "../../generated/templates/DTF/DTF";
 import { DTF, Trade } from "../../generated/schema";
+import { DTF as DTFContract } from "./../../generated/templates/DTF/DTF";
 import { getGovernance } from "../governance/handlers";
+import {
+  AuctionApprovedAuctionStruct,
+  AuctionOpenedAuctionStruct,
+} from "../../generated/templates/DTF/DTF";
+import { removeFromArrayAtIndex } from "../utils/arrays";
 
 // TRADES
 export function _handleTradeApproved(
   dtfAddress: Address,
   tradeId: BigInt,
-  tradeData: TradeApprovedTradeStruct,
+  tradeData: AuctionApprovedAuctionStruct,
   event: ethereum.Event
 ): void {
   let trade = new Trade(`${dtfAddress.toHexString()}-${tradeId.toString()}`);
@@ -57,7 +59,7 @@ export function _handleTradeApproved(
 export function _handleTradeLaunched(
   dtfAddress: Address,
   tradeId: BigInt,
-  tradeData: TradeOpenedTradeStruct,
+  tradeData: AuctionOpenedAuctionStruct,
   event: ethereum.Event
 ): void {
   let trade = getTrade(dtfAddress, tradeId);
@@ -142,8 +144,73 @@ export function _handleFolioFeePaid(
   dtf.save();
 }
 
-// getters
+// ROLES
+export function _handleRoleGranted(
+  dtfAddress: Address,
+  role: Bytes,
+  account: Address
+): void {
+  let dtf = getDTF(dtfAddress);
+  let dtfContract = DTFContract.bind(dtfAddress);
 
+  // TODO: Store the roles hex so no need to call the contract
+  if (role.equals(dtfContract.AUCTION_APPROVER())) {
+    dtf.auctionApprovers.push(account.toHexString());
+  } else if (role.equals(dtfContract.AUCTION_LAUNCHER())) {
+    dtf.auctionLaunchers.push(account.toHexString());
+  } else if (role.equals(dtfContract.BRAND_MANAGER())) {
+    dtf.brandManagers.push(account.toHexString());
+  } else if (role.equals(dtfContract.DEFAULT_ADMIN_ROLE())) {
+    dtf.admins.push(account.toHexString());
+  }
+
+  dtf.save();
+}
+
+export function _handleRoleRevoked(
+  dtfAddress: Address,
+  role: Bytes,
+  account: Address
+): void {
+  let dtf = getDTF(dtfAddress);
+  let dtfContract = DTFContract.bind(dtfAddress);
+
+  // TODO: Store the roles hex so no need to call the contract
+  // TODO: Terrible code, but oh well it works
+  if (role.equals(dtfContract.AUCTION_APPROVER())) {
+    let current = dtf.auctionApprovers;
+    let index = current.indexOf(account.toHexString());
+
+    if (index != -1) {
+      dtf.auctionApprovers = removeFromArrayAtIndex(current, index);
+    }
+  } else if (role.equals(dtfContract.AUCTION_LAUNCHER())) {
+    let current = dtf.auctionLaunchers;
+    let index = current.indexOf(account.toHexString());
+
+    if (index != -1) {
+      dtf.auctionLaunchers = removeFromArrayAtIndex(current, index);
+    }
+  } else if (role.equals(dtfContract.BRAND_MANAGER())) {
+    let current = dtf.brandManagers;
+    let index = current.indexOf(account.toHexString());
+
+    if (index != -1) {
+      dtf.brandManagers = removeFromArrayAtIndex(current, index);
+    }
+  } else if (role.equals(dtfContract.DEFAULT_ADMIN_ROLE())) {
+    let current = dtf.admins;
+    let index = current.indexOf(account.toHexString());
+
+    if (index != -1) {
+      dtf.admins = removeFromArrayAtIndex(current, index);
+    }
+  }
+
+  dtf.save();
+}
+
+// getters
 export function getTrade(dtfAddress: Address, tradeId: BigInt): Trade {
   return Trade.load(`${dtfAddress.toHexString()}-${tradeId.toString()}`)!;
 }

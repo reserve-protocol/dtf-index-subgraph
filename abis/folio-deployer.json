@@ -75,7 +75,7 @@
         "internalType": "struct IFolio.FolioAdditionalDetails",
         "components": [
           {
-            "name": "tradeDelay",
+            "name": "auctionDelay",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -102,14 +102,19 @@
             ]
           },
           {
-            "name": "folioFee",
+            "name": "tvlFee",
             "type": "uint256",
             "internalType": "uint256"
           },
           {
-            "name": "mintingFee",
+            "name": "mintFee",
             "type": "uint256",
             "internalType": "uint256"
+          },
+          {
+            "name": "mandate",
+            "type": "string",
+            "internalType": "string"
           }
         ]
       },
@@ -119,29 +124,34 @@
         "internalType": "address"
       },
       {
-        "name": "tradeProposers",
+        "name": "auctionApprovers",
         "type": "address[]",
         "internalType": "address[]"
       },
       {
-        "name": "priceCurators",
+        "name": "auctionLaunchers",
         "type": "address[]",
         "internalType": "address[]"
       },
       {
-        "name": "vibesOfficers",
+        "name": "brandManagers",
         "type": "address[]",
         "internalType": "address[]"
+      },
+      {
+        "name": "deploymentNonce",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "outputs": [
       {
-        "name": "folio_",
+        "name": "folio",
         "type": "address",
-        "internalType": "address"
+        "internalType": "contract Folio"
       },
       {
-        "name": "folioAdmin_",
+        "name": "proxyAdmin",
         "type": "address",
         "internalType": "address"
       }
@@ -195,7 +205,7 @@
         "internalType": "struct IFolio.FolioAdditionalDetails",
         "components": [
           {
-            "name": "tradeDelay",
+            "name": "auctionDelay",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -222,14 +232,19 @@
             ]
           },
           {
-            "name": "folioFee",
+            "name": "tvlFee",
             "type": "uint256",
             "internalType": "uint256"
           },
           {
-            "name": "mintingFee",
+            "name": "mintFee",
             "type": "uint256",
             "internalType": "uint256"
+          },
+          {
+            "name": "mandate",
+            "type": "string",
+            "internalType": "string"
           }
         ]
       },
@@ -264,9 +279,9 @@
             "internalType": "uint256"
           },
           {
-            "name": "guardian",
-            "type": "address",
-            "internalType": "address"
+            "name": "guardians",
+            "type": "address[]",
+            "internalType": "address[]"
           }
         ]
       },
@@ -301,28 +316,45 @@
             "internalType": "uint256"
           },
           {
-            "name": "guardian",
-            "type": "address",
-            "internalType": "address"
+            "name": "guardians",
+            "type": "address[]",
+            "internalType": "address[]"
           }
         ]
       },
       {
-        "name": "priceCurators",
-        "type": "address[]",
-        "internalType": "address[]"
+        "name": "govRoles",
+        "type": "tuple",
+        "internalType": "struct IGovernanceDeployer.GovRoles",
+        "components": [
+          {
+            "name": "existingAuctionApprovers",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "auctionLaunchers",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "brandManagers",
+            "type": "address[]",
+            "internalType": "address[]"
+          }
+        ]
       },
       {
-        "name": "vibesOfficers",
-        "type": "address[]",
-        "internalType": "address[]"
+        "name": "deploymentNonce",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "outputs": [
       {
         "name": "folio",
         "type": "address",
-        "internalType": "address"
+        "internalType": "contract Folio"
       },
       {
         "name": "proxyAdmin",

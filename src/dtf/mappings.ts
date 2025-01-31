@@ -1,53 +1,57 @@
 import {
   FolioFeePaid,
   ProtocolFeePaid,
-  TradeApproved,
-  TradeBid,
-  TradeKilled,
-  TradeOpened,
+  AuctionApproved,
+  AuctionBid,
+  AuctionClosed,
+  AuctionOpened,
   Transfer,
+  RoleGranted,
+  RoleRevoked,
 } from "../../generated/templates/DTF/DTF";
 import { _handleTransfer } from "../token/mappings";
 import {
   _handleBid,
   _handleFolioFeePaid,
   _handleProtocolFeePaid,
+  _handleRoleGranted,
+  _handleRoleRevoked,
   _handleTradeApproved,
   _handleTradeKilled,
   _handleTradeLaunched,
 } from "./handlers";
 
 // TRADES
-export function handleTradeApproved(event: TradeApproved): void {
+export function handleAuctionApproved(event: AuctionApproved): void {
   _handleTradeApproved(
     event.address,
-    event.params.tradeId,
-    event.params.trade,
+    event.params.auctionId,
+    event.params.auction,
     event
   );
 }
 
-export function handleTradeLaunched(event: TradeOpened): void {
+export function handleAuctionLaunched(event: AuctionOpened): void {
   _handleTradeLaunched(
     event.address,
-    event.params.tradeId,
-    event.params.trade,
+    event.params.auctionId,
+    event.params.auction,
     event
   );
 }
 
-export function handleBid(event: TradeBid): void {
+export function handleBid(event: AuctionBid): void {
   _handleBid(
     event.address,
-    event.params.tradeId,
+    event.params.auctionId,
     event.params.sellAmount,
     event.params.buyAmount,
     event
   );
 }
 
-export function handleTradeKilled(event: TradeKilled): void {
-  _handleTradeKilled(event.address, event.params.tradeId, event);
+export function handleTradeKilled(event: AuctionClosed): void {
+  _handleTradeKilled(event.address, event.params.auctionId, event);
 }
 
 // FEES
@@ -61,6 +65,15 @@ export function handleFolioFeePaid(event: FolioFeePaid): void {
     event.params.recipient,
     event.params.amount
   );
+}
+
+// ROLES
+export function handleRoleGranted(event: RoleGranted): void {
+  _handleRoleGranted(event.address, event.params.role, event.params.account);
+}
+
+export function handleRoleRevoked(event: RoleRevoked): void {
+  _handleRoleRevoked(event.address, event.params.role, event.params.account);
 }
 
 // TRANSFERS

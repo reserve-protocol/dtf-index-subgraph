@@ -28,6 +28,18 @@ type DTF @entity {
   " Proxy admin address "
   proxyAdmin: Bytes!
 
+  " Auction approvers "
+  auctionApprovers: [String!]!
+
+  " Auction launchers "
+  auctionLaunchers: [String!]!
+
+  " Brand managers "
+  brandManagers: [String!]!
+
+  " Default admins "
+  admins: [String!]!
+
   " stDAO "
   stToken: StakingToken
 

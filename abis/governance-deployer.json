@@ -50,9 +50,9 @@
             "internalType": "uint256"
           },
           {
-            "name": "guardian",
-            "type": "address",
-            "internalType": "address"
+            "name": "guardians",
+            "type": "address[]",
+            "internalType": "address[]"
           }
         ]
       },
@@ -60,6 +60,11 @@
         "name": "stToken",
         "type": "address",
         "internalType": "contract IVotes"
+      },
+      {
+        "name": "deploymentNonce",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "outputs": [
@@ -126,11 +131,16 @@
             "internalType": "uint256"
           },
           {
-            "name": "guardian",
-            "type": "address",
-            "internalType": "address"
+            "name": "guardians",
+            "type": "address[]",
+            "internalType": "address[]"
           }
         ]
+      },
+      {
+        "name": "deploymentNonce",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "outputs": [

@@ -36,6 +36,10 @@ export function _handleDTFDeployed(
   dtf.governanceRevenue = BIGINT_ZERO;
   dtf.externalRevenue = BIGINT_ZERO;
   dtf.ownerAddress = deployer;
+  dtf.auctionApprovers = [];
+  dtf.auctionLaunchers = [];
+  dtf.brandManagers = [];
+  dtf.admins = [];
   dtf.save();
 
   // Track transfer and trade events
