@@ -8,7 +8,7 @@ dataSources:
     name: FolioDeployer
     network: base
     source:
-      address: "0x4c175E9499d08b0ca8206BbfA035f8228A74AC6F"
+      address: "0x4C64ef51cB057867e40114DcFA3702c2955d3644"
       abi: FolioDeployer
       startBlock: 25703976
     mapping:
@@ -40,7 +40,7 @@ dataSources:
     name: GovernanceDeployer
     network: base
     source:
-      address: "0x9f99F37Fe0b419b3661403DeceA09bC44F615D46"
+      address: "0xCB061c96Ff76E027ea99F73ddEe9108Dd6F0c212"
       abi: GovernanceDeployer
       startBlock: 25703976
     mapping:
@@ -87,9 +87,9 @@ templates:
           file: ./abis/erc20.json
       eventHandlers:
         - event: AuctionApproved(indexed uint256,indexed address,indexed address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
-          handler: handleTradeApproved
+          handler: handleAuctionApproved
         - event: AuctionOpened(indexed uint256,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
-          handler: handleTradeLaunched
+          handler: handleAuctionLaunched
         - event: AuctionClosed(indexed uint256)
           handler: handleTradeKilled
         - event: AuctionBid(indexed uint256,uint256,uint256)
@@ -104,6 +104,16 @@ templates:
           handler: handleRoleGranted
         - event: RoleRevoked(indexed bytes32,indexed address,indexed address)
           handler: handleRoleRevoked
+        - event: MintFeeSet(uint256)
+          handler: handleMintFeeSet
+        - event: TVLFeeSet(uint256,uint256)
+          handler: handleTvlFeeSet
+        - event: AuctionDelaySet(uint256)
+          handler: handleAuctionDelaySet
+        - event: AuctionLengthSet(uint256)
+          handler: handleAuctionLengthSet
+        - event: MandateSet(string)
+          handler: handleMandateSet
       file: ./src/dtf/mappings.ts
   - name: StakingToken
     kind: ethereum/contract

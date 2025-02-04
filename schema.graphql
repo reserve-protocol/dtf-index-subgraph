@@ -28,6 +28,24 @@ type DTF @entity {
   " Proxy admin address "
   proxyAdmin: Bytes!
 
+  " Minting fee "
+  mintingFee: BigInt!
+
+  " tvl Fee "
+  tvlFee: BigInt!
+
+  " Auction delay "
+  auctionDelay: BigInt!
+
+  " Auction length "
+  auctionLength: BigInt!
+
+  " mandate "
+  mandate: String!
+
+  " Annualized tvl fee "
+  annualizedTvlFee: BigInt!
+
   " Auction approvers "
   auctionApprovers: [String!]!
 

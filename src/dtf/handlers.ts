@@ -218,6 +218,47 @@ export function _handleRoleRevoked(
   dtf.save();
 }
 
+export function _handleMintFeeSet(dtfAddress: Address, fee: BigInt): void {
+  let dtf = getDTF(dtfAddress);
+  dtf.mintingFee = fee;
+  dtf.save();
+}
+
+export function _handleTvlFeeSet(
+  dtfAddress: Address,
+  fee: BigInt,
+  feeAnnually: BigInt
+): void {
+  let dtf = getDTF(dtfAddress);
+  dtf.tvlFee = fee;
+  dtf.annualizedTvlFee = feeAnnually;
+  dtf.save();
+}
+
+export function _handleAuctionDelaySet(
+  dtfAddress: Address,
+  delay: BigInt
+): void {
+  let dtf = getDTF(dtfAddress);
+  dtf.auctionDelay = delay;
+  dtf.save();
+}
+
+export function _handleAuctionLengthSet(
+  dtfAddress: Address,
+  length: BigInt
+): void {
+  let dtf = getDTF(dtfAddress);
+  dtf.auctionLength = length;
+  dtf.save();
+}
+
+export function _handleMandateSet(dtfAddress: Address, mandate: string): void {
+  let dtf = getDTF(dtfAddress);
+  dtf.mandate = mandate;
+  dtf.save();
+}
+
 // getters
 export function getTrade(dtfAddress: Address, tradeId: BigInt): Trade {
   return Trade.load(`${dtfAddress.toHexString()}-${tradeId.toString()}`)!;

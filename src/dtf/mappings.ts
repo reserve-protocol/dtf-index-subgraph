@@ -8,17 +8,27 @@ import {
   Transfer,
   RoleGranted,
   RoleRevoked,
+  MintFeeSet,
+  TVLFeeSet,
+  AuctionDelaySet,
+  AuctionLengthSet,
+  MandateSet,
 } from "../../generated/templates/DTF/DTF";
 import { _handleTransfer } from "../token/mappings";
 import {
+  _handleAuctionDelaySet,
+  _handleAuctionLengthSet,
   _handleBid,
   _handleFolioFeePaid,
+  _handleMandateSet,
+  _handleMintFeeSet,
   _handleProtocolFeePaid,
   _handleRoleGranted,
   _handleRoleRevoked,
   _handleTradeApproved,
   _handleTradeKilled,
   _handleTradeLaunched,
+  _handleTvlFeeSet,
 } from "./handlers";
 
 // TRADES
@@ -84,4 +94,28 @@ export function handleTransfer(event: Transfer): void {
     event.params.value,
     event
   );
+}
+
+export function handleMintFeeSet(event: MintFeeSet): void {
+  _handleMintFeeSet(event.address, event.params.newFee);
+}
+
+export function handleTvlFeeSet(event: TVLFeeSet): void {
+  _handleTvlFeeSet(
+    event.address,
+    event.params.newFee,
+    event.params.feeAnnually
+  );
+}
+
+export function handleAuctionDelaySet(event: AuctionDelaySet): void {
+  _handleAuctionDelaySet(event.address, event.params.newAuctionDelay);
+}
+
+export function handleAuctionLengthSet(event: AuctionLengthSet): void {
+  _handleAuctionLengthSet(event.address, event.params.newAuctionLength);
+}
+
+export function handleMandateSet(event: MandateSet): void {
+  _handleMandateSet(event.address, event.params.newMandate);
 }
