@@ -8,7 +8,7 @@ dataSources:
     name: FolioDeployer
     network: base
     source:
-      address: "0x4C64ef51cB057867e40114DcFA3702c2955d3644"
+      address: "0xE926577a152fFD5f5036f88BF7E8E8D3652B558C"
       abi: FolioDeployer
       startBlock: 25703976
     mapping:
@@ -40,7 +40,7 @@ dataSources:
     name: GovernanceDeployer
     network: base
     source:
-      address: "0xCB061c96Ff76E027ea99F73ddEe9108Dd6F0c212"
+      address: "0xdBd9C5a83A3684E80D51fd1c00Af4A1fbfE03D14"
       abi: GovernanceDeployer
       startBlock: 25703976
     mapping:
