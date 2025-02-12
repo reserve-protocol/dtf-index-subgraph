@@ -2,7 +2,10 @@ import { Address, BigInt, Bytes, ethereum, log } from "@graphprotocol/graph-ts";
 import { getOrCreateToken } from "../utils/getters";
 import { BIGINT_ZERO, TradeState } from "../utils/constants";
 import { DTF, Trade } from "../../generated/schema";
-import { DTF as DTFContract } from "./../../generated/templates/DTF/DTF";
+import {
+  DTF as DTFContract,
+  FeeRecipientsSetRecipientsStruct,
+} from "./../../generated/templates/DTF/DTF";
 import { getGovernance } from "../governance/handlers";
 import {
   AuctionApprovedAuctionStruct,
@@ -256,6 +259,22 @@ export function _handleAuctionLengthSet(
 export function _handleMandateSet(dtfAddress: Address, mandate: string): void {
   let dtf = getDTF(dtfAddress);
   dtf.mandate = mandate;
+  dtf.save();
+}
+
+export function _handleFeeRecipientsSet(
+  dtfAddress: Address,
+  recipients: FeeRecipientsSetRecipientsStruct[]
+): void {
+  let dtf = getDTF(dtfAddress);
+  let recipientStrings: string[] = [];
+  for (let i = 0; i < recipients.length; i++) {
+    let recipient = recipients[i];
+    recipientStrings.push(
+      `${recipient.recipient.toHexString()}:${recipient.portion.toString()}`
+    );
+  }
+  dtf.feeRecipients = recipientStrings.join(",");
   dtf.save();
 }
 

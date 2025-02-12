@@ -13,12 +13,14 @@ import {
   AuctionDelaySet,
   AuctionLengthSet,
   MandateSet,
+  FeeRecipientsSet,
 } from "../../generated/templates/DTF/DTF";
 import { _handleTransfer } from "../token/mappings";
 import {
   _handleAuctionDelaySet,
   _handleAuctionLengthSet,
   _handleBid,
+  _handleFeeRecipientsSet,
   _handleFolioFeePaid,
   _handleMandateSet,
   _handleMintFeeSet,
@@ -118,4 +120,8 @@ export function handleAuctionLengthSet(event: AuctionLengthSet): void {
 
 export function handleMandateSet(event: MandateSet): void {
   _handleMandateSet(event.address, event.params.newMandate);
+}
+
+export function handleFeeRecipientsSet(event: FeeRecipientsSet): void {
+  _handleFeeRecipientsSet(event.address, event.params.recipients);
 }

@@ -41,6 +41,7 @@ export function _handleDTFDeployed(
   dtf.auctionLength = BIGINT_ZERO;
   dtf.mandate = "";
   dtf.annualizedTvlFee = BIGINT_ZERO;
+  dtf.feeRecipients = "";
 
   dtf.ownerAddress = deployer;
   dtf.auctionApprovers = [];

@@ -78,6 +78,9 @@ type DTF @entity {
 
   " Deployed timestamp "
   timestamp: BigInt!
+
+  " Fee recipients "
+  feeRecipients: String!
 }
 
 enum TradeState {
