@@ -93,6 +93,7 @@ export function _handleTransfer(
   }
 }
 
+// TODO: Handle repeated event code
 function handleBurnEvent(
   token: Token | null,
   amount: BigInt,
@@ -134,10 +135,31 @@ function handleBurnEvent(
     token.save();
     dailySnapshot.save();
     hourlySnapshot.save();
+
+    // Add event
+    let transferEvent = new TransferEvent(
+      event.address.toHex() +
+        "-" +
+        event.transaction.hash.toHex() +
+        "-" +
+        event.logIndex.toString()
+    );
+    transferEvent.hash = event.transaction.hash.toHex();
+    transferEvent.logIndex = event.logIndex.toI32();
+    transferEvent.token = event.address.toHex();
+    transferEvent.nonce = event.transaction.nonce.toI32();
+    transferEvent.amount = amount;
+    transferEvent.to = GENESIS_ADDRESS;
+    transferEvent.from = burner.toHex();
+    transferEvent.blockNumber = event.block.number;
+    transferEvent.timestamp = event.block.timestamp;
+
+    transferEvent.save();
   }
   return false;
 }
 
+// TODO: Handle repeated event code
 function handleMintEvent(
   token: Token | null,
   amount: BigInt,
@@ -180,6 +202,26 @@ function handleMintEvent(
     token.save();
     dailySnapshot.save();
     hourlySnapshot.save();
+
+    // Add event
+    let transferEvent = new TransferEvent(
+      event.address.toHex() +
+        "-" +
+        event.transaction.hash.toHex() +
+        "-" +
+        event.logIndex.toString()
+    );
+    transferEvent.hash = event.transaction.hash.toHex();
+    transferEvent.logIndex = event.logIndex.toI32();
+    transferEvent.token = event.address.toHex();
+    transferEvent.nonce = event.transaction.nonce.toI32();
+    transferEvent.amount = amount;
+    transferEvent.to = destination.toHex();
+    transferEvent.from = GENESIS_ADDRESS;
+    transferEvent.blockNumber = event.block.number;
+    transferEvent.timestamp = event.block.timestamp;
+
+    transferEvent.save();
   }
   return false;
 }
