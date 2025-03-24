@@ -81,6 +81,9 @@ type DTF @entity {
 
   " Fee recipients "
   feeRecipients: String!
+
+  " Version "
+  version: String!
 }
 
 enum TradeState {
@@ -186,8 +189,43 @@ type Trade @entity {
   " isKilled "
   isKilled: Boolean!
 
+  " Runs remaining "
+  availableRuns: BigInt!
+
   " Trade state "
   state: TradeState!
+
+  " Bids "
+  bids: [AuctionBid!]! @derivedFrom(field: "auction")
+}
+
+type AuctionBid @entity {
+  " { DTF Address }-{ Trade ID }-{ Bidder Address }-{ log Index } "
+  id: ID!
+
+  " DTF contract reference "
+  dtf: DTF!
+
+  " The auction/trade this bid belongs to "
+  auction: Trade!
+
+  " Address of the account that placed the bid "
+  bidder: Bytes!
+
+  " Amount of tokens being sold in this bid "
+  sellAmount: BigInt!
+
+  " Amount of tokens being bought in this bid "
+  buyAmount: BigInt!
+
+  " Block number when this bid was created "
+  blockNumber: BigInt!
+
+  " Timestamp when this bid was created "
+  timestamp: BigInt!
+
+  " Transaction hash of the bid transaction "
+  transactionHash: String!
 }
 
 #############################
@@ -368,10 +406,10 @@ interface Event {
   nonce: Int!
 
   " Address that received the tokens "
-  to: Account!
+  to: Account
 
   " Address that sent the tokens "
-  from: Account!
+  from: Account
 
   " Block number of this event "
   blockNumber: BigInt!
@@ -401,13 +439,16 @@ type TransferEvent implements Event @entity {
   amount: BigInt!
 
   " Account that received the tokens "
-  to: Account!
+  to: Account
 
   " Account that sent the tokens "
-  from: Account!
+  from: Account
 
   " Block number of this event "
   blockNumber: BigInt!
+
+  " Transaction type "
+  type: String!
 
   " Timestamp of this event "
   timestamp: BigInt!
@@ -456,10 +497,10 @@ type AccountBalance @entity {
   delegate: Delegate
 
   " Block number in which the balance was last modified "
-  blockNumber: BigInt!
+  blockNumber: BigInt
 
   " Timestamp in which the balance was last modified "
-  timestamp: BigInt!
+  timestamp: BigInt
 }
 
 ###############################

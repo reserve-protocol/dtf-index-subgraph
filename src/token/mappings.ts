@@ -149,11 +149,10 @@ function handleBurnEvent(
     transferEvent.token = event.address.toHex();
     transferEvent.nonce = event.transaction.nonce.toI32();
     transferEvent.amount = amount;
-    transferEvent.to = GENESIS_ADDRESS;
     transferEvent.from = burner.toHex();
     transferEvent.blockNumber = event.block.number;
     transferEvent.timestamp = event.block.timestamp;
-
+    transferEvent.type = "REDEEM";
     transferEvent.save();
   }
   return false;
@@ -217,10 +216,9 @@ function handleMintEvent(
     transferEvent.nonce = event.transaction.nonce.toI32();
     transferEvent.amount = amount;
     transferEvent.to = destination.toHex();
-    transferEvent.from = GENESIS_ADDRESS;
     transferEvent.blockNumber = event.block.number;
     transferEvent.timestamp = event.block.timestamp;
-
+    transferEvent.type = "MINT";
     transferEvent.save();
   }
   return false;
@@ -249,7 +247,7 @@ function handleTransferEvent(
   transferEvent.from = source.toHex();
   transferEvent.blockNumber = event.block.number;
   transferEvent.timestamp = event.block.timestamp;
-
+  transferEvent.type = "TRANSFER";
   transferEvent.save();
 
   // Track total token transferred

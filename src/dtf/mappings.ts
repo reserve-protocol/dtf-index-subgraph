@@ -1,3 +1,4 @@
+import { BIGINT_ONE, BIGINT_ZERO } from "./../utils/constants";
 import {
   FolioFeePaid,
   ProtocolFeePaid,
@@ -14,6 +15,8 @@ import {
   AuctionLengthSet,
   MandateSet,
   FeeRecipientsSet,
+  AuctionOpened1,
+  AuctionApproved1,
 } from "../../generated/templates/DTF/DTF";
 import { _handleTransfer } from "../token/mappings";
 import {
@@ -39,19 +42,41 @@ export function handleAuctionApproved(event: AuctionApproved): void {
     event.address,
     event.params.auctionId,
     event.params.auction,
+    BIGINT_ONE,
     event
   );
 }
 
+export function handleAuctionApproved1(event: AuctionApproved1): void {
+  _handleTradeApproved(
+    event.address,
+    event.params.auctionId,
+    event.params.auction,
+    event.params.details.availableRuns,
+    event
+  );
+}
+
+// TODO: Remove when all folios are 2.0
 export function handleAuctionLaunched(event: AuctionOpened): void {
   _handleTradeLaunched(
     event.address,
     event.params.auctionId,
     event.params.auction,
+    BIGINT_ZERO,
     event
   );
 }
 
+export function handleAuctionLaunched1(event: AuctionOpened1): void {
+  _handleTradeLaunched(
+    event.address,
+    event.params.auctionId,
+    event.params.auction,
+    event.params.runsRemaining,
+    event
+  );
+}
 export function handleBid(event: AuctionBid): void {
   _handleBid(
     event.address,

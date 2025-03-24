@@ -838,6 +838,170 @@
   },
   {
     "type": "event",
+    "name": "AuctionApproved",
+    "inputs": [
+      {
+        "name": "auctionId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "auction",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct IFolio.Auction",
+        "components": [
+          {
+            "name": "id",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "sellToken",
+            "type": "address",
+            "internalType": "contract IERC20"
+          },
+          {
+            "name": "buyToken",
+            "type": "address",
+            "internalType": "contract IERC20"
+          },
+          {
+            "name": "sellLimit",
+            "type": "tuple",
+            "internalType": "struct IFolio.BasketRange",
+            "components": [
+              {
+                "name": "spot",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "low",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "high",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "buyLimit",
+            "type": "tuple",
+            "internalType": "struct IFolio.BasketRange",
+            "components": [
+              {
+                "name": "spot",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "low",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "high",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "prices",
+            "type": "tuple",
+            "internalType": "struct IFolio.Prices",
+            "components": [
+              {
+                "name": "start",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "end",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "restrictedUntil",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "launchDeadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "startTime",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "endTime",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "k",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "details",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct IFolio.AuctionDetails",
+        "components": [
+          {
+            "name": "initialPrices",
+            "type": "tuple",
+            "internalType": "struct IFolio.Prices",
+            "components": [
+              {
+                "name": "start",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "end",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "availableRuns",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "AuctionBid",
     "inputs": [
       {
@@ -976,6 +1140,134 @@
   },
   {
     "type": "event",
+    "name": "AuctionOpened",
+    "inputs": [
+      {
+        "name": "auctionId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "auction",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct IFolio.Auction",
+        "components": [
+          {
+            "name": "id",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "sellToken",
+            "type": "address",
+            "internalType": "contract IERC20"
+          },
+          {
+            "name": "buyToken",
+            "type": "address",
+            "internalType": "contract IERC20"
+          },
+          {
+            "name": "sellLimit",
+            "type": "tuple",
+            "internalType": "struct IFolio.BasketRange",
+            "components": [
+              {
+                "name": "spot",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "low",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "high",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "buyLimit",
+            "type": "tuple",
+            "internalType": "struct IFolio.BasketRange",
+            "components": [
+              {
+                "name": "spot",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "low",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "high",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "prices",
+            "type": "tuple",
+            "internalType": "struct IFolio.Prices",
+            "components": [
+              {
+                "name": "start",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "end",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "restrictedUntil",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "launchDeadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "startTime",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "endTime",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "k",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "runsRemaining",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "BasketTokenAdded",
     "inputs": [
       {
@@ -1034,6 +1326,12 @@
         "internalType": "uint256"
       }
     ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "FolioDeprecated",
+    "inputs": [],
     "anonymous": false
   },
   { "type": "event", "name": "FolioKilled", "inputs": [], "anonymous": false },
