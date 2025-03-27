@@ -31,8 +31,10 @@ import {
   _handleRoleGranted,
   _handleRoleRevoked,
   _handleTradeApproved,
+  _handleTradeApproved1,
   _handleTradeKilled,
   _handleTradeLaunched,
+  _handleTradeLaunched1,
   _handleTvlFeeSet,
 } from "./handlers";
 
@@ -48,7 +50,7 @@ export function handleAuctionApproved(event: AuctionApproved): void {
 }
 
 export function handleAuctionApproved1(event: AuctionApproved1): void {
-  _handleTradeApproved(
+  _handleTradeApproved1(
     event.address,
     event.params.auctionId,
     event.params.auction,
@@ -69,7 +71,7 @@ export function handleAuctionLaunched(event: AuctionOpened): void {
 }
 
 export function handleAuctionLaunched1(event: AuctionOpened1): void {
-  _handleTradeLaunched(
+  _handleTradeLaunched1(
     event.address,
     event.params.auctionId,
     event.params.auction,

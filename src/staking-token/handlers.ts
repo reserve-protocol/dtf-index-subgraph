@@ -1,6 +1,10 @@
-import { BIGINT_ONE, GENESIS_ADDRESS, TokenType } from "../utils/constants";
 import { Address, BigInt, ethereum } from "@graphprotocol/graph-ts";
-import { AccountBalance, Lock, UnstakingManager } from "../../generated/schema";
+import {
+  AccountBalance,
+  Lock,
+  StakingTokenRewards,
+  UnstakingManager,
+} from "../../generated/schema";
 import {
   getOrCreateAccount,
   getOrCreateAccountBalance,
@@ -11,7 +15,12 @@ import {
   getOrCreateDelegate,
   toDecimal,
 } from "../governance/handlers";
-import { BIGINT_ZERO } from "../utils/constants";
+import {
+  BIGINT_ONE,
+  BIGINT_ZERO,
+  GENESIS_ADDRESS,
+  TokenType,
+} from "../utils/constants";
 import { getOrCreateStakingToken, getOrCreateToken } from "../utils/getters";
 
 function getOrCreateStakeTokenHolder(
@@ -21,6 +30,63 @@ function getOrCreateStakeTokenHolder(
   const account = getOrCreateAccount(Address.fromString(delegator));
   const token = getOrCreateToken(tokenAddress, TokenType.VOTE);
   return getOrCreateAccountBalance(account, token);
+}
+
+function getOrCreateStakingTokenReward(
+  stakingTokenAddress: Address,
+  rewardTokenAddress: Address
+): StakingTokenRewards {
+  const stakingToken = getOrCreateStakingToken(stakingTokenAddress);
+  let rewardToken = StakingTokenRewards.load(
+    stakingTokenAddress.toHexString() + "-" + rewardTokenAddress.toHexString()
+  );
+
+  if (!rewardToken) {
+    rewardToken = new StakingTokenRewards(
+      stakingTokenAddress.toHexString() + "-" + rewardTokenAddress.toHexString()
+    );
+    rewardToken.stToken = stakingToken.id;
+    // In theory only DTF should be whitelisted as reward token and they should already exists as entity
+    // But if the token doesnt exist, we create it and assume is an asset
+    rewardToken.rewardToken = getOrCreateToken(
+      rewardTokenAddress,
+      TokenType.ASSET
+    ).id;
+    rewardToken.active = true;
+    rewardToken.save();
+  }
+
+  return rewardToken;
+}
+
+export function _handleRewardTokenAdded(
+  stakingTokenAddress: Address,
+  rewardTokenAddress: Address
+): void {
+  const rewardToken = getOrCreateStakingTokenReward(
+    stakingTokenAddress,
+    rewardTokenAddress
+  );
+
+  if (!rewardToken.active) {
+    rewardToken.active = true;
+    rewardToken.save();
+  }
+}
+
+export function _handleRewardTokenRemoved(
+  stakingTokenAddress: Address,
+  rewardTokenAddress: Address
+): void {
+  const rewardToken = getOrCreateStakingTokenReward(
+    stakingTokenAddress,
+    rewardTokenAddress
+  );
+
+  if (rewardToken.active) {
+    rewardToken.active = false;
+    rewardToken.save();
+  }
 }
 
 export function _handleDelegateChanged(

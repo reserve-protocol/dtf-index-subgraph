@@ -1,21 +1,33 @@
+import { _handleTransfer } from "../token/mappings";
+import {
+  DelegateChanged,
+  DelegateVotesChanged,
+  RewardTokenAdded,
+  RewardTokenRemoved,
+  Transfer,
+} from "./../../generated/templates/StakingToken/StakingVault";
 import {
   LockCancelled,
   LockClaimed,
   LockCreated,
 } from "./../../generated/templates/UnstakingManager/UnstakingManager";
-import { _handleTransfer } from "../token/mappings";
-import {
-  DelegateChanged,
-  DelegateVotesChanged,
-  Transfer,
-} from "./../../generated/templates/StakingToken/StakingVault";
 import {
   _handleDelegateChanged,
   _handleDelegateVotesChanged,
   _handleLockCancelled,
   _handleLockClaimed,
   _handleLockCreated,
+  _handleRewardTokenAdded,
+  _handleRewardTokenRemoved,
 } from "./handlers";
+
+export function handleRewardTokenAdded(event: RewardTokenAdded): void {
+  _handleRewardTokenAdded(event.address, event.params.rewardToken);
+}
+
+export function handleRewardTokenRemoved(event: RewardTokenRemoved): void {
+  _handleRewardTokenRemoved(event.address, event.params.rewardToken);
+}
 
 // DelegateChanged(indexed address,indexed address,indexed address)
 export function handleDelegateChanged(event: DelegateChanged): void {

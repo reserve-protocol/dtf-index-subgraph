@@ -81,9 +81,6 @@ type DTF @entity {
 
   " Fee recipients "
   feeRecipients: String!
-
-  " Version "
-  version: String!
 }
 
 enum TradeState {
@@ -760,6 +757,23 @@ type StakingToken @entity {
 
   " Governance frameworks "
   daos: [Governance!]! @derivedFrom(field: "token")
+
+  " Rewards "
+  rewards: [StakingTokenRewards!]! @derivedFrom(field: "stToken")
+}
+
+type StakingTokenRewards @entity {
+  " { StakingToken Address }-{ Reward Token Address } "
+  id: ID!
+
+  " Staking token "
+  stToken: StakingToken!
+
+  " Reward token "
+  rewardToken: Token!
+
+  " Active "
+  active: Boolean!
 }
 
 type UnstakingManager @entity {

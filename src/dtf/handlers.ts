@@ -19,7 +19,7 @@ import { removeFromArrayAtIndex } from "../utils/arrays";
 export function _handleTradeApproved(
   dtfAddress: Address,
   tradeId: BigInt,
-  tradeData: AuctionApprovedAuctionStruct | AuctionApproved1AuctionStruct,
+  tradeData: AuctionApprovedAuctionStruct,
   availableRuns: BigInt,
   event: ethereum.Event
 ): void {
@@ -54,18 +54,57 @@ export function _handleTradeApproved(
   trade.isKilled = false;
   trade.availableRuns = availableRuns;
   trade.state = TradeState.APPROVED;
+  trade.availableAt = tradeData.availableAt;
+  trade.launchTimeout = tradeData.launchTimeout;
+  trade.sell = getOrCreateToken(tradeData.sell).id;
+  trade.buy = getOrCreateToken(tradeData.buy).id;
 
-  if (tradeData instanceof AuctionApprovedAuctionStruct) {
-    trade.availableAt = tradeData.availableAt;
-    trade.launchTimeout = tradeData.launchTimeout;
-    trade.sell = getOrCreateToken(tradeData.sell).id;
-    trade.buy = getOrCreateToken(tradeData.buy).id;
-  } else {
-    trade.availableAt = tradeData.restrictedUntil;
-    trade.launchTimeout = tradeData.launchDeadline;
-    trade.buy = getOrCreateToken(tradeData.buyToken).id;
-    trade.sell = getOrCreateToken(tradeData.sellToken).id;
-  }
+  trade.save();
+}
+
+export function _handleTradeApproved1(
+  dtfAddress: Address,
+  tradeId: BigInt,
+  tradeData: AuctionApproved1AuctionStruct,
+  availableRuns: BigInt,
+  event: ethereum.Event
+): void {
+  let trade = new Trade(`${dtfAddress.toHexString()}-${tradeId.toString()}`);
+
+  trade.dtf = dtfAddress.toHexString();
+  trade.soldAmount = BIGINT_ZERO;
+  trade.boughtAmount = BIGINT_ZERO;
+  trade.startPrice = tradeData.prices.start;
+  trade.endPrice = tradeData.prices.end;
+  trade.sellLimitSpot = tradeData.sellLimit.spot;
+  trade.sellLimitHigh = tradeData.sellLimit.high;
+  trade.sellLimitLow = tradeData.sellLimit.low;
+  trade.buyLimitSpot = tradeData.buyLimit.spot;
+  trade.buyLimitHigh = tradeData.buyLimit.high;
+  trade.buyLimitLow = tradeData.buyLimit.low;
+  trade.approvedSellLimitSpot = tradeData.sellLimit.spot;
+  trade.approvedBuyLimitSpot = tradeData.buyLimit.spot;
+  trade.approvedStartPrice = tradeData.prices.start;
+  trade.approvedEndPrice = tradeData.prices.end;
+  trade.start = BIGINT_ZERO;
+  trade.end = BIGINT_ZERO;
+  trade.approvedTimestamp = event.block.timestamp;
+  trade.approvedBlockNumber = event.block.number;
+  trade.approvedTransactionHash = event.transaction.hash.toHexString();
+  trade.launchedTimestamp = BIGINT_ZERO;
+  trade.launchedBlockNumber = BIGINT_ZERO;
+  trade.launchedTransactionHash = "";
+  trade.closedTimestamp = BIGINT_ZERO;
+  trade.closedBlockNumber = BIGINT_ZERO;
+  trade.closedTransactionHash = "";
+  trade.isKilled = false;
+  trade.availableRuns = availableRuns;
+  trade.state = TradeState.APPROVED;
+  // diff
+  trade.availableAt = tradeData.restrictedUntil;
+  trade.launchTimeout = tradeData.launchDeadline;
+  trade.buy = getOrCreateToken(tradeData.buyToken).id;
+  trade.sell = getOrCreateToken(tradeData.sellToken).id;
 
   trade.save();
 }
@@ -74,7 +113,7 @@ export function _handleTradeApproved(
 export function _handleTradeLaunched(
   dtfAddress: Address,
   tradeId: BigInt,
-  tradeData: AuctionOpenedAuctionStruct | AuctionOpened1AuctionStruct,
+  tradeData: AuctionOpenedAuctionStruct,
   runsRemaining: BigInt,
   event: ethereum.Event
 ): void {
@@ -88,14 +127,31 @@ export function _handleTradeLaunched(
   trade.launchedTransactionHash = event.transaction.hash.toHexString();
   trade.availableRuns = runsRemaining;
   trade.state = TradeState.LAUNCHED;
+  trade.start = tradeData.start;
+  trade.end = tradeData.end;
 
-  if (tradeData instanceof AuctionOpenedAuctionStruct) {
-    trade.start = tradeData.start;
-    trade.end = tradeData.end;
-  } else {
-    trade.start = tradeData.startTime;
-    trade.end = tradeData.endTime;
-  }
+  trade.save();
+}
+
+export function _handleTradeLaunched1(
+  dtfAddress: Address,
+  tradeId: BigInt,
+  tradeData: AuctionOpened1AuctionStruct,
+  runsRemaining: BigInt,
+  event: ethereum.Event
+): void {
+  let trade = getTrade(dtfAddress, tradeId);
+  trade.startPrice = tradeData.prices.start;
+  trade.endPrice = tradeData.prices.end;
+  trade.sellLimitSpot = tradeData.sellLimit.spot;
+  trade.buyLimitSpot = tradeData.buyLimit.spot;
+  trade.launchedTimestamp = event.block.timestamp;
+  trade.launchedBlockNumber = event.block.number;
+  trade.launchedTransactionHash = event.transaction.hash.toHexString();
+  trade.availableRuns = runsRemaining;
+  trade.state = TradeState.LAUNCHED;
+  trade.start = tradeData.startTime;
+  trade.end = tradeData.endTime;
 
   trade.save();
 }

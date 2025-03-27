@@ -88,15 +88,14 @@ templates:
         - name: ERC20
           file: ./abis/erc20.json
       eventHandlers:
-        # Folio 1.0 events
         - event: AuctionApproved(indexed uint256,indexed address,indexed
             address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
           handler: handleAuctionApproved
         - event: AuctionOpened(indexed
             uint256,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
           handler: handleAuctionLaunched
-        # Folio 2.0 events
-        - event: AuctionApproved(indexed uint256,indexed address,indexed address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256),((uint256,uint256),uint256))
+        - event: AuctionApproved(indexed uint256,indexed address,indexed
+            address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256),((uint256,uint256),uint256))
           handler: handleAuctionApproved1
         - event: AuctionOpened(indexed
             uint256,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256),uint256)
@@ -149,6 +148,10 @@ templates:
         - name: ERC20
           file: ./abis/erc20.json
       eventHandlers:
+        - event: RewardTokenAdded(address)
+          handler: handleRewardTokenAdded
+        - event: RewardTokenRemoved(address)
+          handler: handleRewardTokenRemoved
         - event: DelegateChanged(indexed address,indexed address,indexed address)
           handler: handleDelegateChanged
         - event: DelegateVotesChanged(indexed address,uint256,uint256)
