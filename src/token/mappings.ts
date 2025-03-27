@@ -102,15 +102,6 @@ function handleBurnEvent(
 ): boolean {
   // Track total supply/burned
   if (token != null) {
-    let totalSupply = ERC20.bind(event.address).try_totalSupply();
-    let currentTotalSupply = totalSupply.reverted
-      ? token.totalSupply
-      : totalSupply.value;
-    //If the totalSupply from contract call equals with the totalSupply stored in token entity, it means the burn event was process before.
-    //It happens when the transfer function which transfers to GENESIS_ADDRESS emits both transfer event and burn event.
-    if (currentTotalSupply == token.totalSupply) {
-      return true;
-    }
     token.totalSupply = token.totalSupply.minus(amount);
     token.burnCount = token.burnCount.plus(BIGINT_ONE);
     token.totalBurned = token.totalBurned.plus(amount);
@@ -167,17 +158,7 @@ function handleMintEvent(
 ): boolean {
   // Track total token supply/minted
   if (token != null) {
-    let totalSupply = ERC20.bind(event.address).try_totalSupply();
-    let currentTotalSupply = totalSupply.reverted
-      ? token.totalSupply
-      : totalSupply.value;
-    //If the totalSupply from contract call equals with the totalSupply stored in token entity, it means the mint event was process before.
-    //It happens when the transfer function which transfers from GENESIS_ADDRESS emits both transfer event and mint event.
-    if (currentTotalSupply == token.totalSupply) {
-      return true;
-    }
     token.totalSupply = token.totalSupply.plus(amount);
-
     token.mintCount = token.mintCount.plus(BIGINT_ONE);
     token.totalMinted = token.totalMinted.plus(amount);
 
