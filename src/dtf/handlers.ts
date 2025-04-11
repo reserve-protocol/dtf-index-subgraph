@@ -75,8 +75,8 @@ export function _handleTradeApproved1(
   trade.dtf = dtfAddress.toHexString();
   trade.soldAmount = BIGINT_ZERO;
   trade.boughtAmount = BIGINT_ZERO;
-  trade.startPrice = tradeData.prices.start;
-  trade.endPrice = tradeData.prices.end;
+  trade.startPrice = tradeDetails.initialPrices.start;
+  trade.endPrice = tradeDetails.initialPrices.end;
   trade.sellLimitSpot = tradeData.sellLimit.spot;
   trade.sellLimitHigh = tradeData.sellLimit.high;
   trade.sellLimitLow = tradeData.sellLimit.low;
