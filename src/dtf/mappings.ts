@@ -54,7 +54,7 @@ export function handleAuctionApproved1(event: AuctionApproved1): void {
     event.address,
     event.params.auctionId,
     event.params.auction,
-    event.params.details.availableRuns,
+    event.params.details,
     event
   );
 }

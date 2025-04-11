@@ -4,6 +4,7 @@ import { BIGINT_ZERO, TradeState } from "../utils/constants";
 import { AuctionBid, DTF, Trade } from "../../generated/schema";
 import {
   AuctionApproved1AuctionStruct,
+  AuctionApproved1DetailsStruct,
   AuctionOpened1AuctionStruct,
   DTF as DTFContract,
   FeeRecipientsSetRecipientsStruct,
@@ -66,7 +67,7 @@ export function _handleTradeApproved1(
   dtfAddress: Address,
   tradeId: BigInt,
   tradeData: AuctionApproved1AuctionStruct,
-  availableRuns: BigInt,
+  tradeDetails: AuctionApproved1DetailsStruct,
   event: ethereum.Event
 ): void {
   let trade = new Trade(`${dtfAddress.toHexString()}-${tradeId.toString()}`);
@@ -84,8 +85,8 @@ export function _handleTradeApproved1(
   trade.buyLimitLow = tradeData.buyLimit.low;
   trade.approvedSellLimitSpot = tradeData.sellLimit.spot;
   trade.approvedBuyLimitSpot = tradeData.buyLimit.spot;
-  trade.approvedStartPrice = tradeData.prices.start;
-  trade.approvedEndPrice = tradeData.prices.end;
+  trade.approvedStartPrice = tradeDetails.initialPrices.start;
+  trade.approvedEndPrice = tradeDetails.initialPrices.end;
   trade.start = BIGINT_ZERO;
   trade.end = BIGINT_ZERO;
   trade.approvedTimestamp = event.block.timestamp;
@@ -98,7 +99,7 @@ export function _handleTradeApproved1(
   trade.closedBlockNumber = BIGINT_ZERO;
   trade.closedTransactionHash = "";
   trade.isKilled = false;
-  trade.availableRuns = availableRuns;
+  trade.availableRuns = tradeDetails.availableRuns;
   trade.state = TradeState.APPROVED;
   // diff
   trade.availableAt = tradeData.restrictedUntil;
