@@ -6,11 +6,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: FolioDeployer
-    network: mainnet
+    network: base
     source:
       abi: FolioDeployer
-      address: "0x4C64ef51cB057867e40114DcFA3702c2955d3644"
-      startBlock: 21818973
+      address: "0xE926577a152fFD5f5036f88BF7E8E8D3652B558C"
+      startBlock: 25703976
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -39,11 +39,11 @@ dataSources:
       file: ./src/deploy/mappings.ts
   - kind: ethereum
     name: GovernanceDeployer
-    network: mainnet
+    network: base
     source:
       abi: GovernanceDeployer
-      address: "0xCB061c96Ff76E027ea99F73ddEe9108Dd6F0c212"
-      startBlock: 21818973
+      address: "0xdBd9C5a83A3684E80D51fd1c00Af4A1fbfE03D14"
+      startBlock: 25703976
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -135,7 +135,7 @@ dataSources:
 templates:
   - name: DTF
     kind: ethereum/contract
-    network: mainnet
+    network: base
     source:
       abi: DTF
     mapping:
@@ -146,11 +146,16 @@ templates:
         - DTF
         - Governance
         - Trade
+        - GovernanceTimelock
       abis:
         - name: DTF
           file: ./abis/dtf.json
         - name: ERC20
           file: ./abis/erc20.json
+        - name: Governor
+          file: ./abis/governor.json
+        - name: Timelock
+          file: ./abis/timelock.json
       eventHandlers:
         - event: AuctionApproved(indexed uint256,indexed address,indexed
             address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
@@ -193,7 +198,7 @@ templates:
       file: ./src/dtf/mappings.ts
   - name: StakingToken
     kind: ethereum/contract
-    network: mainnet
+    network: base
     source:
       abi: StakingVault
     mapping:
@@ -206,11 +211,17 @@ templates:
         - Token
         - Account
         - AccountBalance
+        - Governance
+        - GovernanceTimelock
       abis:
         - name: StakingVault
           file: ./abis/staking-vault.json
         - name: ERC20
           file: ./abis/erc20.json
+        - name: Governor
+          file: ./abis/governor.json
+        - name: Timelock
+          file: ./abis/timelock.json
       eventHandlers:
         - event: RewardTokenAdded(address)
           handler: handleRewardTokenAdded
@@ -227,7 +238,7 @@ templates:
       file: ./src/staking-token/mappings.ts
   - name: UnstakingManager
     kind: ethereum/contract
-    network: mainnet
+    network: base
     source:
       abi: UnstakingManager
     mapping:
@@ -254,7 +265,7 @@ templates:
       file: ./src/staking-token/mappings.ts
   - name: Governance
     kind: ethereum/contract
-    network: mainnet
+    network: base
     source:
       abi: Governor
     mapping:
@@ -297,7 +308,7 @@ templates:
       file: ./src/governance/mappings.ts
   - name: Timelock
     kind: ethereum/contract
-    network: mainnet
+    network: base
     source:
       abi: Timelock
     mapping:
