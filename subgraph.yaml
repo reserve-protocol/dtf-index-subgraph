@@ -317,9 +317,14 @@ templates:
       language: wasm/assemblyscript
       entities:
         - GovernanceTimelock
+        - Governance
+        - StakingToken
+        - DTF
       abis:
         - name: Timelock
           file: ./abis/timelock.json
+        - name: Governor
+          file: ./abis/governor.json
       eventHandlers:
         - event: RoleGranted(indexed bytes32,indexed address,indexed address)
           handler: handleTimelockRoleGranted

@@ -1,13 +1,23 @@
 import { Address, BigInt } from "@graphprotocol/graph-ts";
-import { DTF, UnstakingManager } from "../../generated/schema";
+import {
+  DTF,
+  Governance,
+  GovernanceTimelock,
+  UnstakingManager,
+} from "../../generated/schema";
 import {
   DTF as DTFTemplate,
+  Governance as GovernanceTemplate,
   StakingToken as StakingTokenTemplate,
+  Timelock as TimelockTemplate,
   UnstakingManager as UnstakingManagerTemplate,
 } from "../../generated/templates";
+// import { Governor } from "../../generated/templates/Governance/Governor";
 import { StakingVault } from "../../generated/templates/StakingToken/StakingVault";
-import { BIGINT_ZERO, TokenType } from "../utils/constants";
+import { BIGINT_ZERO, GENESIS_ADDRESS, TokenType } from "../utils/constants";
 import { getOrCreateStakingToken, getOrCreateToken } from "../utils/getters";
+// import { Timelock } from "./../../generated/templates/Governance/Timelock";
+// import { createGovernance } from "../governance/handlers";
 
 export function _handleDTFDeployed(
   dtfAddress: Address,
@@ -36,9 +46,11 @@ export function _handleDTFDeployed(
 
   dtf.ownerAddress = deployer;
   dtf.auctionApprovers = [];
+  dtf.legacyAuctionApprovers = [];
   dtf.auctionLaunchers = [];
   dtf.brandManagers = [];
   dtf.admins = [];
+  dtf.legacyAdmins = [];
   dtf.save();
 
   // Track transfer and trade events
