@@ -11,6 +11,7 @@ import {
   DelegateChange,
   DelegateVotingPowerChange,
   Governance,
+  GovernanceTimelock,
   Proposal,
   Vote,
   VoteDailySnapshot,
@@ -23,7 +24,13 @@ import {
   ProposalState,
   VoteChoice,
 } from "../utils/constants";
+import {
+  Governance as GovernanceTemplate,
+  Timelock as TimelockTemplate,
+} from "../../generated/templates";
 import { getOrCreateStakingToken } from "../utils/getters";
+import { Governor } from "../../generated/templates/Governance/Governor";
+import { Timelock } from "./../../generated/templates/Governance/Timelock";
 
 export const SECONDS_PER_DAY = 60 * 60 * 24;
 
@@ -342,4 +349,53 @@ export function _handleVoteCast(
   dailySnapshot.blockNumber = event.block.number;
   dailySnapshot.timestamp = event.block.timestamp;
   dailySnapshot.save();
+}
+
+export function createTimelock(
+  timelockAddress: Address,
+  governanceId: string
+): GovernanceTimelock {
+  const timelockContract = Timelock.bind(timelockAddress);
+
+  const timelock = new GovernanceTimelock(timelockAddress.toHexString());
+  timelock.governance = governanceId;
+  timelock.guardians = [];
+  timelock.executionDelay = timelockContract.getMinDelay();
+  timelock.save();
+
+  // Track timelock events
+  TimelockTemplate.create(timelockAddress);
+
+  return timelock;
+}
+
+export function createGovernance(
+  governanceAddress: Address,
+  timelockAddress: Address,
+  tokenAddress: Address
+): Governance {
+  let governance = new Governance(governanceAddress.toHexString());
+
+  governance.timelock = createTimelock(timelockAddress, governance.id).id;
+  governance.token = getOrCreateStakingToken(tokenAddress).id;
+
+  const contract = Governor.bind(governanceAddress);
+  // Params
+  governance.name = contract.name();
+  governance.version = contract.version();
+  governance.votingDelay = contract.votingDelay();
+  governance.votingPeriod = contract.votingPeriod();
+  governance.proposalThreshold = contract.proposalThreshold();
+  governance.quorumDenominator = contract.quorumDenominator();
+  governance.quorumNumerator = BIGINT_ZERO;
+  governance.proposalCount = BIGINT_ZERO;
+  governance.proposalsQueued = BIGINT_ZERO;
+  governance.proposalsExecuted = BIGINT_ZERO;
+  governance.proposalsCanceled = BIGINT_ZERO;
+  governance.save();
+
+  // Track governor events
+  GovernanceTemplate.create(governanceAddress);
+
+  return governance as Governance;
 }

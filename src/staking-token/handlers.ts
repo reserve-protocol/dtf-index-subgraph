@@ -12,6 +12,7 @@ import {
 import {
   createDelegateChange,
   createDelegateVotingPowerChange,
+  createGovernance,
   getOrCreateDelegate,
   toDecimal,
 } from "../governance/handlers";
@@ -22,6 +23,7 @@ import {
   TokenType,
 } from "../utils/constants";
 import { getOrCreateStakingToken, getOrCreateToken } from "../utils/getters";
+import { Governor } from "../../generated/templates/Governance/Governor";
 
 function getOrCreateStakeTokenHolder(
   delegator: string,
@@ -220,6 +222,27 @@ export function _handleLockClaimed(
   lock.claimedTimestamp = event.block.timestamp;
   lock.claimedTxnHash = event.transaction.hash.toHexString();
   lock.save();
+}
+
+export function _handleOwnershipTransferred(
+  newOwner: Address,
+  event: ethereum.Event
+): void {
+  let stakingToken = getOrCreateStakingToken(event.address);
+  let governanceContract = Governor.bind(newOwner);
+  let timelockResult = governanceContract.try_timelock();
+
+  if (timelockResult.reverted) {
+    return;
+  }
+
+  let timelock = timelockResult.value;
+  stakingToken.governance = createGovernance(
+    newOwner,
+    timelock,
+    event.address
+  ).id;
+  stakingToken.save();
 }
 
 export function getTokenFromManager(manager: Address): string {

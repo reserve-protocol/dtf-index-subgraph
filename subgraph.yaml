@@ -6,11 +6,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: FolioDeployer
-    network: base
+    network: mainnet
     source:
       abi: FolioDeployer
-      address: "0xE926577a152fFD5f5036f88BF7E8E8D3652B558C"
-      startBlock: 25703976
+      address: "0x4C64ef51cB057867e40114DcFA3702c2955d3644"
+      startBlock: 21818973
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -39,11 +39,11 @@ dataSources:
       file: ./src/deploy/mappings.ts
   - kind: ethereum
     name: GovernanceDeployer
-    network: base
+    network: mainnet
     source:
       abi: GovernanceDeployer
-      address: "0xdBd9C5a83A3684E80D51fd1c00Af4A1fbfE03D14"
-      startBlock: 25703976
+      address: "0xCB061c96Ff76E027ea99F73ddEe9108Dd6F0c212"
+      startBlock: 21818973
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -135,7 +135,7 @@ dataSources:
 templates:
   - name: DTF
     kind: ethereum/contract
-    network: base
+    network: mainnet
     source:
       abi: DTF
     mapping:
@@ -193,7 +193,7 @@ templates:
       file: ./src/dtf/mappings.ts
   - name: StakingToken
     kind: ethereum/contract
-    network: base
+    network: mainnet
     source:
       abi: StakingVault
     mapping:
@@ -222,10 +222,12 @@ templates:
           handler: handleDelegateVotesChanged
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
+        - event: OwnershipTransferred(indexed address,indexed address)
+          handler: handleOwnershipTransferred
       file: ./src/staking-token/mappings.ts
   - name: UnstakingManager
     kind: ethereum/contract
-    network: base
+    network: mainnet
     source:
       abi: UnstakingManager
     mapping:
@@ -252,7 +254,7 @@ templates:
       file: ./src/staking-token/mappings.ts
   - name: Governance
     kind: ethereum/contract
-    network: base
+    network: mainnet
     source:
       abi: Governor
     mapping:
@@ -295,7 +297,7 @@ templates:
       file: ./src/governance/mappings.ts
   - name: Timelock
     kind: ethereum/contract
-    network: base
+    network: mainnet
     source:
       abi: Timelock
     mapping:

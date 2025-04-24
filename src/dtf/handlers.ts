@@ -1,6 +1,6 @@
 import { Address, BigInt, Bytes, ethereum, log } from "@graphprotocol/graph-ts";
 import { getOrCreateToken } from "../utils/getters";
-import { BIGINT_ZERO, TradeState } from "../utils/constants";
+import { BIGINT_ZERO, GENESIS_ADDRESS, TradeState } from "../utils/constants";
 import { AuctionBid, DTF, Trade } from "../../generated/schema";
 import {
   AuctionApproved1AuctionStruct,
@@ -9,13 +9,14 @@ import {
   DTF as DTFContract,
   FeeRecipientsSetRecipientsStruct,
 } from "./../../generated/templates/DTF/DTF";
-import { getGovernance } from "../governance/handlers";
+import { createGovernance, getGovernance } from "../governance/handlers";
 import {
   AuctionApprovedAuctionStruct,
   AuctionOpenedAuctionStruct,
 } from "../../generated/templates/DTF/DTF";
 import { removeFromArrayAtIndex } from "../utils/arrays";
-
+import { Governor } from "../../generated/templates/Governance/Governor";
+import { GovernanceType } from "../utils/constants";
 // TRADES
 export function _handleTradeApproved(
   dtfAddress: Address,
@@ -232,6 +233,35 @@ export function _handleFolioFeePaid(
   dtf.save();
 }
 
+export function trackGovernance(
+  dtfAddress: Address,
+  account: Address,
+  governanceType: string
+): void {
+  let dtf = getDTF(dtfAddress);
+  let governanceContract = Governor.bind(account);
+  let timelockResult = governanceContract.try_timelock();
+  let tokenResult = governanceContract.try_token();
+
+  // No timelock, not governance or at least our governance contracts
+  if (timelockResult.reverted || tokenResult.reverted) {
+    return;
+  }
+
+  let timelock = timelockResult.value;
+  let token = tokenResult.value;
+
+  let governance = createGovernance(account, timelock, token);
+
+  if (governanceType == GovernanceType.OWNER) {
+    dtf.ownerGovernance = governance.id;
+  } else if (governanceType == GovernanceType.TRADING) {
+    dtf.tradingGovernance = governance.id;
+  }
+
+  dtf.save();
+}
+
 // ROLES
 export function _handleRoleGranted(
   dtfAddress: Address,
@@ -246,6 +276,8 @@ export function _handleRoleGranted(
     let current = dtf.auctionApprovers;
     current.push(account.toHexString());
     dtf.auctionApprovers = current;
+    // Track basket governance
+    trackGovernance(dtfAddress, account, GovernanceType.TRADING);
   } else if (role.equals(dtfContract.AUCTION_LAUNCHER())) {
     let current = dtf.auctionLaunchers;
     current.push(account.toHexString());
@@ -258,6 +290,8 @@ export function _handleRoleGranted(
     let current = dtf.admins;
     current.push(account.toHexString());
     dtf.admins = current;
+    // Track owner governance
+    trackGovernance(dtfAddress, account, GovernanceType.OWNER);
   }
 
   dtf.save();

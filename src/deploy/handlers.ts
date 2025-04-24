@@ -1,22 +1,13 @@
 import { Address, BigInt } from "@graphprotocol/graph-ts";
-import {
-  DTF,
-  Governance,
-  GovernanceTimelock,
-  UnstakingManager,
-} from "../../generated/schema";
+import { DTF, UnstakingManager } from "../../generated/schema";
 import {
   DTF as DTFTemplate,
-  Governance as GovernanceTemplate,
   StakingToken as StakingTokenTemplate,
-  Timelock as TimelockTemplate,
   UnstakingManager as UnstakingManagerTemplate,
 } from "../../generated/templates";
-import { Governor } from "../../generated/templates/Governance/Governor";
 import { StakingVault } from "../../generated/templates/StakingToken/StakingVault";
-import { BIGINT_ZERO, GENESIS_ADDRESS, TokenType } from "../utils/constants";
+import { BIGINT_ZERO, TokenType } from "../utils/constants";
 import { getOrCreateStakingToken, getOrCreateToken } from "../utils/getters";
-import { Timelock } from "./../../generated/templates/Governance/Timelock";
 
 export function _handleDTFDeployed(
   dtfAddress: Address,
@@ -69,19 +60,19 @@ export function _handleGovernedDTFDeployed(
 
   dtf.stToken = stToken.toHexString();
   dtf.stTokenAddress = stToken;
-  dtf.ownerGovernance = createGovernance(
-    ownerGovernor,
-    ownerTimelock,
-    stToken
-  ).id;
+  // dtf.ownerGovernance = createGovernance(
+  //   ownerGovernor,
+  //   ownerTimelock,
+  //   stToken
+  // ).id;
 
-  if (tradingTimelock.toHexString() != GENESIS_ADDRESS) {
-    dtf.tradingGovernance = createGovernance(
-      tradingGovernor,
-      tradingTimelock,
-      stToken
-    ).id;
-  }
+  // if (tradingTimelock.toHexString() != GENESIS_ADDRESS) {
+  //   dtf.tradingGovernance = createGovernance(
+  //     tradingGovernor,
+  //     tradingTimelock,
+  //     stToken
+  //   ).id;
+  // }
 
   dtf.ownerAddress = ownerTimelock;
   dtf.save();
@@ -96,11 +87,11 @@ export function _handleDeployedGovernedStakingToken(
   let stakingToken = getOrCreateStakingToken(stTokenAddress);
 
   stakingToken.underlying = getOrCreateToken(underlyingAddress).id;
-  stakingToken.governance = createGovernance(
-    governor,
-    timelock,
-    stTokenAddress
-  ).id;
+  // stakingToken.governance = createGovernance(
+  //   governor,
+  //   timelock,
+  //   stTokenAddress
+  // ).id;
   stakingToken.save();
 
   StakingTokenTemplate.create(stTokenAddress);
@@ -115,53 +106,4 @@ export function _handleDeployedGovernedStakingToken(
   unstakingManager.save();
 
   UnstakingManagerTemplate.create(unstakingManagerAddress);
-}
-
-export function createTimelock(
-  timelockAddress: Address,
-  governanceId: string
-): GovernanceTimelock {
-  const timelockContract = Timelock.bind(timelockAddress);
-
-  const timelock = new GovernanceTimelock(timelockAddress.toHexString());
-  timelock.governance = governanceId;
-  timelock.guardians = [];
-  timelock.executionDelay = timelockContract.getMinDelay();
-  timelock.save();
-
-  // Track timelock events
-  TimelockTemplate.create(timelockAddress);
-
-  return timelock;
-}
-
-export function createGovernance(
-  governanceAddress: Address,
-  timelockAddress: Address,
-  tokenAddress: Address
-): Governance {
-  let governance = new Governance(governanceAddress.toHexString());
-
-  governance.timelock = createTimelock(timelockAddress, governance.id).id;
-  governance.token = getOrCreateStakingToken(tokenAddress).id;
-
-  const contract = Governor.bind(governanceAddress);
-  // Params
-  governance.name = contract.name();
-  governance.version = contract.version();
-  governance.votingDelay = contract.votingDelay();
-  governance.votingPeriod = contract.votingPeriod();
-  governance.proposalThreshold = contract.proposalThreshold();
-  governance.quorumDenominator = contract.quorumDenominator();
-  governance.quorumNumerator = BIGINT_ZERO;
-  governance.proposalCount = BIGINT_ZERO;
-  governance.proposalsQueued = BIGINT_ZERO;
-  governance.proposalsExecuted = BIGINT_ZERO;
-  governance.proposalsCanceled = BIGINT_ZERO;
-  governance.save();
-
-  // Track governor events
-  GovernanceTemplate.create(governanceAddress);
-
-  return governance as Governance;
 }
