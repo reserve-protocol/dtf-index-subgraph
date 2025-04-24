@@ -177,9 +177,9 @@ export function handleTimelockRoleGranted(event: RoleGranted): void {
       stakingToken.save();
     } else {
       let dtf = getDTF(Address.fromString(timelock.entity));
-      if (timelock.entity == GovernanceType.OWNER) {
+      if (timelock.type == GovernanceType.OWNER) {
         dtf.ownerGovernance = governance.id;
-      } else if (timelock.entity == GovernanceType.TRADING) {
+      } else {
         dtf.tradingGovernance = governance.id;
       }
       dtf.save();
