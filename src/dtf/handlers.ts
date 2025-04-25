@@ -292,6 +292,10 @@ export function _handleRoleRevoked(
     if (index != -1) {
       dtf.auctionApprovers = removeFromArrayAtIndex(current, index);
     }
+
+    let legacy = dtf.legacyAuctionApprovers;
+    legacy.push(account.toHexString());
+    dtf.legacyAuctionApprovers = legacy;
   } else if (role.equals(dtfContract.AUCTION_LAUNCHER())) {
     let current = dtf.auctionLaunchers;
     let index = current.indexOf(account.toHexString());
@@ -313,19 +317,10 @@ export function _handleRoleRevoked(
     if (index != -1) {
       dtf.admins = removeFromArrayAtIndex(current, index);
     }
-  }
 
-  // Store legacy governors
-  if (account.toHexString() == dtf.ownerGovernance) {
-    dtf.ownerGovernance = null;
-    let current = dtf.legacyAdmins;
-    current.push(account.toHexString());
-    dtf.legacyAdmins = current;
-  } else if (account.toHexString() == dtf.tradingGovernance) {
-    dtf.tradingGovernance = null;
-    let current = dtf.legacyAuctionApprovers;
-    current.push(account.toHexString());
-    dtf.legacyAuctionApprovers = current;
+    let legacy = dtf.legacyAdmins;
+    legacy.push(account.toHexString());
+    dtf.legacyAdmins = legacy;
   }
 
   dtf.save();

@@ -233,7 +233,11 @@ export function _handleOwnershipTransferred(
   event: ethereum.Event
 ): void {
   let stakingToken = getOrCreateStakingToken(event.address);
-  stakingToken.legacyGovernance.push(oldOwner.toHexString());
+
+  let legacy = stakingToken.legacyGovernance;
+  legacy.push(oldOwner.toHexString());
+  stakingToken.legacyGovernance = legacy
+
   stakingToken.save();
 
   createGovernanceTimelock(
