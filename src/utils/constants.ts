@@ -43,3 +43,9 @@ export namespace VoteChoice {
   export const FOR = "FOR";
   export const ABSTAIN = "ABSTAIN";
 }
+
+export namespace GovernanceType {
+  export const OWNER = "OWNER";
+  export const TRADING = "TRADING";
+  export const VOTE_LOCKING = "VOTE_LOCKING";
+}

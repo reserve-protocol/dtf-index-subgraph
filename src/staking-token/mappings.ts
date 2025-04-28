@@ -2,6 +2,7 @@ import { _handleTransfer } from "../token/mappings";
 import {
   DelegateChanged,
   DelegateVotesChanged,
+  OwnershipTransferred,
   RewardTokenAdded,
   RewardTokenRemoved,
   Transfer,
@@ -17,6 +18,7 @@ import {
   _handleLockCancelled,
   _handleLockClaimed,
   _handleLockCreated,
+  _handleOwnershipTransferred,
   _handleRewardTokenAdded,
   _handleRewardTokenRemoved,
 } from "./handlers";
@@ -67,6 +69,14 @@ export function handleLockCancelled(event: LockCancelled): void {
 
 export function handleLockClaimed(event: LockClaimed): void {
   _handleLockClaimed(event.address, event.params.lockId, event);
+}
+
+export function handleOwnershipTransferred(event: OwnershipTransferred): void {
+  _handleOwnershipTransferred(
+    event.params.previousOwner,
+    event.params.newOwner,
+    event
+  );
 }
 
 export function handleTransfer(event: Transfer): void {

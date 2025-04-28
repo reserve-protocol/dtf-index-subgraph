@@ -49,6 +49,9 @@ type DTF @entity {
   " Auction approvers "
   auctionApprovers: [String!]!
 
+  " Legacy auction approvers "
+  legacyAuctionApprovers: [String!]!
+
   " Auction launchers "
   auctionLaunchers: [String!]!
 
@@ -57,6 +60,9 @@ type DTF @entity {
 
   " Default admins "
   admins: [String!]!
+
+  " Legacy admins "
+  legacyAdmins: [String!]!
 
   " stDAO "
   stToken: StakingToken
@@ -591,11 +597,15 @@ type GovernanceTimelock @entity {
   "Timelock contract address"
   id: ID!
   "Governance contract address"
-  governance: Governance!
+  governance: Governance
   "Number of blocks that are required to pass from the time a proposal reaches quorum until its voting period ends"
   executionDelay: BigInt!
   "Guardians"
   guardians: [String!]!
+  " governed entity stakingToken or DTF "
+  entity: String!
+  " type could be staking token trading or owner or owner of staking token "
+  type: String!
 }
 
 type Proposal @entity {
@@ -736,6 +746,9 @@ type StakingToken @entity {
 
   " Governance "
   governance: Governance
+
+  " Legacy governance "
+  legacyGovernance: [String!]!
 
   "Total number of delegates participating on the governance currently"
   currentDelegates: BigInt!
