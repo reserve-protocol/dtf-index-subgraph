@@ -86,6 +86,12 @@ export function createGovernanceTimelock(
   TimelockTemplate.create(timelockAddress);
 }
 
+export function getGovernanceTimelock(
+  timelockAddress: Address
+): GovernanceTimelock | null {
+  return GovernanceTimelock.load(timelockAddress.toHexString());
+}
+
 export function getOrCreateGovernance(
   governanceAddress: Address,
   timelockAddress: Address

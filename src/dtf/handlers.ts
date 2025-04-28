@@ -8,7 +8,11 @@ import { Governor } from "../../generated/templates/Governance/Governor";
 import { getGovernance } from "../governance/handlers";
 import { removeFromArrayAtIndex } from "../utils/arrays";
 import { BIGINT_ZERO, GovernanceType, TradeState } from "../utils/constants";
-import { createGovernanceTimelock, getOrCreateToken } from "../utils/getters";
+import {
+  createGovernanceTimelock,
+  getGovernanceTimelock,
+  getOrCreateToken,
+} from "../utils/getters";
 import {
   AuctionApproved1AuctionStruct,
   AuctionApproved1DetailsStruct,
@@ -293,8 +297,14 @@ export function _handleRoleRevoked(
       dtf.auctionApprovers = removeFromArrayAtIndex(current, index);
     }
 
+    let timelock = getGovernanceTimelock(account);
+    let gov =
+      timelock !== null && timelock.governance !== null
+        ? timelock.governance
+        : account.toHexString();
+
     let legacy = dtf.legacyAuctionApprovers;
-    legacy.push(account.toHexString());
+    legacy.push(gov!);
     dtf.legacyAuctionApprovers = legacy;
   } else if (role.equals(dtfContract.AUCTION_LAUNCHER())) {
     let current = dtf.auctionLaunchers;
@@ -318,8 +328,14 @@ export function _handleRoleRevoked(
       dtf.admins = removeFromArrayAtIndex(current, index);
     }
 
+    let timelock = getGovernanceTimelock(account);
+    let gov =
+      timelock !== null && timelock.governance !== null
+        ? timelock.governance
+        : account.toHexString();
+
     let legacy = dtf.legacyAdmins;
-    legacy.push(account.toHexString());
+    legacy.push(gov!);
     dtf.legacyAdmins = legacy;
   }
 

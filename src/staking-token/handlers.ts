@@ -24,6 +24,7 @@ import {
 } from "../utils/constants";
 import {
   createGovernanceTimelock,
+  getGovernanceTimelock,
   getOrCreateStakingToken,
   getOrCreateToken,
 } from "../utils/getters";
@@ -234,9 +235,16 @@ export function _handleOwnershipTransferred(
 ): void {
   let stakingToken = getOrCreateStakingToken(event.address);
 
-  let legacy = stakingToken.legacyGovernance;
-  legacy.push(oldOwner.toHexString());
-  stakingToken.legacyGovernance = legacy
+  if (oldOwner.toHexString() !== GENESIS_ADDRESS) {
+    let timelock = getGovernanceTimelock(oldOwner);
+    let gov =
+      timelock !== null && timelock.governance !== null
+        ? timelock.governance
+        : oldOwner.toHexString();
+    let legacy = stakingToken.legacyGovernance;
+    legacy.push(gov!);
+    stakingToken.legacyGovernance = legacy;
+  }
 
   stakingToken.save();
 
