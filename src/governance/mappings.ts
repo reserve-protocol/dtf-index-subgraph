@@ -34,7 +34,10 @@ import {
   VotingDelaySet,
   VotingPeriodSet,
 } from "./../../generated/templates/Governance/Governor";
-import { getOrCreateStakingToken } from "../utils/getters";
+import {
+  getOrCreateGovernance,
+  getOrCreateStakingToken,
+} from "../utils/getters";
 import { getDTF } from "../dtf/handlers";
 
 // ProposalCanceled(proposalId)

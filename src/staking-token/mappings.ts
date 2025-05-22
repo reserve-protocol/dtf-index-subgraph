@@ -72,7 +72,11 @@ export function handleLockClaimed(event: LockClaimed): void {
 }
 
 export function handleOwnershipTransferred(event: OwnershipTransferred): void {
-  _handleOwnershipTransferred(event.params.newOwner, event);
+  _handleOwnershipTransferred(
+    event.params.previousOwner,
+    event.params.newOwner,
+    event
+  );
 }
 
 export function handleTransfer(event: Transfer): void {

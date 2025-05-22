@@ -131,11 +131,16 @@ templates:
         - DTF
         - Governance
         - Trade
+        - GovernanceTimelock
       abis:
         - name: DTF
           file: ./abis/dtf.json
         - name: ERC20
           file: ./abis/erc20.json
+        - name: Governor
+          file: ./abis/governor.json
+        - name: Timelock
+          file: ./abis/timelock.json
       eventHandlers:
         - event: AuctionApproved(indexed uint256,indexed address,indexed
             address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
@@ -191,11 +196,17 @@ templates:
         - Token
         - Account
         - AccountBalance
+        - Governance
+        - GovernanceTimelock
       abis:
         - name: StakingVault
           file: ./abis/staking-vault.json
         - name: ERC20
           file: ./abis/erc20.json
+        - name: Governor
+          file: ./abis/governor.json
+        - name: Timelock
+          file: ./abis/timelock.json
       eventHandlers:
         - event: RewardTokenAdded(address)
           handler: handleRewardTokenAdded
@@ -291,9 +302,14 @@ templates:
       language: wasm/assemblyscript
       entities:
         - GovernanceTimelock
+        - Governance
+        - StakingToken
+        - DTF
       abis:
         - name: Timelock
           file: ./abis/timelock.json
+        - name: Governor
+          file: ./abis/governor.json
       eventHandlers:
         - event: RoleGranted(indexed bytes32,indexed address,indexed address)
           handler: handleTimelockRoleGranted

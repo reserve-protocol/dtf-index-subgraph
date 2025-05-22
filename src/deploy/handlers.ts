@@ -7,9 +7,12 @@ import {
   UnstakingManager as UnstakingManagerTemplate,
 } from "../../generated/templates";
 import { StakingVault } from "../../generated/templates/StakingToken/StakingVault";
-import { createGovernance } from "../governance/handlers";
 import { BIGINT_ZERO, GENESIS_ADDRESS, TokenType } from "../utils/constants";
-import { getOrCreateStakingToken, getOrCreateToken } from "../utils/getters";
+import {
+  getOrCreateGovernance,
+  getOrCreateStakingToken,
+  getOrCreateToken,
+} from "../utils/getters";
 
 export function _handleVersionRegistered(
   versionHash: Bytes,
@@ -55,9 +58,11 @@ export function _handleDTFDeployed(
 
   dtf.ownerAddress = deployer;
   dtf.auctionApprovers = [];
+  dtf.legacyAuctionApprovers = [];
   dtf.auctionLaunchers = [];
   dtf.brandManagers = [];
   dtf.admins = [];
+  dtf.legacyAdmins = [];
   dtf.save();
 
   // Track transfer and trade events
@@ -79,17 +84,12 @@ export function _handleGovernedDTFDeployed(
 
   dtf.stToken = stToken.toHexString();
   dtf.stTokenAddress = stToken;
-  dtf.ownerGovernance = createGovernance(
-    ownerGovernor,
-    ownerTimelock,
-    stToken
-  ).id;
+  dtf.ownerGovernance = getOrCreateGovernance(ownerGovernor, ownerTimelock).id;
 
   if (tradingTimelock.toHexString() != GENESIS_ADDRESS) {
-    dtf.tradingGovernance = createGovernance(
+    dtf.tradingGovernance = getOrCreateGovernance(
       tradingGovernor,
-      tradingTimelock,
-      stToken
+      tradingTimelock
     ).id;
   }
 
@@ -106,11 +106,7 @@ export function _handleDeployedGovernedStakingToken(
   let stakingToken = getOrCreateStakingToken(stTokenAddress);
 
   stakingToken.underlying = getOrCreateToken(underlyingAddress).id;
-  stakingToken.governance = createGovernance(
-    governor,
-    timelock,
-    stTokenAddress
-  ).id;
+  stakingToken.governance = getOrCreateGovernance(governor, timelock).id;
   stakingToken.save();
 
   StakingTokenTemplate.create(stTokenAddress);
