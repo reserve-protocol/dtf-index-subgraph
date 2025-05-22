@@ -10,7 +10,7 @@ dataSources:
     source:
       abi: VersionRegistry
       address: "0xA665b273997F70b647B66fa7Ed021287544849dB"
-      startBlock: 21818973
+      startBlock: 25703976
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -142,22 +142,18 @@ templates:
         - name: Timelock
           file: ./abis/timelock.json
       eventHandlers:
-        - event: AuctionApproved(indexed uint256,indexed address,indexed
-            address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
-          handler: handleAuctionApproved
-        - event: AuctionOpened(indexed
-            uint256,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
-          handler: handleAuctionLaunched
-        - event: AuctionApproved(indexed uint256,indexed address,indexed
-            address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256),((uint256,uint256),uint256))
-          handler: handleAuctionApproved1
-        - event: AuctionOpened(indexed
-            uint256,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256),uint256)
-          handler: handleAuctionLaunched1
-        - event: AuctionClosed(indexed uint256)
-          handler: handleTradeKilled
-        - event: AuctionBid(indexed uint256,uint256,uint256)
-          handler: handleBid
+        - event: RebalanceStarted(uint256,uint8,address[],(uint256,uint256,uint256)[],(uint256,uint256)[],(uint256,uint256,uint256),uint256,uint256)
+          handler: handleRebalanceStarted
+        - event: RebalanceEnded(uint256)
+          handler: handleRebalanceEnded
+        - event: RebalanceControlSet(bool,uint8)
+          handler: handleRebalanceControlSet
+        - event: AuctionTrustedFillCreated(indexed uint256,indexed address)
+          handler: handleAuctionTrustedFillCreated
+        - event: AuctionOpened(indexed uint256,indexed uint256,address[],(uint256,uint256,uint256)[],(uint256,uint256)[],(uint256,uint256,uint256),uint256,uint256)
+          handler: handleSingletonAuctionLaunched
+        - event: AuctionBid(indexed uint256,indexed uint256,indexed uint256)
+          handler: handleSingletonAuctionBid
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
         - event: FolioFeePaid(indexed address,uint256)
@@ -180,6 +176,27 @@ templates:
           handler: handleMandateSet
         - event: FeeRecipientsSet((address,uint96)[])
           handler: handleFeeRecipientsSet
+        ### Deprecated events
+        # v1.0 / v2.0 event
+        - event: AuctionApproved(indexed uint256,indexed address,indexed
+            address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
+          handler: handleAuctionApproved
+        - event: AuctionApproved(indexed uint256,indexed address,indexed
+            address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256),((uint256,uint256),uint256))
+          handler: handleAuctionApproved1
+        # v1.0 event
+        - event: AuctionOpened(indexed
+            uint256,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
+          handler: handleAuctionLaunched
+        # v2.0 event
+        - event: AuctionOpened(indexed
+            uint256,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256),uint256)
+          handler: handleAuctionLaunched1
+        - event: AuctionClosed(indexed uint256)
+          handler: handleTradeKilled
+        # v1.0 / v2.0 event
+        - event: AuctionBid(indexed uint256,uint256,uint256)
+          handler: handleBid
       file: ./src/dtf/mappings.ts
   - name: StakingToken
     kind: ethereum/contract

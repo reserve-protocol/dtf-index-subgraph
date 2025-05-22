@@ -1512,6 +1512,302 @@
     ],
     "anonymous": false
   },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "nonce",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum IFolio.PriceControl",
+        "name": "priceControl",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "address[]",
+        "name": "tokens",
+        "type": "address[]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "low",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "spot",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "high",
+            "type": "uint256"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct IFolio.WeightRange[]",
+        "name": "weights",
+        "type": "tuple[]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "low",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "high",
+            "type": "uint256"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct IFolio.PriceRange[]",
+        "name": "prices",
+        "type": "tuple[]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "low",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "spot",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "high",
+            "type": "uint256"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct IFolio.RebalanceLimits",
+        "name": "limits",
+        "type": "tuple"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "restrictedUntil",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "availableUntil",
+        "type": "uint256"
+      }
+    ],
+    "name": "RebalanceStarted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "rebalanceNonce",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "auctionId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "address[]",
+        "name": "tokens",
+        "type": "address[]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "low",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "spot",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "high",
+            "type": "uint256"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct IFolio.WeightRange[]",
+        "name": "weights",
+        "type": "tuple[]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "low",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "high",
+            "type": "uint256"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct IFolio.PriceRange[]",
+        "name": "prices",
+        "type": "tuple[]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "low",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "spot",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "high",
+            "type": "uint256"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct IFolio.RebalanceLimits",
+        "name": "limits",
+        "type": "tuple"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "startTime",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "endTime",
+        "type": "uint256"
+      }
+    ],
+    "name": "AuctionOpened",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "auctionId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sellToken",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "buyToken",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "sellAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "buyAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "AuctionBid",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "auctionId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "filler",
+        "type": "address"
+      }
+    ],
+    "name": "AuctionTrustedFillCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "bool",
+            "name": "weightControl",
+            "type": "bool"
+          },
+          {
+            "internalType": "enum IFolio.PriceControl",
+            "name": "priceControl",
+            "type": "uint8"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct IFolio.RebalanceControl",
+        "name": "newControl",
+        "type": "tuple"
+      }
+    ],
+    "name": "RebalanceControlSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "nonce",
+        "type": "uint256"
+      }
+    ],
+    "name": "RebalanceEnded",
+    "type": "event"
+  },
   { "type": "error", "name": "AccessControlBadConfirmation", "inputs": [] },
   {
     "type": "error",
