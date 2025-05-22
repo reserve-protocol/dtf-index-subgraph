@@ -1,5 +1,16 @@
 import { Address, BigDecimal, BigInt } from "@graphprotocol/graph-ts";
-import { StakingToken, Token } from "../../generated/schema";
+import {
+  Governance,
+  GovernanceTimelock,
+  StakingToken,
+  Token,
+} from "../../generated/schema";
+import {
+  Governance as GovernanceTemplate,
+  Timelock as TimelockTemplate,
+} from "../../generated/templates";
+import { Governor } from "../../generated/templates/Governance/Governor";
+import { Timelock } from "../../generated/templates/Governance/Timelock";
 import { BIGINT_ZERO, TokenType } from "./constants";
 import { fetchTokenDecimals, fetchTokenName, fetchTokenSymbol } from "./tokens";
 
@@ -40,8 +51,79 @@ export function getOrCreateStakingToken(tokenAddress: Address): StakingToken {
     stakingToken.currentDelegates = BIGINT_ZERO;
     stakingToken.delegatedVotesRaw = BIGINT_ZERO;
     stakingToken.delegatedVotes = BigDecimal.fromString("0");
+    stakingToken.legacyGovernance = [];
     stakingToken.save();
   }
 
   return stakingToken as StakingToken;
+}
+
+export function createGovernanceTimelock(
+  timelockAddress: Address,
+  entity: string,
+  entityType: string
+): void {
+  if (GovernanceTimelock.load(timelockAddress.toHexString())) {
+    return;
+  }
+
+  const timelockContract = Timelock.bind(timelockAddress);
+  let delay = timelockContract.try_getMinDelay();
+
+  // Not a timelock
+  if (delay.reverted) {
+    return;
+  }
+
+  let timelock = new GovernanceTimelock(timelockAddress.toHexString());
+  timelock.guardians = [];
+  timelock.entity = entity;
+  timelock.type = entityType;
+  timelock.executionDelay = delay.value;
+  timelock.save();
+
+  // Track timelock events
+  TimelockTemplate.create(timelockAddress);
+}
+
+export function getGovernanceTimelock(
+  timelockAddress: Address
+): GovernanceTimelock | null {
+  return GovernanceTimelock.load(timelockAddress.toHexString());
+}
+
+export function getOrCreateGovernance(
+  governanceAddress: Address,
+  timelockAddress: Address
+): Governance {
+  let governance = Governance.load(governanceAddress.toHexString());
+  if (governance) {
+    return governance;
+  }
+
+  governance = new Governance(governanceAddress.toHexString());
+  const contract = Governor.bind(governanceAddress);
+
+  let token = contract.token();
+  governance.token = getOrCreateStakingToken(token).id;
+
+  // Params
+  governance.name = contract.name();
+  governance.version = contract.version();
+  governance.votingDelay = contract.votingDelay();
+  governance.votingPeriod = contract.votingPeriod();
+  governance.proposalThreshold = contract.proposalThreshold();
+  governance.quorumDenominator = contract.quorumDenominator();
+  governance.quorumNumerator = BIGINT_ZERO;
+  governance.proposalCount = BIGINT_ZERO;
+  governance.proposalsQueued = BIGINT_ZERO;
+  governance.proposalsExecuted = BIGINT_ZERO;
+  governance.proposalsCanceled = BIGINT_ZERO;
+  governance.timelock = timelockAddress.toHexString();
+  governance.save();
+
+  // Track governor events
+  GovernanceTemplate.create(governanceAddress);
+
+  return governance as Governance;
 }

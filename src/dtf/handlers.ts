@@ -1,7 +1,18 @@
 import { Address, BigInt, Bytes, ethereum, log } from "@graphprotocol/graph-ts";
-import { getOrCreateToken } from "../utils/getters";
-import { BIGINT_ZERO, TradeState } from "../utils/constants";
 import { AuctionBid, DTF, Trade } from "../../generated/schema";
+import {
+  AuctionApprovedAuctionStruct,
+  AuctionOpenedAuctionStruct,
+} from "../../generated/templates/DTF/DTF";
+import { Governor } from "../../generated/templates/Governance/Governor";
+import { getGovernance } from "../governance/handlers";
+import { removeFromArrayAtIndex } from "../utils/arrays";
+import { BIGINT_ZERO, GovernanceType, TradeState } from "../utils/constants";
+import {
+  createGovernanceTimelock,
+  getGovernanceTimelock,
+  getOrCreateToken,
+} from "../utils/getters";
 import {
   AuctionApproved1AuctionStruct,
   AuctionApproved1DetailsStruct,
@@ -9,13 +20,6 @@ import {
   DTF as DTFContract,
   FeeRecipientsSetRecipientsStruct,
 } from "./../../generated/templates/DTF/DTF";
-import { getGovernance } from "../governance/handlers";
-import {
-  AuctionApprovedAuctionStruct,
-  AuctionOpenedAuctionStruct,
-} from "../../generated/templates/DTF/DTF";
-import { removeFromArrayAtIndex } from "../utils/arrays";
-
 // TRADES
 export function _handleTradeApproved(
   dtfAddress: Address,
@@ -246,6 +250,12 @@ export function _handleRoleGranted(
     let current = dtf.auctionApprovers;
     current.push(account.toHexString());
     dtf.auctionApprovers = current;
+    // Track basket governance
+    createGovernanceTimelock(
+      account,
+      dtfAddress.toHexString(),
+      GovernanceType.TRADING
+    );
   } else if (role.equals(dtfContract.AUCTION_LAUNCHER())) {
     let current = dtf.auctionLaunchers;
     current.push(account.toHexString());
@@ -258,6 +268,12 @@ export function _handleRoleGranted(
     let current = dtf.admins;
     current.push(account.toHexString());
     dtf.admins = current;
+    // Track owner governance
+    createGovernanceTimelock(
+      account,
+      dtfAddress.toHexString(),
+      GovernanceType.OWNER
+    );
   }
 
   dtf.save();
@@ -280,6 +296,16 @@ export function _handleRoleRevoked(
     if (index != -1) {
       dtf.auctionApprovers = removeFromArrayAtIndex(current, index);
     }
+
+    let timelock = getGovernanceTimelock(account);
+    let gov =
+      timelock !== null && timelock.governance !== null
+        ? timelock.governance
+        : account.toHexString();
+
+    let legacy = dtf.legacyAuctionApprovers;
+    legacy.push(gov!);
+    dtf.legacyAuctionApprovers = legacy;
   } else if (role.equals(dtfContract.AUCTION_LAUNCHER())) {
     let current = dtf.auctionLaunchers;
     let index = current.indexOf(account.toHexString());
@@ -301,6 +327,16 @@ export function _handleRoleRevoked(
     if (index != -1) {
       dtf.admins = removeFromArrayAtIndex(current, index);
     }
+
+    let timelock = getGovernanceTimelock(account);
+    let gov =
+      timelock !== null && timelock.governance !== null
+        ? timelock.governance
+        : account.toHexString();
+
+    let legacy = dtf.legacyAdmins;
+    legacy.push(gov!);
+    dtf.legacyAdmins = legacy;
   }
 
   dtf.save();

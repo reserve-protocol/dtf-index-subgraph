@@ -19,9 +19,15 @@ import {
   BIGINT_ONE,
   BIGINT_ZERO,
   GENESIS_ADDRESS,
+  GovernanceType,
   TokenType,
 } from "../utils/constants";
-import { getOrCreateStakingToken, getOrCreateToken } from "../utils/getters";
+import {
+  createGovernanceTimelock,
+  getGovernanceTimelock,
+  getOrCreateStakingToken,
+  getOrCreateToken,
+} from "../utils/getters";
 
 function getOrCreateStakeTokenHolder(
   delegator: string,
@@ -220,6 +226,33 @@ export function _handleLockClaimed(
   lock.claimedTimestamp = event.block.timestamp;
   lock.claimedTxnHash = event.transaction.hash.toHexString();
   lock.save();
+}
+
+export function _handleOwnershipTransferred(
+  oldOwner: Address,
+  newOwner: Address,
+  event: ethereum.Event
+): void {
+  let stakingToken = getOrCreateStakingToken(event.address);
+
+  if (oldOwner.toHexString() !== GENESIS_ADDRESS) {
+    let timelock = getGovernanceTimelock(oldOwner);
+    let gov =
+      timelock !== null && timelock.governance !== null
+        ? timelock.governance
+        : oldOwner.toHexString();
+    let legacy = stakingToken.legacyGovernance;
+    legacy.push(gov!);
+    stakingToken.legacyGovernance = legacy;
+  }
+
+  stakingToken.save();
+
+  createGovernanceTimelock(
+    newOwner,
+    stakingToken.id,
+    GovernanceType.VOTE_LOCKING
+  );
 }
 
 export function getTokenFromManager(manager: Address): string {
