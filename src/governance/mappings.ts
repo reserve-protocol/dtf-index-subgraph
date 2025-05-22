@@ -21,7 +21,7 @@ import {
   getProposal,
 } from "../governance/handlers";
 import { removeFromArrayAtIndex } from "../utils/arrays";
-import { BIGINT_ONE, ProposalState } from "../utils/constants";
+import { BIGINT_ONE, GovernanceType, ProposalState } from "../utils/constants";
 import {
   Governor,
   ProposalCanceled,
@@ -34,6 +34,8 @@ import {
   VotingDelaySet,
   VotingPeriodSet,
 } from "./../../generated/templates/Governance/Governor";
+import { getOrCreateStakingToken } from "../utils/getters";
+import { getDTF } from "../dtf/handlers";
 
 // ProposalCanceled(proposalId)
 export function handleProposalCanceled(event: ProposalCanceled): void {
@@ -151,12 +153,34 @@ export function handleTimelockRoleGranted(event: RoleGranted): void {
   let timelockContract = Timelock.bind(event.address);
   // TODO: Only listens for guardian role
   let guardianRole = timelockContract.CANCELLER_ROLE();
+  let proposerRole = timelockContract.PROPOSER_ROLE();
 
   if (event.params.role.equals(guardianRole)) {
     let current = timelock.get("guardians")!.toStringArray();
     current.push(event.params.account.toHexString());
     timelock.guardians = current;
     timelock.save();
+  } else if (event.params.role.equals(proposerRole)) {
+    // Track Governor
+    let governance = getOrCreateGovernance(event.params.account, event.address);
+    timelock.governance = governance.id;
+    timelock.save();
+
+    if (timelock.type == GovernanceType.VOTE_LOCKING) {
+      let stakingToken = getOrCreateStakingToken(
+        Address.fromString(timelock.entity)
+      );
+      stakingToken.governance = governance.id;
+      stakingToken.save();
+    } else {
+      let dtf = getDTF(Address.fromString(timelock.entity));
+      if (timelock.type == GovernanceType.OWNER) {
+        dtf.ownerGovernance = governance.id;
+      } else {
+        dtf.tradingGovernance = governance.id;
+      }
+      dtf.save();
+    }
   }
 }
 

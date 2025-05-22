@@ -1,38 +1,30 @@
 {
   "mainnet": {
-    "FolioDeployer": {
-      "address": "0x4C64ef51cB057867e40114DcFA3702c2955d3644",
-      "startBlock": 21818973
-    },
     "GovernanceDeployer": {
       "address": "0xCB061c96Ff76E027ea99F73ddEe9108Dd6F0c212",
       "startBlock": 21818973
     },
-    "FolioDeployer1": {
-      "address": "0xaafb13a3df7cE70c140E40c959D58Fd5Cc443Cba",
-      "startBlock": 22081812
-    },
     "GovernanceDeployer1": {
       "address": "0xE926577a152fFD5f5036f88BF7E8E8D3652B558C",
       "startBlock": 22081811
+    },
+    "VersionRegistry": {
+      "address": "0xA665b273997F70b647B66fa7Ed021287544849dB",
+      "startBlock": 21818973
     }
   },
   "base": {
-    "FolioDeployer": {
-      "address": "0xE926577a152fFD5f5036f88BF7E8E8D3652B558C",
-      "startBlock": 25703976
-    },
     "GovernanceDeployer": {
       "address": "0xdBd9C5a83A3684E80D51fd1c00Af4A1fbfE03D14",
       "startBlock": 25703976
     },
-    "FolioDeployer1": {
-      "address": "0xb8469986840bc9b7Bb101C274950c02842755911",
-      "startBlock": 27803171
-    },
     "GovernanceDeployer1": {
       "address": "0x6a66E6E209C7120819cC033d9397E5022C22C872",
       "startBlock": 27803169
+    },
+    "VersionRegistry": {
+      "address": "0xA665b273997F70b647B66fa7Ed021287544849dB",
+      "startBlock": 21818973
     }
   }
 }

@@ -1,13 +1,32 @@
-import { Address, BigInt } from "@graphprotocol/graph-ts";
-import { DTF, UnstakingManager } from "../../generated/schema";
+import { Address, BigInt, Bytes } from "@graphprotocol/graph-ts";
+import { DTF, UnstakingManager, Version } from "../../generated/schema";
 import {
   DTF as DTFTemplate,
+  FolioDeployer as FolioDeployerTemplate,
   StakingToken as StakingTokenTemplate,
   UnstakingManager as UnstakingManagerTemplate,
 } from "../../generated/templates";
 import { StakingVault } from "../../generated/templates/StakingToken/StakingVault";
-import { BIGINT_ZERO, TokenType } from "../utils/constants";
+import { createGovernance } from "../governance/handlers";
+import { BIGINT_ZERO, GENESIS_ADDRESS, TokenType } from "../utils/constants";
 import { getOrCreateStakingToken, getOrCreateToken } from "../utils/getters";
+
+export function _handleVersionRegistered(
+  versionHash: Bytes,
+  deployer: Address,
+  blockNumber: BigInt,
+  timestamp: BigInt
+): void {
+  let version = new Version(versionHash.toHexString());
+  version.hash = versionHash;
+  version.address = deployer;
+  version.blockNumber = blockNumber;
+  version.timestamp = timestamp;
+  version.save();
+
+  // Track folio deployer events
+  FolioDeployerTemplate.create(deployer);
+}
 
 export function _handleDTFDeployed(
   dtfAddress: Address,
@@ -60,19 +79,19 @@ export function _handleGovernedDTFDeployed(
 
   dtf.stToken = stToken.toHexString();
   dtf.stTokenAddress = stToken;
-  // dtf.ownerGovernance = createGovernance(
-  //   ownerGovernor,
-  //   ownerTimelock,
-  //   stToken
-  // ).id;
+  dtf.ownerGovernance = createGovernance(
+    ownerGovernor,
+    ownerTimelock,
+    stToken
+  ).id;
 
-  // if (tradingTimelock.toHexString() != GENESIS_ADDRESS) {
-  //   dtf.tradingGovernance = createGovernance(
-  //     tradingGovernor,
-  //     tradingTimelock,
-  //     stToken
-  //   ).id;
-  // }
+  if (tradingTimelock.toHexString() != GENESIS_ADDRESS) {
+    dtf.tradingGovernance = createGovernance(
+      tradingGovernor,
+      tradingTimelock,
+      stToken
+    ).id;
+  }
 
   dtf.ownerAddress = ownerTimelock;
   dtf.save();
@@ -87,11 +106,11 @@ export function _handleDeployedGovernedStakingToken(
   let stakingToken = getOrCreateStakingToken(stTokenAddress);
 
   stakingToken.underlying = getOrCreateToken(underlyingAddress).id;
-  // stakingToken.governance = createGovernance(
-  //   governor,
-  //   timelock,
-  //   stTokenAddress
-  // ).id;
+  stakingToken.governance = createGovernance(
+    governor,
+    timelock,
+    stTokenAddress
+  ).id;
   stakingToken.save();
 
   StakingTokenTemplate.create(stTokenAddress);

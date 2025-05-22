@@ -1,5 +1,20 @@
-# Subgraph Schema: Index DTF
 # Version: 1.0.0
+
+###############################
+####### Version Registry ######
+###############################
+
+type Version @entity {
+  id: ID!
+  " Version hash "
+  hash: Bytes!
+  " Folio deployer address "
+  address: Bytes!
+  " Timestamp "
+  timestamp: BigInt!
+  " Block number "
+  blockNumber: BigInt!
+}
 
 #############################
 ####### DTF FOLIO      ######
