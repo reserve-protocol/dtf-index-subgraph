@@ -4,8 +4,10 @@ import {
   ProtocolFeePaid,
   AuctionApproved,
   AuctionBid,
+  AuctionBid1,
   AuctionClosed,
   AuctionOpened,
+  AuctionOpened2,
   Transfer,
   RoleGranted,
   RoleRevoked,
@@ -17,6 +19,7 @@ import {
   FeeRecipientsSet,
   AuctionOpened1,
   AuctionApproved1,
+  RebalanceStarted,
 } from "../../generated/templates/DTF/DTF";
 import { _handleTransfer } from "../token/mappings";
 import {
@@ -28,8 +31,11 @@ import {
   _handleMandateSet,
   _handleMintFeeSet,
   _handleProtocolFeePaid,
+  _handleRebalanceStarted,
   _handleRoleGranted,
   _handleRoleRevoked,
+  _handleSingletonAuctionBid,
+  _handleSingletonAuctionLaunched,
   _handleTradeApproved,
   _handleTradeApproved1,
   _handleTradeKilled,
@@ -38,57 +44,47 @@ import {
   _handleTvlFeeSet,
 } from "./handlers";
 
-// TRADES
-export function handleAuctionApproved(event: AuctionApproved): void {
-  _handleTradeApproved(
+export function handleRebalanceStarted(event: RebalanceStarted): void {
+  _handleRebalanceStarted(
     event.address,
-    event.params.auctionId,
-    event.params.auction,
-    BIGINT_ONE,
+    event.params.nonce,
+    event.params.priceControl,
+    event.params.tokens,
+    event.params.weights,
+    event.params.prices,
+    event.params.limits,
+    event.params.restrictedUntil,
+    event.params.availableUntil,
     event
   );
 }
 
-export function handleAuctionApproved1(event: AuctionApproved1): void {
-  _handleTradeApproved1(
+export function handleSingletonAuctionLaunched(event: AuctionOpened2): void {
+  _handleSingletonAuctionLaunched(
     event.address,
     event.params.auctionId,
-    event.params.auction,
-    event.params.details,
+    event.params.rebalanceNonce,
+    event.params.tokens,
+    event.params.weights,
+    event.params.prices,
+    event.params.limits,
+    event.params.startTime,
+    event.params.endTime,
     event
   );
 }
 
-// TODO: Remove when all folios are 2.0
-export function handleAuctionLaunched(event: AuctionOpened): void {
-  _handleTradeLaunched(
+export function handleSingletonAuctionBid(event: AuctionBid1): void {
+  _handleSingletonAuctionBid(
     event.address,
     event.params.auctionId,
-    event.params.auction,
-    BIGINT_ZERO,
-    event
-  );
-}
-
-export function handleAuctionLaunched1(event: AuctionOpened1): void {
-  _handleTradeLaunched1(
-    event.address,
-    event.params.auctionId,
-    event.params.auction,
-    event.params.runsRemaining,
-    event
-  );
-}
-export function handleBid(event: AuctionBid): void {
-  _handleBid(
-    event.address,
-    event.params.auctionId,
+    event.params.sellToken,
+    event.params.buyToken,
     event.params.sellAmount,
     event.params.buyAmount,
     event
   );
 }
-
 export function handleTradeKilled(event: AuctionClosed): void {
   _handleTradeKilled(event.address, event.params.auctionId, event);
 }
@@ -151,4 +147,59 @@ export function handleMandateSet(event: MandateSet): void {
 
 export function handleFeeRecipientsSet(event: FeeRecipientsSet): void {
   _handleFeeRecipientsSet(event.address, event.params.recipients);
+}
+
+// @deprecated - v1.0 handler
+export function handleAuctionApproved(event: AuctionApproved): void {
+  _handleTradeApproved(
+    event.address,
+    event.params.auctionId,
+    event.params.auction,
+    BIGINT_ONE,
+    event
+  );
+}
+
+// @deprecated - v2.0 handler
+export function handleAuctionApproved1(event: AuctionApproved1): void {
+  _handleTradeApproved1(
+    event.address,
+    event.params.auctionId,
+    event.params.auction,
+    event.params.details,
+    event
+  );
+}
+
+// @deprecated - v1.0 handler
+export function handleAuctionLaunched(event: AuctionOpened): void {
+  _handleTradeLaunched(
+    event.address,
+    event.params.auctionId,
+    event.params.auction,
+    BIGINT_ZERO,
+    event
+  );
+}
+
+// @deprecated - v2.0 handler
+export function handleAuctionLaunched1(event: AuctionOpened1): void {
+  _handleTradeLaunched1(
+    event.address,
+    event.params.auctionId,
+    event.params.auction,
+    event.params.runsRemaining,
+    event
+  );
+}
+
+// @deprecated - v1.0 / v2.0 handler
+export function handleBid(event: AuctionBid): void {
+  _handleBid(
+    event.address,
+    event.params.auctionId,
+    event.params.sellAmount,
+    event.params.buyAmount,
+    event
+  );
 }
