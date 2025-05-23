@@ -50,12 +50,6 @@ export namespace GovernanceType {
   export const VOTE_LOCKING = "VOTE_LOCKING";
 }
 
-export namespace PriceControl {
-  export const NONE = 0;
-  export const PARTIAL = 1;
-  export const ATOMIC_SWAP = 2;
-}
-
 export namespace Role {
   export const DEFAULT_ADMIN =
     "0x0000000000000000000000000000000000000000000000000000000000000000";
