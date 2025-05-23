@@ -5,37 +5,24 @@ schema:
   file: ./schema.graphql
 dataSources:
   - kind: ethereum
-    name: FolioDeployer
+    name: VersionRegistry
     network: base
     source:
-      abi: FolioDeployer
-      address: "0xE926577a152fFD5f5036f88BF7E8E8D3652B558C"
+      abi: VersionRegistry
+      address: "0xA665b273997F70b647B66fa7Ed021287544849dB"
       startBlock: 25703976
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - DTF
-        - Token
-        - Governance
-        - GovernanceTimelock
-        - StakingToken
+        - Version
       abis:
-        - name: FolioDeployer
-          file: ./abis/folio-deployer.json
-        - name: ERC20
-          file: ./abis/erc20.json
-        - name: Governor
-          file: ./abis/governor.json
-        - name: Timelock
-          file: ./abis/timelock.json
+        - name: VersionRegistry
+          file: ./abis/version-registry.json
       eventHandlers:
-        - event: FolioDeployed(indexed address,indexed address,address)
-          handler: handleDTFDeployed
-        - event: GovernedFolioDeployed(indexed address,indexed
-            address,address,address,address,address)
-          handler: handleGovernedDTFDeployed
+        - event: VersionRegistered(bytes32,address)
+          handler: handleVersionRegistered
       file: ./src/deploy/mappings.ts
   - kind: ethereum
     name: GovernanceDeployer
@@ -69,39 +56,6 @@ dataSources:
           handler: handleDeployedGovernedStakingToken
       file: ./src/deploy/mappings.ts
   - kind: ethereum
-    name: FolioDeployer1
-    network: base
-    source:
-      abi: FolioDeployer
-      address: "0xb8469986840bc9b7Bb101C274950c02842755911"
-      startBlock: 27803171
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - DTF
-        - Token
-        - Governance
-        - GovernanceTimelock
-        - StakingToken
-      abis:
-        - name: FolioDeployer
-          file: ./abis/folio-deployer.json
-        - name: ERC20
-          file: ./abis/erc20.json
-        - name: Governor
-          file: ./abis/governor.json
-        - name: Timelock
-          file: ./abis/timelock.json
-      eventHandlers:
-        - event: FolioDeployed(indexed address,indexed address,address)
-          handler: handleDTFDeployed
-        - event: GovernedFolioDeployed(indexed address,indexed
-            address,address,address,address,address)
-          handler: handleGovernedDTFDeployed
-      file: ./src/deploy/mappings.ts
-  - kind: ethereum
     name: GovernanceDeployer1
     network: base
     source:
@@ -133,6 +87,37 @@ dataSources:
           handler: handleDeployedGovernedStakingToken
       file: ./src/deploy/mappings.ts
 templates:
+  - name: FolioDeployer
+    kind: ethereum
+    network: base
+    source:
+      abi: FolioDeployer
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - DTF
+        - Token
+        - Governance
+        - GovernanceTimelock
+        - StakingToken
+      abis:
+        - name: FolioDeployer
+          file: ./abis/folio-deployer.json
+        - name: ERC20
+          file: ./abis/erc20.json
+        - name: Governor
+          file: ./abis/governor.json
+        - name: Timelock
+          file: ./abis/timelock.json
+      eventHandlers:
+        - event: FolioDeployed(indexed address,indexed address,address)
+          handler: handleDTFDeployed
+        - event: GovernedFolioDeployed(indexed address,indexed
+            address,address,address,address,address)
+          handler: handleGovernedDTFDeployed
+      file: ./src/deploy/mappings.ts
   - name: DTF
     kind: ethereum/contract
     network: base
@@ -157,22 +142,12 @@ templates:
         - name: Timelock
           file: ./abis/timelock.json
       eventHandlers:
-        - event: AuctionApproved(indexed uint256,indexed address,indexed
-            address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
-          handler: handleAuctionApproved
-        - event: AuctionOpened(indexed
-            uint256,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
-          handler: handleAuctionLaunched
-        - event: AuctionApproved(indexed uint256,indexed address,indexed
-            address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256),((uint256,uint256),uint256))
-          handler: handleAuctionApproved1
-        - event: AuctionOpened(indexed
-            uint256,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256),uint256)
-          handler: handleAuctionLaunched1
-        - event: AuctionClosed(indexed uint256)
-          handler: handleTradeKilled
-        - event: AuctionBid(indexed uint256,uint256,uint256)
-          handler: handleBid
+        - event: RebalanceStarted(uint256,uint8,address[],(uint256,uint256,uint256)[],(uint256,uint256)[],(uint256,uint256,uint256),uint256,uint256)
+          handler: handleRebalanceStarted
+        - event: AuctionOpened(indexed uint256,indexed uint256,address[],(uint256,uint256,uint256)[],(uint256,uint256)[],(uint256,uint256,uint256),uint256,uint256)
+          handler: handleSingletonAuctionLaunched
+        - event: AuctionBid(indexed uint256,indexed address,indexed address,uint256,uint256)
+          handler: handleSingletonAuctionBid
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
         - event: FolioFeePaid(indexed address,uint256)
@@ -195,6 +170,27 @@ templates:
           handler: handleMandateSet
         - event: FeeRecipientsSet((address,uint96)[])
           handler: handleFeeRecipientsSet
+        ### Deprecated events
+        # v1.0 / v2.0 event
+        - event: AuctionApproved(indexed uint256,indexed address,indexed
+            address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
+          handler: handleAuctionApproved
+        - event: AuctionApproved(indexed uint256,indexed address,indexed
+            address,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256),((uint256,uint256),uint256))
+          handler: handleAuctionApproved1
+        # v1.0 event
+        - event: AuctionOpened(indexed
+            uint256,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256))
+          handler: handleAuctionLaunched
+        # v2.0 event
+        - event: AuctionOpened(indexed
+            uint256,(uint256,address,address,(uint256,uint256,uint256),(uint256,uint256,uint256),(uint256,uint256),uint256,uint256,uint256,uint256,uint256),uint256)
+          handler: handleAuctionLaunched1
+        - event: AuctionClosed(indexed uint256)
+          handler: handleTradeKilled
+        # v1.0 / v2.0 event
+        - event: AuctionBid(indexed uint256,uint256,uint256)
+          handler: handleBid
       file: ./src/dtf/mappings.ts
   - name: StakingToken
     kind: ethereum/contract
