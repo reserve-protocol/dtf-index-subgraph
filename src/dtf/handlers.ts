@@ -9,6 +9,9 @@ import {
 } from "../../generated/schema";
 import {
   AuctionApprovedAuctionStruct,
+  AuctionOpened2LimitsStruct,
+  AuctionOpened2PricesStruct,
+  AuctionOpened2WeightsStruct,
   AuctionOpenedAuctionStruct,
   RebalanceStartedLimitsStruct,
   RebalanceStartedPricesStruct,
@@ -65,7 +68,7 @@ export function _handleRebalanceStarted(
 
   rebalance.dtf = dtfAddress.toHexString();
   rebalance.tokens = tokenIds;
-  rebalance.priceControl = priceControl;
+  rebalance.priceControl = priceControl.toString();
   rebalance.weightLowLimit = weightLowLimit;
   rebalance.weightSpotLimit = weightSpotLimit;
   rebalance.weightHighLimit = weightHighLimit;
@@ -87,9 +90,9 @@ export function _handleSingletonAuctionLaunched(
   auctionId: BigInt,
   rebalanceNonce: BigInt,
   tokens: Address[],
-  weights: RebalanceStartedWeightsStruct[],
-  prices: RebalanceStartedPricesStruct[],
-  limits: RebalanceStartedLimitsStruct,
+  weights: AuctionOpened2WeightsStruct[],
+  prices: AuctionOpened2PricesStruct[],
+  limits: AuctionOpened2LimitsStruct,
   startTime: BigInt,
   endTime: BigInt,
   event: ethereum.Event

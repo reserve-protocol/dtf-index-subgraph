@@ -115,7 +115,7 @@ type Rebalance @entity {
   tokens: [Token!]!
 
   " Price control "
-  priceControl: Int!
+  priceControl: String!
 
   " Weight low limit "
   weightLowLimit: [BigInt!]!
