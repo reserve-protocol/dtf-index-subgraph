@@ -68,6 +68,7 @@ export function _handleRebalanceStarted(
 
   rebalance.dtf = dtfAddress.toHexString();
   rebalance.tokens = tokenIds;
+  rebalance.nonce = nonce;
   rebalance.priceControl = priceControl.toString();
   rebalance.weightLowLimit = weightLowLimit;
   rebalance.weightSpotLimit = weightSpotLimit;

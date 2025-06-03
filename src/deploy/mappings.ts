@@ -46,7 +46,7 @@ export function handleDeployedGovernedStakingToken(
 export function handleVersionRegistered(event: VersionRegistered): void {
   _handleVersionRegistered(
     event.params.versionHash,
-    event.transaction.from,
+    event.params.folioDeployer,
     event.block.number,
     event.block.timestamp
   );

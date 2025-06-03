@@ -108,6 +108,9 @@ type Rebalance @entity {
   " { DTF Address }-{ Rebalance ID } "
   id: ID!
 
+  " Rebalance nonce "
+  nonce: BigInt!
+
   " DTF "
   dtf: DTF!
 

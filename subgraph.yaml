@@ -5,12 +5,45 @@ schema:
   file: ./schema.graphql
 dataSources:
   - kind: ethereum
+    name: FolioDeployer
+    network: base
+    source:
+      abi: FolioDeployer
+      address: "0xa70e7f86c56bf63befee3ef76ca0d392acab8ef2"
+      startBlock: 30798906
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - DTF
+        - Token
+        - Governance
+        - GovernanceTimelock
+        - StakingToken
+      abis:
+        - name: FolioDeployer
+          file: ./abis/folio-deployer.json
+        - name: ERC20
+          file: ./abis/erc20.json
+        - name: Governor
+          file: ./abis/governor.json
+        - name: Timelock
+          file: ./abis/timelock.json
+      eventHandlers:
+        - event: FolioDeployed(indexed address,indexed address,address)
+          handler: handleDTFDeployed
+        - event: GovernedFolioDeployed(indexed address,indexed
+            address,address,address,address,address)
+          handler: handleGovernedDTFDeployed
+      file: ./src/deploy/mappings.ts
+  - kind: ethereum
     name: VersionRegistry
     network: base
     source:
       abi: VersionRegistry
       address: "0xA665b273997F70b647B66fa7Ed021287544849dB"
-      startBlock: 25703976
+      startBlock: 25956786
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -62,6 +95,37 @@ dataSources:
       abi: GovernanceDeployer
       address: "0x6a66E6E209C7120819cC033d9397E5022C22C872"
       startBlock: 27803169
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - StakingToken
+        - Governance
+        - Token
+      abis:
+        - name: ERC20
+          file: ./abis/erc20.json
+        - name: Governor
+          file: ./abis/governor.json
+        - name: Timelock
+          file: ./abis/timelock.json
+        - name: GovernanceDeployer
+          file: ./abis/governance-deployer.json
+        - name: StakingVault
+          file: ./abis/staking-vault.json
+      eventHandlers:
+        - event: DeployedGovernedStakingToken(indexed address,indexed
+            address,address,address)
+          handler: handleDeployedGovernedStakingToken
+      file: ./src/deploy/mappings.ts
+  - kind: ethereum
+    name: GovernanceDeployer2
+    network: base
+    source:
+      abi: GovernanceDeployer
+      address: "0x19E3d9Fbd121A13bB55BCb6B50F9cb44F9306ce0"
+      startBlock: 30098938
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
