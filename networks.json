@@ -22,6 +22,10 @@
       "address": "0x6a66E6E209C7120819cC033d9397E5022C22C872",
       "startBlock": 27803169
     },
+    "GovernanceDeployer2": {
+      "address": "0x5Bed18AcA50E6057E6658Fe8498004092EedCDcF",
+      "startBlock": 31179057
+    },
     "VersionRegistry": {
       "address": "0xA665b273997F70b647B66fa7Ed021287544849dB",
       "startBlock": 25703976
