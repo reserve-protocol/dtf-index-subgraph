@@ -4,13 +4,14 @@ indexerHints:
 schema:
   file: ./schema.graphql
 dataSources:
+{{#FolioDeployer}}
   - kind: ethereum
-    name: FolioDeployer
-    network: base
+    name: FolioDeployer{{postfix}}
+    network: {{network}}
     source:
       abi: FolioDeployer
-      address: "0xBE3B47587cEeff7D48008A0114f51cD571beC63A"
-      startBlock: 30798906
+      address: "{{address}}"
+      startBlock: {{startBlock}}
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -37,33 +38,15 @@ dataSources:
             address,address,address,address,address)
           handler: handleGovernedDTFDeployed
       file: ./src/deploy/mappings.ts
+{{/FolioDeployer}}
+{{#GovernanceDeployer}}
   - kind: ethereum
-    name: VersionRegistry
-    network: base
-    source:
-      abi: VersionRegistry
-      address: "0xA665b273997F70b647B66fa7Ed021287544849dB"
-      startBlock: 25956786
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - Version
-      abis:
-        - name: VersionRegistry
-          file: ./abis/version-registry.json
-      eventHandlers:
-        - event: VersionRegistered(bytes32,address)
-          handler: handleVersionRegistered
-      file: ./src/deploy/mappings.ts
-  - kind: ethereum
-    name: GovernanceDeployer
-    network: base
+    name: GovernanceDeployer{{postfix}}
+    network: {{network}}
     source:
       abi: GovernanceDeployer
-      address: "0xdBd9C5a83A3684E80D51fd1c00Af4A1fbfE03D14"
-      startBlock: 25703976
+      address: "{{address}}"
+      startBlock: {{startBlock}}
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -88,103 +71,11 @@ dataSources:
             address,address,address)
           handler: handleDeployedGovernedStakingToken
       file: ./src/deploy/mappings.ts
-  - kind: ethereum
-    name: GovernanceDeployer1
-    network: base
-    source:
-      abi: GovernanceDeployer
-      address: "0x6a66E6E209C7120819cC033d9397E5022C22C872"
-      startBlock: 27803169
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - StakingToken
-        - Governance
-        - Token
-      abis:
-        - name: ERC20
-          file: ./abis/erc20.json
-        - name: Governor
-          file: ./abis/governor.json
-        - name: Timelock
-          file: ./abis/timelock.json
-        - name: GovernanceDeployer
-          file: ./abis/governance-deployer.json
-        - name: StakingVault
-          file: ./abis/staking-vault.json
-      eventHandlers:
-        - event: DeployedGovernedStakingToken(indexed address,indexed
-            address,address,address)
-          handler: handleDeployedGovernedStakingToken
-      file: ./src/deploy/mappings.ts
-  - kind: ethereum
-    name: GovernanceDeployer2
-    network: base
-    source:
-      abi: GovernanceDeployer
-      address: "0x5Bed18AcA50E6057E6658Fe8498004092EedCDcF"
-      startBlock: 31179057
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - StakingToken
-        - Governance
-        - Token
-      abis:
-        - name: ERC20
-          file: ./abis/erc20.json
-        - name: Governor
-          file: ./abis/governor.json
-        - name: Timelock
-          file: ./abis/timelock.json
-        - name: GovernanceDeployer
-          file: ./abis/governance-deployer.json
-        - name: StakingVault
-          file: ./abis/staking-vault.json
-      eventHandlers:
-        - event: DeployedGovernedStakingToken(indexed address,indexed
-            address,address,address)
-          handler: handleDeployedGovernedStakingToken
-      file: ./src/deploy/mappings.ts
+{{/GovernanceDeployer}}
 templates:
-  - name: FolioDeployer
-    kind: ethereum
-    network: base
-    source:
-      abi: FolioDeployer
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.7
-      language: wasm/assemblyscript
-      entities:
-        - DTF
-        - Token
-        - Governance
-        - GovernanceTimelock
-        - StakingToken
-      abis:
-        - name: FolioDeployer
-          file: ./abis/folio-deployer.json
-        - name: ERC20
-          file: ./abis/erc20.json
-        - name: Governor
-          file: ./abis/governor.json
-        - name: Timelock
-          file: ./abis/timelock.json
-      eventHandlers:
-        - event: FolioDeployed(indexed address,indexed address,address)
-          handler: handleDTFDeployed
-        - event: GovernedFolioDeployed(indexed address,indexed
-            address,address,address,address,address)
-          handler: handleGovernedDTFDeployed
-      file: ./src/deploy/mappings.ts
   - name: DTF
     kind: ethereum/contract
-    network: base
+    network: {{network}}
     source:
       abi: DTF
     mapping:
@@ -258,7 +149,7 @@ templates:
       file: ./src/dtf/mappings.ts
   - name: StakingToken
     kind: ethereum/contract
-    network: base
+    network: {{network}}
     source:
       abi: StakingVault
     mapping:
@@ -298,7 +189,7 @@ templates:
       file: ./src/staking-token/mappings.ts
   - name: UnstakingManager
     kind: ethereum/contract
-    network: base
+    network: {{network}}
     source:
       abi: UnstakingManager
     mapping:
@@ -325,7 +216,7 @@ templates:
       file: ./src/staking-token/mappings.ts
   - name: Governance
     kind: ethereum/contract
-    network: base
+    network: {{network}}
     source:
       abi: Governor
     mapping:
@@ -368,7 +259,7 @@ templates:
       file: ./src/governance/mappings.ts
   - name: Timelock
     kind: ethereum/contract
-    network: base
+    network: {{network}}
     source:
       abi: Timelock
     mapping:
