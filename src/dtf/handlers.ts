@@ -548,15 +548,26 @@ export function _handleBid(
 // @deprecated
 export function _handleTradeKilled(
   dtfAddress: Address,
-  tradeId: BigInt,
+  auctionId: BigInt,
   event: ethereum.Event
 ): void {
-  let trade = getTrade(dtfAddress, tradeId);
-  trade.closedTimestamp = event.block.timestamp;
-  trade.closedBlockNumber = event.block.number;
-  trade.closedTransactionHash = event.transaction.hash.toHexString();
-  trade.isKilled = true;
-  trade.state = TradeState.CLOSED;
+  let auction = Auction.load(
+    `${dtfAddress.toHexString()}-${auctionId.toString()}`
+  );
 
-  trade.save();
+  if (auction) {
+    // Lets just update the end time to make the auction end.
+    auction.endTime = event.block.timestamp;
+    auction.save();
+  } else {
+    // @deprecated 1.0/2.0 trades killed
+    let trade = getTrade(dtfAddress, auctionId);
+    trade.closedTimestamp = event.block.timestamp;
+    trade.closedBlockNumber = event.block.number;
+    trade.closedTransactionHash = event.transaction.hash.toHexString();
+    trade.isKilled = true;
+    trade.state = TradeState.CLOSED;
+
+    trade.save();
+  }
 }

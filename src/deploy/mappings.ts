@@ -3,12 +3,10 @@ import {
   GovernedFolioDeployed,
 } from "../../generated/templates/FolioDeployer/FolioDeployer";
 import { DeployedGovernedStakingToken } from "../../generated/GovernanceDeployer/GovernanceDeployer";
-import { VersionRegistered } from "./../../generated/VersionRegistry/VersionRegistry";
 import {
   _handleDeployedGovernedStakingToken,
   _handleDTFDeployed,
   _handleGovernedDTFDeployed,
-  _handleVersionRegistered,
 } from "./handlers";
 
 export function handleDTFDeployed(event: FolioDeployed): void {
@@ -40,14 +38,5 @@ export function handleDeployedGovernedStakingToken(
     event.params.stToken,
     event.params.governor,
     event.params.timelock
-  );
-}
-
-export function handleVersionRegistered(event: VersionRegistered): void {
-  _handleVersionRegistered(
-    event.params.versionHash,
-    event.params.folioDeployer,
-    event.block.number,
-    event.block.timestamp
   );
 }
