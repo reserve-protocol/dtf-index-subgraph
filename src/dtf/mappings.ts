@@ -20,11 +20,13 @@ import {
   AuctionOpened1,
   AuctionApproved1,
   RebalanceStarted,
+  AuctionTrustedFillCreated,
 } from "../../generated/templates/DTF/DTF";
 import { _handleTransfer } from "../token/mappings";
 import {
   _handleAuctionDelaySet,
   _handleAuctionLengthSet,
+  _handleAuctionTrustedFillCreated,
   _handleBid,
   _handleFeeRecipientsSet,
   _handleFolioFeePaid,
@@ -74,6 +76,7 @@ export function handleSingletonAuctionLaunched(event: AuctionOpened2): void {
   );
 }
 
+// This event WONT trigger if the auction is trusted filled (async bid from cowswap)
 export function handleSingletonAuctionBid(event: AuctionBid1): void {
   _handleSingletonAuctionBid(
     event.address,
@@ -85,6 +88,18 @@ export function handleSingletonAuctionBid(event: AuctionBid1): void {
     event
   );
 }
+
+export function handleAuctionTrustedFillCreated(
+  event: AuctionTrustedFillCreated
+): void {
+  _handleAuctionTrustedFillCreated(
+    event.address,
+    event.params.auctionId,
+    event.params.filler,
+    event
+  );
+}
+
 export function handleTradeKilled(event: AuctionClosed): void {
   _handleTradeKilled(event.address, event.params.auctionId, event);
 }

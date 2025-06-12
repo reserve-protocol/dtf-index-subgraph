@@ -102,6 +102,9 @@ type DTF @entity {
 
   " Fee recipients "
   feeRecipients: String!
+
+  " Rebalances "
+  rebalances: [Rebalance!]! @derivedFrom(field: "dtf")
 }
 
 type Rebalance @entity {
@@ -231,6 +234,9 @@ type RebalanceAuctionBid @entity {
 
   " Address of the account that placed the bid "
   bidder: Bytes!
+
+  " Trusted fill "
+  filler: Bytes
 
   " Sell token "
   sellToken: Token!

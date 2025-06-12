@@ -32,6 +32,7 @@ import {
   FeeRecipientsSetRecipientsStruct,
 } from "./../../generated/templates/DTF/DTF";
 import { Role } from "./../utils/constants";
+import { getAuctionBidsFromReceipt } from "../utils/rebalance";
 
 // Rebalance
 export function _handleRebalanceStarted(
@@ -146,7 +147,7 @@ export function _handleSingletonAuctionBid(
   sellAmount: BigInt,
   buyAmount: BigInt,
   event: ethereum.Event
-): void {
+): RebalanceAuctionBid {
   let bid = new RebalanceAuctionBid(
     `${dtfAddress.toHexString()}-${auctionId.toString()}-${event.transaction.from.toHexString()}-${event.block.number.toString()}-${event.logIndex.toString()}`
   );
@@ -161,6 +162,34 @@ export function _handleSingletonAuctionBid(
   bid.timestamp = event.block.timestamp;
   bid.transactionHash = event.transaction.hash.toHexString();
   bid.save();
+
+  return bid;
+}
+
+// When this happens, all the bids are on the same tx, need to go through the logs in order to compute all the bids
+export function _handleAuctionTrustedFillCreated(
+  dtfAddress: Address,
+  auctionId: BigInt,
+  filler: Address,
+  event: ethereum.Event
+): void {
+  let bids = getAuctionBidsFromReceipt(dtfAddress, event.receipt!);
+
+  for (let i = 0; i < bids.length; i++) {
+    let bid = bids[i];
+
+    let bidEntity = _handleSingletonAuctionBid(
+      dtfAddress,
+      auctionId,
+      bid.sellToken,
+      bid.buyToken,
+      bid.sellAmount,
+      bid.buyAmount,
+      event
+    );
+    bidEntity.filler = filler;
+    bidEntity.save();
+  }
 }
 
 // FEES
