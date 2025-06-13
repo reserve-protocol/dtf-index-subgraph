@@ -151,7 +151,7 @@ export function _handleSingletonAuctionBid(
   let bid = new RebalanceAuctionBid(
     `${dtfAddress.toHexString()}-${auctionId.toString()}-${event.transaction.from.toHexString()}-${event.block.number.toString()}-${event.logIndex.toString()}`
   );
-  bid.dtf = dtfAddress.toHexString();
+  bid.dtf = `${dtfAddress.toHexString()}-${auctionId.toString()}`;
   bid.auction = auctionId.toString();
   bid.bidder = event.transaction.from;
   bid.sellToken = getOrCreateToken(sellToken).id;
