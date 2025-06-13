@@ -1,23 +1,17 @@
 import { Address, BigInt } from "@graphprotocol/graph-ts";
-import {
-  DTF,
-  Governance,
-  GovernanceTimelock,
-  UnstakingManager,
-} from "../../generated/schema";
+import { DTF, UnstakingManager } from "../../generated/schema";
 import {
   DTF as DTFTemplate,
-  Governance as GovernanceTemplate,
   StakingToken as StakingTokenTemplate,
-  Timelock as TimelockTemplate,
   UnstakingManager as UnstakingManagerTemplate,
 } from "../../generated/templates";
-// import { Governor } from "../../generated/templates/Governance/Governor";
 import { StakingVault } from "../../generated/templates/StakingToken/StakingVault";
 import { BIGINT_ZERO, GENESIS_ADDRESS, TokenType } from "../utils/constants";
-import { getOrCreateStakingToken, getOrCreateToken } from "../utils/getters";
-// import { Timelock } from "./../../generated/templates/Governance/Timelock";
-// import { createGovernance } from "../governance/handlers";
+import {
+  getOrCreateGovernance,
+  getOrCreateStakingToken,
+  getOrCreateToken,
+} from "../utils/getters";
 
 export function _handleDTFDeployed(
   dtfAddress: Address,
@@ -72,19 +66,14 @@ export function _handleGovernedDTFDeployed(
 
   dtf.stToken = stToken.toHexString();
   dtf.stTokenAddress = stToken;
-  // dtf.ownerGovernance = createGovernance(
-  //   ownerGovernor,
-  //   ownerTimelock,
-  //   stToken
-  // ).id;
+  dtf.ownerGovernance = getOrCreateGovernance(ownerGovernor, ownerTimelock).id;
 
-  // if (tradingTimelock.toHexString() != GENESIS_ADDRESS) {
-  //   dtf.tradingGovernance = createGovernance(
-  //     tradingGovernor,
-  //     tradingTimelock,
-  //     stToken
-  //   ).id;
-  // }
+  if (tradingTimelock.toHexString() != GENESIS_ADDRESS) {
+    dtf.tradingGovernance = getOrCreateGovernance(
+      tradingGovernor,
+      tradingTimelock
+    ).id;
+  }
 
   dtf.ownerAddress = ownerTimelock;
   dtf.save();
@@ -99,11 +88,7 @@ export function _handleDeployedGovernedStakingToken(
   let stakingToken = getOrCreateStakingToken(stTokenAddress);
 
   stakingToken.underlying = getOrCreateToken(underlyingAddress).id;
-  // stakingToken.governance = createGovernance(
-  //   governor,
-  //   timelock,
-  //   stTokenAddress
-  // ).id;
+  stakingToken.governance = getOrCreateGovernance(governor, timelock).id;
   stakingToken.save();
 
   StakingTokenTemplate.create(stTokenAddress);

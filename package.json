@@ -8,13 +8,17 @@
     "create-local": "graph create --node http://localhost:8020/ dtf-index-subgraph",
     "remove-local": "graph remove --node http://localhost:8020/ dtf-index-subgraph",
     "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 dtf-index-subgraph",
-    "test": "graph test"
+    "test": "graph test",
+    "parse:mainnet": "node scripts/parse-template.js --network mainnet",
+    "parse:base": "node scripts/parse-template.js --network base",
+    "parse:bsc": "node scripts/parse-template.js --network bsc"
   },
   "dependencies": {
     "@graphprotocol/graph-cli": "0.91.1",
-    "@graphprotocol/graph-ts": "0.32.0"
+    "@graphprotocol/graph-ts": "0.35.1"
   },
   "devDependencies": {
-    "matchstick-as": "0.5.0"
+    "matchstick-as": "0.6.0",
+    "mustache": "^4.2.0"
   }
 }

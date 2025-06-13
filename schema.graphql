@@ -1,5 +1,20 @@
-# Subgraph Schema: Index DTF
 # Version: 1.0.0
+
+###############################
+####### Version Registry ######
+###############################
+
+type Version @entity {
+  id: ID!
+  " Version hash "
+  hash: Bytes!
+  " Folio deployer address "
+  address: Bytes!
+  " Timestamp "
+  timestamp: BigInt!
+  " Block number "
+  blockNumber: BigInt!
+}
 
 #############################
 ####### DTF FOLIO      ######
@@ -87,6 +102,162 @@ type DTF @entity {
 
   " Fee recipients "
   feeRecipients: String!
+
+  " Rebalances "
+  rebalances: [Rebalance!]! @derivedFrom(field: "dtf")
+}
+
+type Rebalance @entity {
+  " { DTF Address }-{ Rebalance ID } "
+  id: ID!
+
+  " Rebalance nonce "
+  nonce: BigInt!
+
+  " DTF "
+  dtf: DTF!
+
+  " Tokens "
+  tokens: [Token!]!
+
+  " Price control "
+  priceControl: String!
+
+  " Weight low limit "
+  weightLowLimit: [BigInt!]!
+
+  " Weight spot limit "
+  weightSpotLimit: [BigInt!]!
+
+  " Weight high limit "
+  weightHighLimit: [BigInt!]!
+
+  " Rebalance low limit "
+  rebalanceLowLimit: BigInt!
+
+  " Rebalance spot limit "
+  rebalanceSpotLimit: BigInt!
+
+  " Rebalance high limit "
+  rebalanceHighLimit: BigInt!
+
+  " Price ranges "
+  priceLowLimit: [BigInt!]!
+
+  " Price high limit "
+  priceHighLimit: [BigInt!]!
+
+  " Auction launcher window "
+  restrictedUntil: BigInt!
+
+  " Available until "
+  availableUntil: BigInt!
+
+  " Transaction hash "
+  transactionHash: String!
+
+  " Block number "
+  blockNumber: BigInt!
+
+  " Timestamp "
+  timestamp: BigInt!
+
+  " auction bids "
+  auctions: [Auction!]! @derivedFrom(field: "rebalance")
+}
+
+type Auction @entity {
+  " { DTF Address }-{ Rebalance ID }-{ Auction ID } "
+  id: ID!
+
+  " DTF "
+  dtf: DTF!
+
+  " Rebalance "
+  rebalance: Rebalance!
+
+  " auctioned tokens "
+  tokens: [Token!]!
+
+  " Weight low limit "
+  weightLowLimit: [BigInt!]!
+
+  " Weight spot limit "
+  weightSpotLimit: [BigInt!]!
+
+  " Weight high limit "
+  weightHighLimit: [BigInt!]!
+
+  " Rebalance low limit "
+  rebalanceLowLimit: BigInt!
+
+  " Rebalance spot limit "
+  rebalanceSpotLimit: BigInt!
+
+  " Rebalance high limit "
+  rebalanceHighLimit: BigInt!
+
+  " Price low limit "
+  priceLowLimit: [BigInt!]!
+
+  " Price high limit "
+  priceHighLimit: [BigInt!]!
+
+  " start time "
+  startTime: BigInt!
+
+  " end time "
+  endTime: BigInt!
+
+  " block number "
+  blockNumber: BigInt!
+
+  " timestamp "
+  timestamp: BigInt!
+
+  " transaction hash "
+  transactionHash: String!
+
+  " bids "
+  bids: [RebalanceAuctionBid!]! @derivedFrom(field: "auction")
+}
+
+type RebalanceAuctionBid @entity {
+  " { DTF Address }-{ Auction ID }-{ Bidder Address }-{ timestamp } "
+  id: ID!
+
+  " DTF contract reference "
+  dtf: DTF!
+
+  " The auction/trade this bid belongs to "
+  auction: Auction!
+
+  " Address of the account that placed the bid "
+  bidder: Bytes!
+
+  " Trusted fill "
+  filler: Bytes
+
+  " Sell token "
+  sellToken: Token!
+
+  " Buy token "
+  buyToken: Token!
+
+  " Amount of tokens being sold in this bid "
+  sellAmount: BigInt!
+
+  " Amount of tokens being bought in this bid "
+  buyAmount: BigInt!
+
+  " Block number when this bid was created "
+  blockNumber: BigInt!
+
+  " Timestamp when this bid was created "
+  timestamp: BigInt!
+
+  " Transaction hash of the bid transaction "
+  transactionHash: String!
 }
 
 enum TradeState {
@@ -95,6 +266,7 @@ enum TradeState {
   CLOSED
 }
 
+" @deprecated - v1.0 / v2.0 auctions "
 type Trade @entity {
   " Trade ID "
   id: ID!
@@ -202,6 +374,7 @@ type Trade @entity {
   bids: [AuctionBid!]! @derivedFrom(field: "auction")
 }
 
+" @deprecated - v1.0 / v2.0 auctions "
 type AuctionBid @entity {
   " { DTF Address }-{ Trade ID }-{ Bidder Address }-{ log Index } "
   id: ID!

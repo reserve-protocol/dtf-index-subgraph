@@ -1,38 +1,80 @@
 {
   "mainnet": {
-    "FolioDeployer": {
-      "address": "0x4C64ef51cB057867e40114DcFA3702c2955d3644",
-      "startBlock": 21818973
-    },
-    "GovernanceDeployer": {
-      "address": "0xCB061c96Ff76E027ea99F73ddEe9108Dd6F0c212",
-      "startBlock": 21818973
-    },
-    "FolioDeployer1": {
-      "address": "0xaafb13a3df7cE70c140E40c959D58Fd5Cc443Cba",
-      "startBlock": 22081812
-    },
-    "GovernanceDeployer1": {
-      "address": "0xE926577a152fFD5f5036f88BF7E8E8D3652B558C",
-      "startBlock": 22081811
-    }
+    "FolioDeployer": [
+      {
+        "address": "0xaafb13a3df7ce70c140e40c959d58fd5cc443cba",
+        "startBlock": 21818973,
+        "_version": "1.0.0"
+      },
+      {
+        "address": "0x4c64ef51cb057867e40114dcfa3702c2955d3644",
+        "startBlock": 21848440,
+        "_version": "2.0.0"
+      }
+    ],
+    "GovernanceDeployer": [
+      {
+        "address": "0xCB061c96Ff76E027ea99F73ddEe9108Dd6F0c212",
+        "startBlock": 21818973,
+        "_version": "1.0.0"
+      },
+      {
+        "address": "0xE926577a152fFD5f5036f88BF7E8E8D3652B558C",
+        "startBlock": 22081811,
+        "_version": "2.0.0"
+      }
+    ]
   },
   "base": {
-    "FolioDeployer": {
-      "address": "0xE926577a152fFD5f5036f88BF7E8E8D3652B558C",
-      "startBlock": 25703976
-    },
-    "GovernanceDeployer": {
-      "address": "0xdBd9C5a83A3684E80D51fd1c00Af4A1fbfE03D14",
-      "startBlock": 25703976
-    },
-    "FolioDeployer1": {
-      "address": "0xb8469986840bc9b7Bb101C274950c02842755911",
-      "startBlock": 27803171
-    },
-    "GovernanceDeployer1": {
-      "address": "0x6a66E6E209C7120819cC033d9397E5022C22C872",
-      "startBlock": 27803169
-    }
+    "FolioDeployer": [
+      {
+        "address": "0xe926577a152ffd5f5036f88bf7e8e8d3652b558c",
+        "startBlock": 25958000,
+        "_version": "1.0.0"
+      },
+      {
+        "address": "0xb8469986840bc9b7bb101c274950c02842755911",
+        "startBlock": 27803169,
+        "_version": "2.0.0"
+      },
+      {
+        "address": "0xBE3B47587cEeff7D48008A0114f51cD571beC63A",
+        "startBlock": 30798906,
+        "_version": "4.0.0"
+      }
+    ],
+    "GovernanceDeployer": [
+      {
+        "address": "0xdBd9C5a83A3684E80D51fd1c00Af4A1fbfE03D14",
+        "startBlock": 25703976,
+        "_version": "1.0.0"
+      },
+      {
+        "address": "0x6a66E6E209C7120819cC033d9397E5022C22C872",
+        "startBlock": 27803169,
+        "_version": "2.0.0"
+      },
+      {
+        "address": "0x5Bed18AcA50E6057E6658Fe8498004092EedCDcF",
+        "startBlock": 31179057,
+        "_version": "4.0.0"
+      }
+    ]
+  },
+  "bsc": {
+    "FolioDeployer": [
+      {
+        "address": "0x3F83AA355AE31eCBb4d8378F0AA671614dFa4941",
+        "startBlock": 50887402,
+        "_version": "4.0.0"
+      }
+    ],
+    "GovernanceDeployer": [
+      {
+        "address": "0x2f616b82022874519cB4BB795B8b931D65564825",
+        "startBlock": 50887400,
+        "_version": "4.0.0"
+      }
+    ]
   }
 }
