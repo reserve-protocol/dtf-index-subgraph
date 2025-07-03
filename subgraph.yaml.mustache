@@ -99,10 +99,14 @@ templates:
       eventHandlers:
         - event: RebalanceStarted(uint256,uint8,address[],(uint256,uint256,uint256)[],(uint256,uint256)[],(uint256,uint256,uint256),uint256,uint256)
           handler: handleRebalanceStarted
+        - event: RebalanceEnded(uint256)
+          handler: handleRebalanceEnded
         - event: AuctionOpened(indexed uint256,indexed uint256,address[],(uint256,uint256,uint256)[],(uint256,uint256)[],(uint256,uint256,uint256),uint256,uint256)
           handler: handleSingletonAuctionLaunched
         - event: AuctionBid(indexed uint256,indexed address,indexed address,uint256,uint256)
           handler: handleSingletonAuctionBid
+        - event: AuctionTrustedFillCreated(indexed uint256,address)
+          handler: handleSingletonAuctionTrustedFillCreated
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
         - event: FolioFeePaid(indexed address,uint256)

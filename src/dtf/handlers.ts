@@ -25,6 +25,7 @@ import {
   getGovernanceTimelock,
   getOrCreateToken,
 } from "../utils/getters";
+import { getAuctionBidsFromReceipt } from "../utils/rebalance";
 import {
   AuctionApproved1AuctionStruct,
   AuctionApproved1DetailsStruct,
@@ -32,7 +33,6 @@ import {
   FeeRecipientsSetRecipientsStruct,
 } from "./../../generated/templates/DTF/DTF";
 import { Role } from "./../utils/constants";
-import { getAuctionBidsFromReceipt } from "../utils/rebalance";
 
 // Rebalance
 export function _handleRebalanceStarted(
@@ -84,6 +84,18 @@ export function _handleRebalanceStarted(
   rebalance.transactionHash = event.transaction.hash.toHexString();
   rebalance.blockNumber = event.block.number;
   rebalance.timestamp = event.block.timestamp;
+  rebalance.save();
+}
+
+export function _handleRebalanceEnded(
+  dtfAddress: Address,
+  nonce: BigInt,
+  event: ethereum.Event
+): void {
+  let rebalance = Rebalance.load(
+    `${dtfAddress.toHexString()}-${nonce.toString()}`
+  )!;
+  rebalance.availableUntil = event.block.timestamp;
   rebalance.save();
 }
 

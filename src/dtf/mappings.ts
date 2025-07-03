@@ -1,28 +1,29 @@
-import { BIGINT_ONE, BIGINT_ZERO } from "./../utils/constants";
 import {
-  FolioFeePaid,
-  ProtocolFeePaid,
   AuctionApproved,
+  AuctionApproved1,
   AuctionBid,
   AuctionBid1,
   AuctionClosed,
-  AuctionOpened,
-  AuctionOpened2,
-  Transfer,
-  RoleGranted,
-  RoleRevoked,
-  MintFeeSet,
-  TVLFeeSet,
   AuctionDelaySet,
   AuctionLengthSet,
-  MandateSet,
-  FeeRecipientsSet,
+  AuctionOpened,
   AuctionOpened1,
-  AuctionApproved1,
-  RebalanceStarted,
+  AuctionOpened2,
   AuctionTrustedFillCreated,
+  FeeRecipientsSet,
+  FolioFeePaid,
+  MandateSet,
+  MintFeeSet,
+  ProtocolFeePaid,
+  RebalanceEnded,
+  RebalanceStarted,
+  RoleGranted,
+  RoleRevoked,
+  Transfer,
+  TVLFeeSet,
 } from "../../generated/templates/DTF/DTF";
 import { _handleTransfer } from "../token/mappings";
+import { BIGINT_ONE, BIGINT_ZERO } from "./../utils/constants";
 import {
   _handleAuctionDelaySet,
   _handleAuctionLengthSet,
@@ -33,6 +34,7 @@ import {
   _handleMandateSet,
   _handleMintFeeSet,
   _handleProtocolFeePaid,
+  _handleRebalanceEnded,
   _handleRebalanceStarted,
   _handleRoleGranted,
   _handleRoleRevoked,
@@ -59,6 +61,10 @@ export function handleRebalanceStarted(event: RebalanceStarted): void {
     event.params.availableUntil,
     event
   );
+}
+
+export function handleRebalanceEnded(event: RebalanceEnded): void {
+  _handleRebalanceEnded(event.address, event.params.nonce, event);
 }
 
 export function handleSingletonAuctionLaunched(event: AuctionOpened2): void {
