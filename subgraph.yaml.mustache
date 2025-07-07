@@ -106,7 +106,8 @@ templates:
         - event: AuctionBid(indexed uint256,indexed address,indexed address,uint256,uint256)
           handler: handleSingletonAuctionBid
         - event: AuctionTrustedFillCreated(indexed uint256,address)
-          handler: handleSingletonAuctionTrustedFillCreated
+          handler: handleAuctionTrustedFillCreated
+          receipt: true
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
         - event: FolioFeePaid(indexed address,uint256)
