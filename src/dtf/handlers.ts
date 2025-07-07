@@ -93,7 +93,7 @@ export function _handleRebalanceEnded(
   event: ethereum.Event
 ): void {
   let rebalance = Rebalance.load(
-    `${dtfAddress.toHexString()}-${nonce.toString()}`
+    `${dtfAddress.toHexString()}-${nonce.toHexString()}`
   )!;
   rebalance.availableUntil = event.block.timestamp;
   rebalance.save();
