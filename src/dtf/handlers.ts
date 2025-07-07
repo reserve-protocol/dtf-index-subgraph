@@ -19,7 +19,12 @@ import {
 } from "../../generated/templates/DTF/DTF";
 import { getGovernance } from "../governance/handlers";
 import { removeFromArrayAtIndex } from "../utils/arrays";
-import { BIGINT_ZERO, GovernanceType, TradeState } from "../utils/constants";
+import {
+  BIGINT_ONE,
+  BIGINT_ZERO,
+  GovernanceType,
+  TradeState,
+} from "../utils/constants";
 import {
   createGovernanceTimelock,
   getGovernanceTimelock,
@@ -85,6 +90,11 @@ export function _handleRebalanceStarted(
   rebalance.blockNumber = event.block.number;
   rebalance.timestamp = event.block.timestamp;
   rebalance.save();
+
+  // Only 1 rebalance can be ongoing at the time, if there is an active rebalance, we need to close it to keep the data valid
+  if (nonce > BIGINT_ZERO) {
+    _handleRebalanceEnded(dtfAddress, nonce.minus(BIGINT_ONE), event);
+  }
 }
 
 export function _handleRebalanceEnded(
@@ -94,9 +104,12 @@ export function _handleRebalanceEnded(
 ): void {
   let rebalance = Rebalance.load(
     `${dtfAddress.toHexString()}-${nonce.toHexString()}`
-  )!;
-  rebalance.availableUntil = event.block.timestamp;
-  rebalance.save();
+  );
+
+  if (rebalance && rebalance.availableUntil > event.block.timestamp) {
+    rebalance.availableUntil = event.block.timestamp;
+    rebalance.save();
+  }
 }
 
 export function _handleSingletonAuctionLaunched(
