@@ -19,12 +19,18 @@ import {
 } from "../../generated/templates/DTF/DTF";
 import { getGovernance } from "../governance/handlers";
 import { removeFromArrayAtIndex } from "../utils/arrays";
-import { BIGINT_ZERO, GovernanceType, TradeState } from "../utils/constants";
+import {
+  BIGINT_ONE,
+  BIGINT_ZERO,
+  GovernanceType,
+  TradeState,
+} from "../utils/constants";
 import {
   createGovernanceTimelock,
   getGovernanceTimelock,
   getOrCreateToken,
 } from "../utils/getters";
+import { getAuctionBidsFromReceipt } from "../utils/rebalance";
 import {
   AuctionApproved1AuctionStruct,
   AuctionApproved1DetailsStruct,
@@ -32,7 +38,6 @@ import {
   FeeRecipientsSetRecipientsStruct,
 } from "./../../generated/templates/DTF/DTF";
 import { Role } from "./../utils/constants";
-import { getAuctionBidsFromReceipt } from "../utils/rebalance";
 
 // Rebalance
 export function _handleRebalanceStarted(
@@ -85,6 +90,26 @@ export function _handleRebalanceStarted(
   rebalance.blockNumber = event.block.number;
   rebalance.timestamp = event.block.timestamp;
   rebalance.save();
+
+  // Only 1 rebalance can be ongoing at the time, if there is an active rebalance, we need to close it to keep the data valid
+  if (nonce > BIGINT_ZERO) {
+    _handleRebalanceEnded(dtfAddress, nonce.minus(BIGINT_ONE), event);
+  }
+}
+
+export function _handleRebalanceEnded(
+  dtfAddress: Address,
+  nonce: BigInt,
+  event: ethereum.Event
+): void {
+  let rebalance = Rebalance.load(
+    `${dtfAddress.toHexString()}-${nonce.toHexString()}`
+  );
+
+  if (rebalance && rebalance.availableUntil > event.block.timestamp) {
+    rebalance.availableUntil = event.block.timestamp;
+    rebalance.save();
+  }
 }
 
 export function _handleSingletonAuctionLaunched(
@@ -151,8 +176,8 @@ export function _handleSingletonAuctionBid(
   let bid = new RebalanceAuctionBid(
     `${dtfAddress.toHexString()}-${auctionId.toString()}-${event.transaction.from.toHexString()}-${event.block.number.toString()}-${event.logIndex.toString()}`
   );
-  bid.dtf = `${dtfAddress.toHexString()}-${auctionId.toString()}`;
-  bid.auction = auctionId.toString();
+  bid.dtf = dtfAddress.toHexString();
+  bid.auction = `${dtfAddress.toHexString()}-${auctionId.toString()}`;
   bid.bidder = event.transaction.from;
   bid.sellToken = getOrCreateToken(sellToken).id;
   bid.buyToken = getOrCreateToken(buyToken).id;
