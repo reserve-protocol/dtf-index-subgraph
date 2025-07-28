@@ -10,6 +10,11 @@
         "address": "0x4c64ef51cb057867e40114dcfa3702c2955d3644",
         "startBlock": 21848440,
         "_version": "2.0.0"
+      },
+      {
+        "address": "0xBE3B47587cEeff7D48008A0114f51cD571beC63A",
+        "startBlock": 22897624,
+        "_version": "4.0.0"
       }
     ],
     "GovernanceDeployer": [
@@ -22,6 +27,11 @@
         "address": "0xE926577a152fFD5f5036f88BF7E8E8D3652B558C",
         "startBlock": 22081811,
         "_version": "2.0.0"
+      },
+      {
+        "address": "0x5Bed18AcA50E6057E6658Fe8498004092EedCDcF",
+        "startBlock": 22897623,
+        "_version": "4.0.0"
       }
     ]
   },
@@ -38,8 +48,8 @@
         "_version": "2.0.0"
       },
       {
-        "address": "0xBE3B47587cEeff7D48008A0114f51cD571beC63A",
-        "startBlock": 30798906,
+        "address": "0xA203AA351723cf943f91684e9F5eFcA7175Ae7EA",
+        "startBlock": 32733864,
         "_version": "4.0.0"
       }
     ],
@@ -55,8 +65,8 @@
         "_version": "2.0.0"
       },
       {
-        "address": "0x5Bed18AcA50E6057E6658Fe8498004092EedCDcF",
-        "startBlock": 31179057,
+        "address": "0x1A7D043c84fe781b6df046fEfCf673F71110208D",
+        "startBlock": 32733861,
         "_version": "4.0.0"
       }
     ]
@@ -64,15 +74,15 @@
   "bsc": {
     "FolioDeployer": [
       {
-        "address": "0x3F83AA355AE31eCBb4d8378F0AA671614dFa4941",
-        "startBlock": 50887402,
+        "address": "0x100E0eFDd7a4f67825E1BE5f0493F8D2AEAc00bb",
+        "startBlock": 53679824,
         "_version": "4.0.0"
       }
     ],
     "GovernanceDeployer": [
       {
-        "address": "0x2f616b82022874519cB4BB795B8b931D65564825",
-        "startBlock": 50887400,
+        "address": "0xBD49CeAC629d7131B8A975B582AcDAeB5C049bAD",
+        "startBlock": 53679819,
         "_version": "4.0.0"
       }
     ]
