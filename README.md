@@ -52,8 +52,8 @@ npm run build
 
 ## Key Entities
 
-- **DTF**: Represents a DTF portfolio with configuration, fees, and governance settings
-- **Rebalance/Auction**: Tracks portfolio rebalancing events and auction bids
+- **DTF**: Represents an index DTF with configuration, fees, and governance settings
+- **Rebalance/Auction**: Tracks index rebalancing events and auction bids
 - **Token**: ERC20 tokens with transfer history and holder analytics
 - **Governance**: Proposals, votes, delegates, and timelock operations
 - **VoteLockedToken**: stDAO tokens with delegation and vote-locking mechanisms

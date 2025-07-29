@@ -13,6 +13,7 @@ import {
   AuctionOpened2PricesStruct,
   AuctionOpened2WeightsStruct,
   AuctionOpenedAuctionStruct,
+  RebalanceControlSetNewControlStruct,
   RebalanceStartedLimitsStruct,
   RebalanceStartedPricesStruct,
   RebalanceStartedWeightsStruct,
@@ -110,6 +111,16 @@ export function _handleRebalanceEnded(
     rebalance.availableUntil = event.block.timestamp;
     rebalance.save();
   }
+}
+
+export function _handleRebalanceControlSet(
+  dtfAddress: Address,
+  newControl: RebalanceControlSetNewControlStruct
+): void {
+  let dtf = getDTF(dtfAddress);
+  dtf.weightControl = newControl.weightControl;
+  dtf.priceControl = newControl.priceControl;
+  dtf.save();
 }
 
 export function _handleSingletonAuctionLaunched(

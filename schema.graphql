@@ -58,6 +58,12 @@ type DTF @entity {
   " mandate "
   mandate: String!
 
+  " Weight control "
+  weightControl: Boolean!
+
+  " Price control "
+  priceControl: Int!
+
   " Annualized tvl fee "
   annualizedTvlFee: BigInt!
 

@@ -38,6 +38,10 @@ export function _handleDTFDeployed(
   dtf.annualizedTvlFee = BIGINT_ZERO;
   dtf.feeRecipients = "";
 
+  // Default to NATIVE DTF with PARTIAL price control, this will set up correctly with the rebalance control set event
+  dtf.weightControl = true;
+  dtf.priceControl = 1;
+
   dtf.ownerAddress = deployer;
   dtf.auctionApprovers = [];
   dtf.legacyAuctionApprovers = [];

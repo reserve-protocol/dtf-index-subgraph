@@ -15,6 +15,7 @@ import {
   MandateSet,
   MintFeeSet,
   ProtocolFeePaid,
+  RebalanceControlSet,
   RebalanceEnded,
   RebalanceStarted,
   RoleGranted,
@@ -34,6 +35,7 @@ import {
   _handleMandateSet,
   _handleMintFeeSet,
   _handleProtocolFeePaid,
+  _handleRebalanceControlSet,
   _handleRebalanceEnded,
   _handleRebalanceStarted,
   _handleRoleGranted,
@@ -65,6 +67,10 @@ export function handleRebalanceStarted(event: RebalanceStarted): void {
 
 export function handleRebalanceEnded(event: RebalanceEnded): void {
   _handleRebalanceEnded(event.address, event.params.nonce, event);
+}
+
+export function handleRebalanceControlSet(event: RebalanceControlSet): void {
+  _handleRebalanceControlSet(event.address, event.params.newControl);
 }
 
 export function handleSingletonAuctionLaunched(event: AuctionOpened2): void {
