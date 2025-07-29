@@ -1,7 +1,7 @@
 import {
   FolioDeployed,
   GovernedFolioDeployed,
-} from "../../generated/templates/FolioDeployer/FolioDeployer";
+} from "../../generated/FolioDeployer/FolioDeployer";
 import { DeployedGovernedStakingToken } from "../../generated/GovernanceDeployer/GovernanceDeployer";
 import {
   _handleDeployedGovernedStakingToken,
