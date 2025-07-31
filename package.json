@@ -1,6 +1,7 @@
 {
   "name": "dtf-index-subgraph",
   "license": "UNLICENSED",
+  "version": "1.7.1",
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",

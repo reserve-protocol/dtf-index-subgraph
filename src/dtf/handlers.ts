@@ -597,7 +597,9 @@ export function _handleBid(
   trade.save();
 
   let bid = new AuctionBid(
-    `${dtfAddress.toHexString()}-${tradeId.toString()}-${event.transaction.from.toHexString()}-${event.logIndex.toString()}`
+    `${dtfAddress.toHexString()}-${tradeId.toString()}-${event.transaction.from.toHexString()}-${
+      event.transaction.hash
+    }-${event.logIndex.toString()}`
   );
   bid.dtf = dtfAddress.toHexString();
   bid.auction = trade.id;
