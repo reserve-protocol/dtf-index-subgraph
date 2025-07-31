@@ -101,6 +101,8 @@ templates:
           handler: handleRebalanceStarted
         - event: RebalanceEnded(uint256)
           handler: handleRebalanceEnded
+        - event: RebalanceControlSet((bool,uint8))
+          handler: handleRebalanceControlSet
         - event: AuctionOpened(indexed uint256,indexed uint256,address[],(uint256,uint256,uint256)[],(uint256,uint256)[],(uint256,uint256,uint256),uint256,uint256)
           handler: handleSingletonAuctionLaunched
         - event: AuctionBid(indexed uint256,indexed address,indexed address,uint256,uint256)
