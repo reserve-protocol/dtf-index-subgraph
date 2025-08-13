@@ -89,15 +89,9 @@ export function getAuctionBidsFromReceipt(
   dtfAddress: Address,
   receipt: ethereum.TransactionReceipt
 ): Array<ParsedAuctionBid> {
-  // Extract all transfers that involve the DTF address
   let transfers = getTransfersFromLogs(dtfAddress, receipt.logs);
-
-  // Defensive-check – if nothing relevant was found just return early
   if (transfers.length == 0) return new Array<ParsedAuctionBid>();
 
-  // Ensure the transfers are processed in the same order they appeared in the
-  // transaction receipt. We rely on the `index` property, which mirrors the
-  // original position inside `receipt.logs`.
   transfers.sort((a: Transfer, b: Transfer): i32 => {
     return a.index - b.index;
   });
@@ -108,14 +102,12 @@ export function getAuctionBidsFromReceipt(
   while (i < transfers.length) {
     const first = transfers[i];
 
-    // A trade always starts with the DTF *sending* a token (the "sell"). If the
-    // current transfer is not a sell just move forward.
     if (first.from != dtfAddress) {
       i++;
       continue;
     }
 
-    // Aggregate *consecutive* sells of the same token
+    // Aggregate consecutive sells of the same token
     let sellToken = first.token;
     let sellAmount = first.value;
 
@@ -133,34 +125,37 @@ export function getAuctionBidsFromReceipt(
       }
     }
 
-    // After we finished accumulating the sells we expect one or more buys where
-    // the DTF *receives* a (different) token.
+    // FIXED: Track both potential incoming tokens
     let buyToken = Address.zero();
     let buyAmount = BigInt.fromI32(0);
+    let sellTokenRefund = BigInt.fromI32(0); // <-- Track refund separately
     let foundBuy = false;
 
     while (j < transfers.length) {
       const t = transfers[j];
 
       if (t.to == dtfAddress) {
-        // We found a transfer where the DTF receives tokens (potential buy part)
-        if (!foundBuy) {
+        if (t.token == sellToken) {
+          // This is a refund of the sell token
+          sellTokenRefund = sellTokenRefund.plus(t.value);
+        } else if (!foundBuy) {
+          // First different token - this is our buy token
           buyToken = t.token;
           buyAmount = t.value;
           foundBuy = true;
         } else if (t.token == buyToken) {
-          // Same token – accumulate amount
+          // More of the buy token
           buyAmount = buyAmount.plus(t.value);
         } else {
-          // A different token received means the previous buy leg ended.
+          // A third different token - shouldn't happen based on your assumption
+          // but if it does, we're done with this trade
           break;
         }
         j++;
         continue;
       }
 
-      // If we encounter another sell before finishing the buy leg, the current
-      // trade is done.
+      // If we encounter another sell, the current trade is done
       if (t.from == dtfAddress) {
         break;
       }
@@ -168,12 +163,15 @@ export function getAuctionBidsFromReceipt(
       j++;
     }
 
-    // Only push the bid if we actually found the buy side AND the tokens differ.
+    // Only push the bid if we found a buy token different from sell token
     if (foundBuy && buyToken != sellToken) {
+      // Net the sell amount (subtract any refund)
+      let netSellAmount = sellAmount.minus(sellTokenRefund);
+
       bids.push(
         new ParsedAuctionBid(
           sellToken,
-          sellAmount,
+          netSellAmount, // <-- Use NET amount (out minus refund)
           buyToken,
           buyAmount,
           dtfAddress,
@@ -183,7 +181,6 @@ export function getAuctionBidsFromReceipt(
       );
     }
 
-    // Continue parsing from where we stopped (j)
     i = j;
   }
 
