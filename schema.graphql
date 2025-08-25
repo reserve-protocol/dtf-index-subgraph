@@ -787,6 +787,26 @@ type GovernanceTimelock @entity(immutable: false) {
   type: String!
 }
 
+type TimelockOperation @entity(immutable: false) {
+  "Timelock operation ID (bytes32 from CallScheduled event)"
+  id: ID!
+  "Transaction hash where the operation was scheduled"
+  transactionHash: String!
+  "Block number where the operation was scheduled"
+  blockNumber: BigInt!
+  "Timestamp when the operation was scheduled"
+  timestamp: BigInt!
+  "Proposal associated with this timelock operation"
+  proposal: Proposal
+}
+
+type TimelockOperationByTx @entity(immutable: true) {
+  "Transaction hash as ID"
+  id: ID!
+  "Timelock operation ID associated with this transaction"
+  timelockId: String!
+}
+
 type Proposal @entity(immutable: false) {
   "Internal proposal ID, in this implementation it seems to be a autoincremental id"
   id: ID!
@@ -857,6 +877,8 @@ type Proposal @entity(immutable: false) {
   cancellationBlock: BigInt
   "Timestamp of block proposal was canceled in"
   cancellationTime: BigInt
+  "Timelock operation ID associated with this proposal (when queued)"
+  timelockId: String
 
   "Targets data for the change"
   targets: [String!]

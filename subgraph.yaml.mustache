@@ -290,4 +290,8 @@ templates:
           handler: handleTimelockRoleRevoked
         - event: MinDelayChange(uint256,uint256)
           handler: handleTimelockMinDelayChange
+        - event: CallScheduled(indexed bytes32,indexed uint256,address,uint256,bytes,bytes32,uint256)
+          handler: handleTimelockCallScheduled
+        - event: Cancelled(indexed bytes32)
+          handler: handleTimelockCancelled
       file: ./src/governance/mappings.ts
