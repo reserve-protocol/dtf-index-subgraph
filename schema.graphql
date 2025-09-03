@@ -486,6 +486,18 @@ type TokenDailySnapshot @entity(immutable: false) {
   " Token this snapshot is associated with "
   token: Token!
 
+  " Revenue "
+  dailyRevenue: BigInt!
+
+  " Protocol revenue "
+  dailyProtocolRevenue: BigInt!
+
+  " Governance revenue "
+  dailyGovernanceRevenue: BigInt!
+
+  " External recipients revenue "
+  dailyExternalRevenue: BigInt!
+
   " Daily total Supply of the token "
   dailyTotalSupply: BigInt!
 
@@ -529,6 +541,18 @@ type TokenHourlySnapshot @entity(immutable: false) {
 
   " Token this snapshot is associated with "
   token: Token!
+
+  " Revenue "
+  hourlyRevenue: BigInt!
+
+  " Protocol revenue "
+  hourlyProtocolRevenue: BigInt!
+
+  " Governance revenue "
+  hourlyGovernanceRevenue: BigInt!
+
+  " External recipients revenue "
+  hourlyExternalRevenue: BigInt!
 
   " Hourly total Supply of the token "
   hourlyTotalSupply: BigInt!

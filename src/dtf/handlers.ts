@@ -30,6 +30,8 @@ import {
   createGovernanceTimelock,
   getGovernanceTimelock,
   getOrCreateToken,
+  getOrCreateTokenDailySnapshot,
+  getOrCreateTokenHourlySnapshot,
 } from "../utils/getters";
 import { getAuctionBidsFromReceipt } from "../utils/rebalance";
 import {
@@ -231,21 +233,45 @@ export function _handleAuctionTrustedFillCreated(
 // FEES
 export function _handleProtocolFeePaid(
   dtfAddress: Address,
-  amount: BigInt
+  amount: BigInt,
+  event: ethereum.Event
 ): void {
   let dtf = getDTF(dtfAddress);
   dtf.totalRevenue = dtf.totalRevenue.plus(amount);
   dtf.protocolRevenue = dtf.protocolRevenue.plus(amount);
   dtf.save();
+
+  // Snapshots
+  const token = getOrCreateToken(dtfAddress);
+  let dailySnapshot = getOrCreateTokenDailySnapshot(token, event.block);
+  dailySnapshot.dailyRevenue = dailySnapshot.dailyRevenue.plus(amount);
+  dailySnapshot.dailyProtocolRevenue =
+    dailySnapshot.dailyProtocolRevenue.plus(amount);
+  dailySnapshot.save();
+
+  let hourlySnapshot = getOrCreateTokenHourlySnapshot(token, event.block);
+  hourlySnapshot.hourlyRevenue = hourlySnapshot.hourlyRevenue.plus(amount);
+  hourlySnapshot.hourlyProtocolRevenue =
+    hourlySnapshot.hourlyProtocolRevenue.plus(amount);
+  hourlySnapshot.save();
 }
 
 export function _handleFolioFeePaid(
   dtfAddress: Address,
   recipient: Address,
-  amount: BigInt
+  amount: BigInt,
+  event: ethereum.Event
 ): void {
   let dtf = getDTF(dtfAddress);
   dtf.totalRevenue = dtf.totalRevenue.plus(amount);
+
+  // Snapshots
+  const token = getOrCreateToken(dtfAddress);
+  let dailySnapshot = getOrCreateTokenDailySnapshot(token, event.block);
+  dailySnapshot.dailyRevenue = dailySnapshot.dailyRevenue.plus(amount);
+
+  let hourlySnapshot = getOrCreateTokenHourlySnapshot(token, event.block);
+  hourlySnapshot.hourlyRevenue = hourlySnapshot.hourlyRevenue.plus(amount);
 
   // Check if recipient is governance token to properly track revenue type
   const isGovernanceToken = dtf.ownerGovernance
@@ -255,11 +281,24 @@ export function _handleFolioFeePaid(
 
   if (isGovernanceToken) {
     dtf.governanceRevenue = dtf.governanceRevenue.plus(amount);
+    // snapshots
+    dailySnapshot.dailyGovernanceRevenue =
+      dailySnapshot.dailyGovernanceRevenue.plus(amount);
+    hourlySnapshot.hourlyGovernanceRevenue =
+      hourlySnapshot.hourlyGovernanceRevenue.plus(amount);
   } else {
     dtf.externalRevenue = dtf.externalRevenue.plus(amount);
+    // snapshots
+    dailySnapshot.dailyExternalRevenue =
+      dailySnapshot.dailyExternalRevenue.plus(amount);
+    hourlySnapshot.hourlyExternalRevenue =
+      hourlySnapshot.hourlyExternalRevenue.plus(amount);
   }
 
   dtf.save();
+  // Snapshots
+  dailySnapshot.save();
+  hourlySnapshot.save();
 }
 
 // ROLES

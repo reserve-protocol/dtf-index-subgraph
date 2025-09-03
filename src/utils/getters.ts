@@ -1,9 +1,11 @@
-import { Address, BigDecimal, BigInt } from "@graphprotocol/graph-ts";
+import { Address, BigDecimal, BigInt, ethereum } from "@graphprotocol/graph-ts";
 import {
   Governance,
   GovernanceTimelock,
   StakingToken,
   Token,
+  TokenDailySnapshot,
+  TokenHourlySnapshot,
 } from "../../generated/schema";
 import {
   Governance as GovernanceTemplate,
@@ -11,7 +13,12 @@ import {
 } from "../../generated/templates";
 import { Governor } from "../../generated/templates/Governance/Governor";
 import { Timelock } from "../../generated/templates/Governance/Timelock";
-import { BIGINT_ZERO, TokenType } from "./constants";
+import {
+  BIGINT_ZERO,
+  SECONDS_PER_DAY,
+  SECONDS_PER_HOUR,
+  TokenType,
+} from "./constants";
 import { fetchTokenDecimals, fetchTokenName, fetchTokenSymbol } from "./tokens";
 
 export function getOrCreateToken(
@@ -126,4 +133,69 @@ export function getOrCreateGovernance(
   GovernanceTemplate.create(governanceAddress);
 
   return governance as Governance;
+}
+
+export function getOrCreateTokenDailySnapshot(
+  token: Token,
+  block: ethereum.Block
+): TokenDailySnapshot {
+  let snapshotId =
+    token.id + "-" + (block.timestamp.toI64() / SECONDS_PER_DAY).toString();
+  let previousSnapshot = TokenDailySnapshot.load(snapshotId);
+
+  if (previousSnapshot != null) {
+    return previousSnapshot as TokenDailySnapshot;
+  }
+
+  let newSnapshot = new TokenDailySnapshot(snapshotId);
+  newSnapshot.token = token.id;
+  newSnapshot.dailyTotalSupply = token.totalSupply;
+  newSnapshot.currentHolderCount = token.currentHolderCount;
+  newSnapshot.cumulativeHolderCount = token.cumulativeHolderCount;
+  newSnapshot.dailyEventCount = 0;
+  newSnapshot.dailyTransferCount = 0;
+  newSnapshot.dailyTransferAmount = BIGINT_ZERO;
+  newSnapshot.dailyMintCount = 0;
+  newSnapshot.dailyMintAmount = BIGINT_ZERO;
+  newSnapshot.dailyBurnCount = 0;
+  newSnapshot.dailyBurnAmount = BIGINT_ZERO;
+  newSnapshot.dailyRevenue = BIGINT_ZERO;
+  newSnapshot.dailyProtocolRevenue = BIGINT_ZERO;
+  newSnapshot.dailyGovernanceRevenue = BIGINT_ZERO;
+  newSnapshot.dailyExternalRevenue = BIGINT_ZERO;
+
+  return newSnapshot;
+}
+
+export function getOrCreateTokenHourlySnapshot(
+  token: Token,
+  block: ethereum.Block
+): TokenHourlySnapshot {
+  let snapshotId =
+    token.id + "-" + (block.timestamp.toI64() / SECONDS_PER_HOUR).toString();
+  let previousSnapshot = TokenHourlySnapshot.load(snapshotId);
+
+  if (previousSnapshot != null) {
+    return previousSnapshot as TokenHourlySnapshot;
+  }
+
+  let newSnapshot = new TokenHourlySnapshot(snapshotId);
+  newSnapshot.token = token.id;
+
+  newSnapshot.hourlyTotalSupply = token.totalSupply;
+  newSnapshot.currentHolderCount = token.currentHolderCount;
+  newSnapshot.cumulativeHolderCount = token.cumulativeHolderCount;
+  newSnapshot.hourlyEventCount = 0;
+  newSnapshot.hourlyTransferCount = 0;
+  newSnapshot.hourlyTransferAmount = BIGINT_ZERO;
+  newSnapshot.hourlyMintCount = 0;
+  newSnapshot.hourlyMintAmount = BIGINT_ZERO;
+  newSnapshot.hourlyBurnCount = 0;
+  newSnapshot.hourlyBurnAmount = BIGINT_ZERO;
+  newSnapshot.hourlyRevenue = BIGINT_ZERO;
+  newSnapshot.hourlyProtocolRevenue = BIGINT_ZERO;
+  newSnapshot.hourlyGovernanceRevenue = BIGINT_ZERO;
+  newSnapshot.hourlyExternalRevenue = BIGINT_ZERO;
+
+  return newSnapshot;
 }

@@ -1,20 +1,8 @@
-import { ERC20 } from "./../../generated/GovernanceDeployer/ERC20";
 import { Address, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
 
-import {
-  Token,
-  TokenDailySnapshot,
-  TokenHourlySnapshot,
-  TransferEvent,
-} from "../../generated/schema";
+import { Token, TransferEvent } from "../../generated/schema";
 
-import {
-  BIGINT_ONE,
-  BIGINT_ZERO,
-  GENESIS_ADDRESS,
-  SECONDS_PER_DAY,
-  SECONDS_PER_HOUR,
-} from "../utils/constants";
+import { BIGINT_ONE, BIGINT_ZERO, GENESIS_ADDRESS } from "../utils/constants";
 
 import {
   decreaseAccountBalance,
@@ -24,7 +12,11 @@ import {
   isNewAccount,
   updateAccountBalanceDailySnapshot,
 } from "../account/mappings";
-import { getOrCreateToken } from "../utils/getters";
+import {
+  getOrCreateToken,
+  getOrCreateTokenDailySnapshot,
+  getOrCreateTokenHourlySnapshot,
+} from "../utils/getters";
 
 export function _handleTransfer(
   from: Address,
@@ -292,61 +284,4 @@ function handleTransferEvent(
   }
 
   return transferEvent;
-}
-
-function getOrCreateTokenDailySnapshot(
-  token: Token,
-  block: ethereum.Block
-): TokenDailySnapshot {
-  let snapshotId =
-    token.id + "-" + (block.timestamp.toI64() / SECONDS_PER_DAY).toString();
-  let previousSnapshot = TokenDailySnapshot.load(snapshotId);
-
-  if (previousSnapshot != null) {
-    return previousSnapshot as TokenDailySnapshot;
-  }
-
-  let newSnapshot = new TokenDailySnapshot(snapshotId);
-  newSnapshot.token = token.id;
-  newSnapshot.dailyTotalSupply = token.totalSupply;
-  newSnapshot.currentHolderCount = token.currentHolderCount;
-  newSnapshot.cumulativeHolderCount = token.cumulativeHolderCount;
-  newSnapshot.dailyEventCount = 0;
-  newSnapshot.dailyTransferCount = 0;
-  newSnapshot.dailyTransferAmount = BIGINT_ZERO;
-  newSnapshot.dailyMintCount = 0;
-  newSnapshot.dailyMintAmount = BIGINT_ZERO;
-  newSnapshot.dailyBurnCount = 0;
-  newSnapshot.dailyBurnAmount = BIGINT_ZERO;
-
-  return newSnapshot;
-}
-
-function getOrCreateTokenHourlySnapshot(
-  token: Token,
-  block: ethereum.Block
-): TokenHourlySnapshot {
-  let snapshotId =
-    token.id + "-" + (block.timestamp.toI64() / SECONDS_PER_HOUR).toString();
-  let previousSnapshot = TokenHourlySnapshot.load(snapshotId);
-
-  if (previousSnapshot != null) {
-    return previousSnapshot as TokenHourlySnapshot;
-  }
-
-  let newSnapshot = new TokenHourlySnapshot(snapshotId);
-  newSnapshot.token = token.id;
-
-  newSnapshot.hourlyTotalSupply = token.totalSupply;
-  newSnapshot.currentHolderCount = token.currentHolderCount;
-  newSnapshot.cumulativeHolderCount = token.cumulativeHolderCount;
-  newSnapshot.hourlyEventCount = 0;
-  newSnapshot.hourlyTransferCount = 0;
-  newSnapshot.hourlyTransferAmount = BIGINT_ZERO;
-  newSnapshot.hourlyMintCount = 0;
-  newSnapshot.hourlyMintAmount = BIGINT_ZERO;
-  newSnapshot.hourlyBurnCount = 0;
-  newSnapshot.hourlyBurnAmount = BIGINT_ZERO;
-
-  return newSnapshot;
 }
