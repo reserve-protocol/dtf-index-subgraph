@@ -1,11 +1,15 @@
-import { Address, BigInt } from "@graphprotocol/graph-ts";
+import { Address, BigInt, log } from "@graphprotocol/graph-ts";
 import {
   GovernanceTimelock,
   Proposal,
   StakingToken,
+  TimelockOperation,
+  TimelockOperationByTx,
   Token,
 } from "../../generated/schema";
 import {
+  CallScheduled,
+  Cancelled,
   MinDelayChange,
   RoleGranted,
   RoleRevoked,
@@ -88,6 +92,62 @@ export function handleTimelockMinDelayChange(event: MinDelayChange): void {
   const timelock = GovernanceTimelock.load(event.address.toHexString())!;
   timelock.executionDelay = event.params.newDuration;
   timelock.save();
+}
+
+export function handleTimelockCallScheduled(event: CallScheduled): void {
+  // Store the timelock operation with its transaction hash
+  // This will be used to link the timelock ID to the proposal
+  const timelockId = event.params.id.toHexString();
+  const txHash = event.transaction.hash.toHexString();
+
+  const operation = new TimelockOperation(timelockId);
+  operation.transactionHash = txHash;
+  operation.blockNumber = event.block.number;
+  operation.timestamp = event.block.timestamp;
+  operation.save();
+
+  // Create a mapping from transaction hash to timelock ID
+  // This allows ProposalQueued handler to retrieve the timelock ID
+  const operationByTx = new TimelockOperationByTx(txHash);
+  operationByTx.timelockId = timelockId;
+  operationByTx.save();
+}
+
+export function handleTimelockCancelled(event: Cancelled): void {
+  const timelockId = event.params.id.toHexString();
+
+  // Load the timelock operation to get the associated proposal
+  const operation = TimelockOperation.load(timelockId);
+  if (!operation) {
+    log.error("TimelockOperation not found for timelockId: {}", [timelockId]);
+    return;
+  }
+
+  if (!operation.proposal) {
+    log.error(
+      "TimelockOperation has no associated proposal for timelockId: {}",
+      [timelockId]
+    );
+    return;
+  }
+
+  // Load and update the proposal
+  const proposal = Proposal.load(operation.proposal as string);
+  if (!proposal) {
+    log.error("Proposal not found for id: {}", [operation.proposal as string]);
+    return;
+  }
+
+  proposal.state = ProposalState.CANCELED;
+  proposal.cancellationTxnHash = event.transaction.hash.toHexString();
+  proposal.cancellationBlock = event.block.number;
+  proposal.cancellationTime = event.block.timestamp;
+  proposal.save();
+
+  // Update governance proposal state counts
+  const governance = getGovernance(proposal.governance);
+  governance.proposalsCanceled = governance.proposalsCanceled.plus(BIGINT_ONE);
+  governance.save();
 }
 
 export function handleProposalThresholdSet(event: ProposalThresholdSet): void {

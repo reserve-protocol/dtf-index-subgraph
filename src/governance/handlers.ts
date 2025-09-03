@@ -12,6 +12,8 @@ import {
   DelegateVotingPowerChange,
   Governance,
   Proposal,
+  TimelockOperation,
+  TimelockOperationByTx,
   Vote,
   VoteDailySnapshot,
 } from "../../generated/schema";
@@ -276,9 +278,34 @@ export function _handleProposalQueued(
   proposal.queueBlock = event.block.number;
   proposal.queueTime = event.block.timestamp;
   proposal.executionETA = eta;
+
+  // Get the timelock operation created in the same transaction
+  const txHash = event.transaction.hash.toHexString();
+  const operationByTx = TimelockOperationByTx.load(txHash);
+
+  if (!operationByTx) {
+    log.error("TimelockOperationByTx not found for transaction: {}", [txHash]);
+    proposal.save();
+    return;
+  }
+
+  // Link the proposal with the timelock operation
+  proposal.timelockId = operationByTx.timelockId;
+
+  // Update the TimelockOperation to reference this proposal
+  const operation = TimelockOperation.load(operationByTx.timelockId);
+  if (!operation) {
+    log.error("TimelockOperation not found for id: {}", [
+      operationByTx.timelockId,
+    ]);
+    proposal.save();
+    return;
+  }
+
+  operation.proposal = proposal.id;
+  operation.save();
   proposal.save();
 
-  // Update governance proposal state counts
   const governance = getGovernance(event.address.toHexString());
   governance.proposalsQueued = governance.proposalsQueued.plus(BIGINT_ONE);
   governance.save();

@@ -39,3 +39,5 @@ subgraph.yaml
 
 tests/.bin/
 tests/.latest.json
+
+CLAUDE.md
