@@ -118,14 +118,15 @@ export function handleTradeKilled(event: AuctionClosed): void {
 
 // FEES
 export function handleProtocolFeePaid(event: ProtocolFeePaid): void {
-  _handleProtocolFeePaid(event.address, event.params.amount);
+  _handleProtocolFeePaid(event.address, event.params.amount, event);
 }
 
 export function handleFolioFeePaid(event: FolioFeePaid): void {
   _handleFolioFeePaid(
     event.address,
     event.params.recipient,
-    event.params.amount
+    event.params.amount,
+    event
   );
 }
 
