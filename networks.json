@@ -77,6 +77,11 @@
         "address": "0x100E0eFDd7a4f67825E1BE5f0493F8D2AEAc00bb",
         "startBlock": 53679824,
         "_version": "4.0.0"
+      },
+      {
+        "address": "0x5Bed18AcA50E6057E6658Fe8498004092EedCDcF",
+        "startBlock": 60701791,
+        "_version": "4.0.1"
       }
     ],
     "GovernanceDeployer": [
@@ -84,6 +89,11 @@
         "address": "0xBD49CeAC629d7131B8A975B582AcDAeB5C049bAD",
         "startBlock": 53679824,
         "_version": "4.0.0"
+      },
+      {
+        "address": "0x270d928b9Ee38BAD93601D197256390b3c3C13Ec",
+        "startBlock": 60701791,
+        "_version": "4.0.1"
       }
     ]
   }
