@@ -6,6 +6,7 @@ import {
   TokenDailySnapshot,
   TokenHourlySnapshot,
   TransferEvent,
+  Minting,
 } from "../../generated/schema";
 
 import {
@@ -80,7 +81,8 @@ export function _handleTransfer(
     let accountBalance = increaseAccountBalance(
       destinationAccount,
       token as Token,
-      amount
+      amount,
+      event.block.timestamp
     );
     accountBalance.blockNumber = event.block.number;
     accountBalance.timestamp = event.block.timestamp;
@@ -176,6 +178,19 @@ function handleMintEvent(
     let isReceiverNewAccount = isNewAccount(destination);
     let receiverAccount = getOrCreateAccount(destination);
     let receiverBalance = getOrCreateAccountBalance(receiverAccount, token);
+
+    // Handle Minting entity
+    let mintingId = destination.toHex() + "-" + token.id;
+    let minting = Minting.load(mintingId);
+    if (minting == null) {
+      minting = new Minting(mintingId);
+      minting.account = receiverAccount.id;
+      minting.token = token.id;
+      minting.amount = BIGINT_ZERO;
+      minting.firstMintTimestamp = event.block.timestamp;
+    }
+    minting.amount = minting.amount.plus(amount);
+    minting.save();
 
     let receiverBecomesHolder = BIGINT_ZERO;
     if (receiverBalance.amount == BIGINT_ZERO) {

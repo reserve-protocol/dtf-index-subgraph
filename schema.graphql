@@ -654,6 +654,9 @@ type Account @entity(immutable: false) {
   " Token balances that this account holds "
   balances: [AccountBalance!]! @derivedFrom(field: "account")
 
+  " Token mintings to this account "
+  mintings: [Minting!]! @derivedFrom(field: "account")
+
   " Locks "
   locks: [Lock!]! @derivedFrom(field: "account")
 
@@ -683,6 +686,29 @@ type AccountBalance @entity(immutable: false) {
 
   " Timestamp in which the balance was last modified "
   timestamp: BigInt
+
+  " First timestamp when the account held this token (amount > 0) "
+  firstHoldTimestamp: BigInt
+
+  " Timestamp when current uninterrupted holding period started (resets when balance goes to 0) "
+  currentHoldStartTimestamp: BigInt
+}
+
+type Minting @entity(immutable: false) {
+  " { Address Of the Account }-{ Address of the Token }"
+  id: ID!
+
+  " Account that received the minted tokens "
+  account: Account!
+
+  " Token that was minted "
+  token: Token!
+
+  " Total amount minted to this account for this token "
+  amount: BigInt!
+
+  " First timestamp when tokens were minted to this account "
+  firstMintTimestamp: BigInt!
 }
 
 ###############################
