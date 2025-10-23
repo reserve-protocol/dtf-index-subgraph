@@ -27,6 +27,9 @@ import {
 } from "../account/mappings";
 import { getOrCreateToken } from "../utils/getters";
 
+const ERC20_TRANSFER_EVENT_SIGNATURE =
+  "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
 export function _handleTransfer(
   from: Address,
   to: Address,
@@ -169,18 +172,40 @@ function handleBurnEvent(
 function handleMintEvent(
   token: Token | null,
   amount: BigInt,
-  destination: Bytes,
+  destination: Address,
   event: ethereum.Event
 ): boolean {
   // Track total token supply/minted
+  let receiver = destination;
   if (token != null) {
+    let mintingId = destination.toHex() + "-" + token.id;
+    // If the minter is the zapper...
+    let receipt = event.receipt;
+    if (receipt != null) {
+      // Get the log after the mint event. It could be a Zapper's Transfer event.
+      let index = event.transactionLogIndex.toI32() + 1;
+      if (index < receipt.logs.length) {
+        let log = receipt.logs[index];
+        let topic0 = log.topics[0].toHexString();
+        if (topic0 == ERC20_TRANSFER_EVENT_SIGNATURE) {
+          let from = ethereum.decode("address", log.topics[1])!.toAddress();
+          let to = ethereum.decode("address", log.topics[2])!.toAddress();
+          let amountDecoded = ethereum.decode("uint256", log.data)!.toBigInt();
+
+          if (amountDecoded == amount && from == destination) {
+            mintingId = to.toHex() + "-" + token.id;
+            receiver = to;
+          }
+        }
+      }
+    }
+
     // Check if receiver is becoming a new holder
-    let isReceiverNewAccount = isNewAccount(destination);
-    let receiverAccount = getOrCreateAccount(destination);
+    let isReceiverNewAccount = isNewAccount(receiver);
+    let receiverAccount = getOrCreateAccount(receiver);
     let receiverBalance = getOrCreateAccountBalance(receiverAccount, token);
 
     // Handle Minting entity
-    let mintingId = destination.toHex() + "-" + token.id;
     let minting = Minting.load(mintingId);
     if (minting == null) {
       minting = new Minting(mintingId);
@@ -247,7 +272,7 @@ function handleMintEvent(
     transferEvent.token = event.address.toHex();
     transferEvent.nonce = event.transaction.nonce.toI32();
     transferEvent.amount = amount;
-    transferEvent.to = destination.toHex();
+    transferEvent.to = receiver.toHex();
     transferEvent.blockNumber = event.block.number;
     transferEvent.timestamp = event.block.timestamp;
     transferEvent.type = "MINT";
