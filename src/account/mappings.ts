@@ -55,10 +55,19 @@ export function getOrCreateAccountBalance(
 export function increaseAccountBalance(
   account: Account,
   token: Token,
-  amount: BigInt
+  amount: BigInt,
+  timestamp: BigInt
 ): AccountBalance {
   let balance = getOrCreateAccountBalance(account, token);
+  let previousAmount = balance.amount;
   balance.amount = balance.amount.plus(amount);
+
+  if (previousAmount.equals(BIGINT_ZERO) && balance.amount.gt(BIGINT_ZERO)) {
+    if (!balance.firstHoldTimestamp) {
+      balance.firstHoldTimestamp = timestamp;
+    }
+    balance.currentHoldStartTimestamp = timestamp;
+  }
 
   return balance;
 }
@@ -72,6 +81,10 @@ export function decreaseAccountBalance(
   balance.amount = balance.amount.minus(amount);
   if (balance.amount < BIGINT_ZERO) {
     balance.amount = BIGINT_ZERO;
+  }
+
+  if (balance.amount.equals(BIGINT_ZERO)) {
+    balance.currentHoldStartTimestamp = null;
   }
 
   return balance;

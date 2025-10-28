@@ -1,4 +1,3 @@
-import { ERC20 } from "./../../generated/GovernanceDeployer/ERC20";
 import { Address, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
 
 import {
@@ -6,6 +5,7 @@ import {
   TokenDailySnapshot,
   TokenHourlySnapshot,
   TransferEvent,
+  Minting,
 } from "../../generated/schema";
 
 import {
@@ -25,6 +25,9 @@ import {
   updateAccountBalanceDailySnapshot,
 } from "../account/mappings";
 import { getOrCreateToken } from "../utils/getters";
+
+const ERC20_TRANSFER_EVENT_SIGNATURE =
+  "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
 export function _handleTransfer(
   from: Address,
@@ -80,7 +83,8 @@ export function _handleTransfer(
     let accountBalance = increaseAccountBalance(
       destinationAccount,
       token as Token,
-      amount
+      amount,
+      event.block.timestamp
     );
     accountBalance.blockNumber = event.block.number;
     accountBalance.timestamp = event.block.timestamp;
@@ -167,11 +171,55 @@ function handleBurnEvent(
 function handleMintEvent(
   token: Token | null,
   amount: BigInt,
-  destination: Bytes,
+  destination: Address,
   event: ethereum.Event
 ): boolean {
   // Track total token supply/minted
+  let trueMinter = destination;
   if (token != null) {
+    let receipt = event.receipt;
+    if (receipt != null) {
+      for (let index = 0; index < receipt.logs.length; index++) {
+        let log = receipt.logs[index];
+
+        if (log.topics.length < 3) continue;
+
+        let topic0 = log.topics[0].toHexString();
+        if (topic0 == ERC20_TRANSFER_EVENT_SIGNATURE) {
+          let decodedFrom = ethereum.decode("address", log.topics[1]);
+          let decodedTo = ethereum.decode("address", log.topics[2]);
+          let decodedAmount = ethereum.decode("uint256", log.data);
+
+          if (decodedFrom == null || decodedTo == null || decodedAmount == null) {
+            continue;
+          }
+
+          let from = decodedFrom.toAddress();
+          let to = decodedTo.toAddress();
+          let amountDecoded = decodedAmount.toBigInt();
+
+          if (amountDecoded == amount && from == destination) {
+            trueMinter = to;
+            break;
+          }
+        }
+      }
+    }
+
+    // Handle Minting entity
+    let mintingId = trueMinter.toHex() + "-" + token.id;
+    let minting = Minting.load(mintingId);
+    if (minting == null) {
+      minting = new Minting(mintingId);
+      let minterAccount = getOrCreateAccount(trueMinter);
+      minting.account = minterAccount.id;
+      minting.token = token.id;
+      minting.amount = BIGINT_ZERO;
+      minting.firstMintTimestamp = event.block.timestamp;
+    }
+    minting.amount = minting.amount.plus(amount);
+    minting.save();
+
     // Check if receiver is becoming a new holder
     let isReceiverNewAccount = isNewAccount(destination);
     let receiverAccount = getOrCreateAccount(destination);
@@ -232,7 +280,7 @@ function handleMintEvent(
     transferEvent.token = event.address.toHex();
     transferEvent.nonce = event.transaction.nonce.toI32();
     transferEvent.amount = amount;
-    transferEvent.to = destination.toHex();
+    transferEvent.to = trueMinter.toHex();
     transferEvent.blockNumber = event.block.number;
     transferEvent.timestamp = event.block.timestamp;
     transferEvent.type = "MINT";
