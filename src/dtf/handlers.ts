@@ -5,6 +5,7 @@ import {
   DTF,
   Rebalance,
   RebalanceAuctionBid,
+  RSRBurn,
   Trade,
 } from "../../generated/schema";
 import {
@@ -39,6 +40,22 @@ import {
   FeeRecipientsSetRecipientsStruct,
 } from "./../../generated/templates/DTF/DTF";
 import { Role } from "./../utils/constants";
+
+export function _handleRSRBurn(
+  amount: BigInt,
+  burner: Address,
+  event: ethereum.Event
+): void {
+  let rsrBurn = new RSRBurn(
+    event.transaction.hash.toHex() + "-" + event.logIndex.toString()
+  );
+  rsrBurn.amount = amount;
+  rsrBurn.burner = burner;
+  rsrBurn.blockNumber = event.block.number;
+  rsrBurn.timestamp = event.block.timestamp;
+  rsrBurn.transactionHash = event.transaction.hash.toHex();
+  rsrBurn.save();
+}
 
 // Rebalance
 export function _handleRebalanceStarted(

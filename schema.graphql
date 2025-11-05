@@ -16,6 +16,21 @@ type Version @entity(immutable: true) {
   blockNumber: BigInt!
 }
 
+type RSRBurn @entity(immutable: false) {
+  " { Transaction hash }-{ Log index } "
+  id: ID!
+  " Amount of RSR burned "
+  amount: BigInt!
+  " Burner address "
+  burner: Bytes!
+  " Block number "
+  blockNumber: BigInt!
+  " Timestamp "
+  timestamp: BigInt!
+  " Transaction hash "
+  transactionHash: String!
+}
+
 #############################
 ####### DTF FOLIO      ######
 #############################
