@@ -6,11 +6,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: RSR
-    network: mainnet
+    network: {{network}}
     source:
       abi: ERC20
-      address: "0x320623b8e4ff03373931769a31fc52a4e78b5d70"
-      startBlock: 23197627
+      address: "{{rsrAddress}}"
+      startBlock: {{rsrBurnStartBlock}}
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -23,7 +23,6 @@ dataSources:
       eventHandlers:
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleRSRBurn
-          topic1: ["0xcBCa96091f43C024730a020E57515A18b5dC633B"]
           topic2: ["0x000000000000000000000000000000000000dEaD"]
       file: ./src/dtf/mappings.ts
 {{#FolioDeployer}}

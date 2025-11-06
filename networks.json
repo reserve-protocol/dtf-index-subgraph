@@ -33,7 +33,11 @@
         "startBlock": 22897712,
         "_version": "4.0.0"
       }
-    ]
+    ],
+    "RSR": {
+      "address": "0x320623b8e4ff03373931769a31fc52a4e78b5d70",
+      "startBlock": 22380000
+    }
   },
   "base": {
     "FolioDeployer": [
@@ -69,7 +73,11 @@
         "startBlock": 32734503,
         "_version": "4.0.0"
       }
-    ]
+    ],
+    "RSR": {
+      "address": "0xaB36452DbAC151bE02b16Ca17d8919826072f64a",
+      "startBlock": 29600000
+    }
   },
   "bsc": {
     "FolioDeployer": [
@@ -95,6 +103,10 @@
         "startBlock": 60701791,
         "_version": "4.0.1"
       }
-    ]
+    ],
+    "RSR": {
+      "address": "0x23f72a3db61d6cb8abe5d9af1ac4b6c99327bfee",
+      "startBlock": 53679824
+    }
   }
 }
