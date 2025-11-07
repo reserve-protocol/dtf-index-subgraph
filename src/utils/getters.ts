@@ -1,9 +1,14 @@
-import { Address, BigDecimal, BigInt } from "@graphprotocol/graph-ts";
+import { Address, BigDecimal, BigInt, ethereum } from "@graphprotocol/graph-ts";
 import {
   Governance,
   GovernanceTimelock,
   StakingToken,
   Token,
+  RSRBurnGlobal,
+  RSRBurnDailySnapshot,
+  RSRBurnMonthlySnapshot,
+  TokenDailySnapshot,
+  TokenHourlySnapshot,
 } from "../../generated/schema";
 import {
   Governance as GovernanceTemplate,
@@ -11,7 +16,13 @@ import {
 } from "../../generated/templates";
 import { Governor } from "../../generated/templates/Governance/Governor";
 import { Timelock } from "../../generated/templates/Governance/Timelock";
-import { BIGINT_ZERO, TokenType } from "./constants";
+import {
+  BIGINT_ZERO,
+  TokenType,
+  SECONDS_PER_DAY,
+  SECONDS_PER_HOUR,
+  SECONDS_PER_MONTH
+} from "./constants";
 import { fetchTokenDecimals, fetchTokenName, fetchTokenSymbol } from "./tokens";
 
 export function getOrCreateToken(
@@ -126,4 +137,53 @@ export function getOrCreateGovernance(
   GovernanceTemplate.create(governanceAddress);
 
   return governance as Governance;
+}
+
+// RSR Burn helper functions
+export function getOrCreateRSRBurnGlobal(): RSRBurnGlobal {
+  let global = RSRBurnGlobal.load("1");
+  if (global == null) {
+    global = new RSRBurnGlobal("1");
+    global.totalBurned = BIGINT_ZERO;
+    global.totalBurnCount = BIGINT_ZERO;
+    global.lastUpdateBlock = BIGINT_ZERO;
+    global.lastUpdateTimestamp = BIGINT_ZERO;
+  }
+  return global as RSRBurnGlobal;
+}
+
+export function getOrCreateRSRBurnDailySnapshot(
+  block: ethereum.Block
+): RSRBurnDailySnapshot {
+  let dayID = block.timestamp.toI64() / SECONDS_PER_DAY;
+  let snapshotID = dayID.toString();
+
+  let snapshot = RSRBurnDailySnapshot.load(snapshotID);
+  if (snapshot == null) {
+    snapshot = new RSRBurnDailySnapshot(snapshotID);
+    snapshot.dailyBurnAmount = BIGINT_ZERO;
+    snapshot.dailyBurnCount = 0;
+    snapshot.cumulativeBurned = BIGINT_ZERO;
+    snapshot.blockNumber = block.number;
+    snapshot.timestamp = block.timestamp;
+  }
+  return snapshot as RSRBurnDailySnapshot;
+}
+
+export function getOrCreateRSRBurnMonthlySnapshot(
+  block: ethereum.Block
+): RSRBurnMonthlySnapshot {
+  let monthID = block.timestamp.toI64() / SECONDS_PER_MONTH;
+  let snapshotID = monthID.toString();
+
+  let snapshot = RSRBurnMonthlySnapshot.load(snapshotID);
+  if (snapshot == null) {
+    snapshot = new RSRBurnMonthlySnapshot(snapshotID);
+    snapshot.monthlyBurnAmount = BIGINT_ZERO;
+    snapshot.monthlyBurnCount = 0;
+    snapshot.cumulativeBurned = BIGINT_ZERO;
+    snapshot.blockNumber = block.number;
+    snapshot.timestamp = block.timestamp;
+  }
+  return snapshot as RSRBurnMonthlySnapshot;
 }

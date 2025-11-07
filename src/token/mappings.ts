@@ -4,6 +4,7 @@ import {
   Token,
   TokenDailySnapshot,
   TokenHourlySnapshot,
+  TokenMonthlySnapshot,
   TransferEvent,
   Minting,
 } from "../../generated/schema";
@@ -14,6 +15,7 @@ import {
   GENESIS_ADDRESS,
   SECONDS_PER_DAY,
   SECONDS_PER_HOUR,
+  SECONDS_PER_MONTH,
 } from "../utils/constants";
 
 import {
@@ -141,9 +143,17 @@ function handleBurnEvent(
     hourlySnapshot.blockNumber = event.block.number;
     hourlySnapshot.timestamp = event.block.timestamp;
 
+    let monthlySnapshot = getOrCreateTokenMonthlySnapshot(token, event.block);
+    monthlySnapshot.monthlyTotalSupply = token.totalSupply;
+    monthlySnapshot.monthlyBurnAmount = monthlySnapshot.monthlyBurnAmount.plus(amount);
+    monthlySnapshot.monthlyBurnCount += 1;
+    monthlySnapshot.blockNumber = event.block.number;
+    monthlySnapshot.timestamp = event.block.timestamp;
+
     token.save();
     dailySnapshot.save();
     hourlySnapshot.save();
+    monthlySnapshot.save();
 
     // Add event
     let transferEvent = new TransferEvent(
@@ -263,9 +273,18 @@ function handleMintEvent(
     hourlySnapshot.blockNumber = event.block.number;
     hourlySnapshot.timestamp = event.block.timestamp;
 
+    let monthlySnapshot = getOrCreateTokenMonthlySnapshot(token, event.block);
+    monthlySnapshot.monthlyTotalSupply = token.totalSupply;
+    monthlySnapshot.monthlyMintAmount = monthlySnapshot.monthlyMintAmount.plus(amount);
+    monthlySnapshot.monthlyMintCount += 1;
+    monthlySnapshot.cumulativeMintAmount = token.totalMinted;
+    monthlySnapshot.blockNumber = event.block.number;
+    monthlySnapshot.timestamp = event.block.timestamp;
+
     token.save();
     dailySnapshot.save();
     hourlySnapshot.save();
+    monthlySnapshot.save();
 
     // Add event
     let transferEvent = new TransferEvent(
@@ -384,7 +403,7 @@ function handleTransferEvent(
   return transferEvent;
 }
 
-function getOrCreateTokenDailySnapshot(
+export function getOrCreateTokenDailySnapshot(
   token: Token,
   block: ethereum.Block
 ): TokenDailySnapshot {
@@ -408,11 +427,15 @@ function getOrCreateTokenDailySnapshot(
   newSnapshot.dailyMintAmount = BIGINT_ZERO;
   newSnapshot.dailyBurnCount = 0;
   newSnapshot.dailyBurnAmount = BIGINT_ZERO;
+  newSnapshot.dailyRevenue = BIGINT_ZERO;
+  newSnapshot.dailyProtocolRevenue = BIGINT_ZERO;
+  newSnapshot.dailyGovernanceRevenue = BIGINT_ZERO;
+  newSnapshot.dailyExternalRevenue = BIGINT_ZERO;
 
   return newSnapshot;
 }
 
-function getOrCreateTokenHourlySnapshot(
+export function getOrCreateTokenHourlySnapshot(
   token: Token,
   block: ethereum.Block
 ): TokenHourlySnapshot {
@@ -437,6 +460,42 @@ function getOrCreateTokenHourlySnapshot(
   newSnapshot.hourlyMintAmount = BIGINT_ZERO;
   newSnapshot.hourlyBurnCount = 0;
   newSnapshot.hourlyBurnAmount = BIGINT_ZERO;
+  newSnapshot.hourlyRevenue = BIGINT_ZERO;
+  newSnapshot.hourlyProtocolRevenue = BIGINT_ZERO;
+  newSnapshot.hourlyGovernanceRevenue = BIGINT_ZERO;
+  newSnapshot.hourlyExternalRevenue = BIGINT_ZERO;
+
+  return newSnapshot;
+}
+
+export function getOrCreateTokenMonthlySnapshot(
+  token: Token,
+  block: ethereum.Block
+): TokenMonthlySnapshot {
+  let monthId = block.timestamp.toI64() / SECONDS_PER_MONTH;
+  let snapshotId = token.id + "-" + monthId.toString();
+
+  let previousSnapshot = TokenMonthlySnapshot.load(snapshotId);
+  if (previousSnapshot != null) {
+    return previousSnapshot as TokenMonthlySnapshot;
+  }
+
+  let newSnapshot = new TokenMonthlySnapshot(snapshotId);
+  newSnapshot.token = token.id;
+  newSnapshot.monthlyTotalSupply = token.totalSupply;
+  newSnapshot.monthlyMintAmount = BIGINT_ZERO;
+  newSnapshot.monthlyMintCount = 0;
+  newSnapshot.monthlyBurnAmount = BIGINT_ZERO;
+  newSnapshot.monthlyBurnCount = 0;
+  newSnapshot.monthlyRevenue = BIGINT_ZERO;
+  newSnapshot.monthlyProtocolRevenue = BIGINT_ZERO;
+  newSnapshot.monthlyGovernanceRevenue = BIGINT_ZERO;
+  newSnapshot.monthlyExternalRevenue = BIGINT_ZERO;
+  newSnapshot.cumulativeRevenue = BIGINT_ZERO;
+  newSnapshot.cumulativeProtocolRevenue = BIGINT_ZERO;
+  newSnapshot.cumulativeMintAmount = BIGINT_ZERO;
+  newSnapshot.blockNumber = block.number;
+  newSnapshot.timestamp = block.timestamp;
 
   return newSnapshot;
 }
