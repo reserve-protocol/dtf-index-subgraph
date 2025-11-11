@@ -5,6 +5,7 @@ import {
   DTF,
   Rebalance,
   RebalanceAuctionBid,
+  RSRBurn,
   Trade,
 } from "../../generated/schema";
 import {
@@ -38,7 +39,61 @@ import {
   AuctionOpened1AuctionStruct,
   FeeRecipientsSetRecipientsStruct,
 } from "./../../generated/templates/DTF/DTF";
-import { Role } from "./../utils/constants";
+import { Role, BIGINT_ONE } from "./../utils/constants";
+import {
+  getOrCreateRSRBurnGlobal,
+  getOrCreateRSRBurnDailySnapshot,
+  getOrCreateRSRBurnMonthlySnapshot,
+  getOrCreateToken
+} from "./../utils/getters";
+import {
+  getOrCreateTokenDailySnapshot,
+  getOrCreateTokenHourlySnapshot,
+  getOrCreateTokenMonthlySnapshot
+} from "./../token/mappings";
+
+export function _handleRSRBurn(
+  amount: BigInt,
+  burner: Address,
+  event: ethereum.Event
+): void {
+  // Create individual burn record
+  let rsrBurn = new RSRBurn(
+    event.transaction.hash.toHex() + "-" + event.logIndex.toString()
+  );
+  rsrBurn.amount = amount;
+  rsrBurn.burner = burner;
+  rsrBurn.blockNumber = event.block.number;
+  rsrBurn.timestamp = event.block.timestamp;
+  rsrBurn.transactionHash = event.transaction.hash.toHex();
+  rsrBurn.save();
+
+  // Update global tracking
+  let global = getOrCreateRSRBurnGlobal();
+  global.totalBurned = global.totalBurned.plus(amount);
+  global.totalBurnCount = global.totalBurnCount.plus(BIGINT_ONE);
+  global.lastUpdateBlock = event.block.number;
+  global.lastUpdateTimestamp = event.block.timestamp;
+  global.save();
+
+  // Update daily snapshot
+  let dailySnapshot = getOrCreateRSRBurnDailySnapshot(event.block);
+  dailySnapshot.dailyBurnAmount = dailySnapshot.dailyBurnAmount.plus(amount);
+  dailySnapshot.dailyBurnCount = dailySnapshot.dailyBurnCount + 1;
+  dailySnapshot.cumulativeBurned = global.totalBurned;
+  dailySnapshot.blockNumber = event.block.number;
+  dailySnapshot.timestamp = event.block.timestamp;
+  dailySnapshot.save();
+
+  // Update monthly snapshot
+  let monthlySnapshot = getOrCreateRSRBurnMonthlySnapshot(event.block);
+  monthlySnapshot.monthlyBurnAmount = monthlySnapshot.monthlyBurnAmount.plus(amount);
+  monthlySnapshot.monthlyBurnCount = monthlySnapshot.monthlyBurnCount + 1;
+  monthlySnapshot.cumulativeBurned = global.totalBurned;
+  monthlySnapshot.blockNumber = event.block.number;
+  monthlySnapshot.timestamp = event.block.timestamp;
+  monthlySnapshot.save();
+}
 
 // Rebalance
 export function _handleRebalanceStarted(
@@ -231,21 +286,50 @@ export function _handleAuctionTrustedFillCreated(
 // FEES
 export function _handleProtocolFeePaid(
   dtfAddress: Address,
-  amount: BigInt
+  amount: BigInt,
+  event: ethereum.Event
 ): void {
   let dtf = getDTF(dtfAddress);
   dtf.totalRevenue = dtf.totalRevenue.plus(amount);
   dtf.protocolRevenue = dtf.protocolRevenue.plus(amount);
   dtf.save();
+
+  // Snapshots
+  const token = getOrCreateToken(dtfAddress);
+  let dailySnapshot = getOrCreateTokenDailySnapshot(token, event.block);
+  dailySnapshot.dailyRevenue = dailySnapshot.dailyRevenue.plus(amount);
+  dailySnapshot.dailyProtocolRevenue = dailySnapshot.dailyProtocolRevenue.plus(amount);
+  dailySnapshot.save();
+
+  let hourlySnapshot = getOrCreateTokenHourlySnapshot(token, event.block);
+  hourlySnapshot.hourlyRevenue = hourlySnapshot.hourlyRevenue.plus(amount);
+  hourlySnapshot.hourlyProtocolRevenue = hourlySnapshot.hourlyProtocolRevenue.plus(amount);
+  hourlySnapshot.save();
+
+  let monthlySnapshot = getOrCreateTokenMonthlySnapshot(token, event.block);
+  monthlySnapshot.monthlyRevenue = monthlySnapshot.monthlyRevenue.plus(amount);
+  monthlySnapshot.monthlyProtocolRevenue = monthlySnapshot.monthlyProtocolRevenue.plus(amount);
+  monthlySnapshot.cumulativeRevenue = dtf.totalRevenue;
+  monthlySnapshot.cumulativeProtocolRevenue = dtf.protocolRevenue;
+  monthlySnapshot.save();
 }
 
 export function _handleFolioFeePaid(
   dtfAddress: Address,
   recipient: Address,
-  amount: BigInt
+  amount: BigInt,
+  event: ethereum.Event
 ): void {
   let dtf = getDTF(dtfAddress);
   dtf.totalRevenue = dtf.totalRevenue.plus(amount);
+
+  // Snapshots
+  const token = getOrCreateToken(dtfAddress);
+  let dailySnapshot = getOrCreateTokenDailySnapshot(token, event.block);
+  dailySnapshot.dailyRevenue = dailySnapshot.dailyRevenue.plus(amount);
+
+  let hourlySnapshot = getOrCreateTokenHourlySnapshot(token, event.block);
+  hourlySnapshot.hourlyRevenue = hourlySnapshot.hourlyRevenue.plus(amount);
 
   // Check if recipient is governance token to properly track revenue type
   const isGovernanceToken = dtf.ownerGovernance
@@ -255,11 +339,32 @@ export function _handleFolioFeePaid(
 
   if (isGovernanceToken) {
     dtf.governanceRevenue = dtf.governanceRevenue.plus(amount);
+    // snapshots
+    dailySnapshot.dailyGovernanceRevenue = dailySnapshot.dailyGovernanceRevenue.plus(amount);
+    hourlySnapshot.hourlyGovernanceRevenue = hourlySnapshot.hourlyGovernanceRevenue.plus(amount);
   } else {
     dtf.externalRevenue = dtf.externalRevenue.plus(amount);
+    // snapshots
+    dailySnapshot.dailyExternalRevenue = dailySnapshot.dailyExternalRevenue.plus(amount);
+    hourlySnapshot.hourlyExternalRevenue = hourlySnapshot.hourlyExternalRevenue.plus(amount);
   }
 
   dtf.save();
+
+  // Create monthly snapshot
+  let monthlySnapshot = getOrCreateTokenMonthlySnapshot(token, event.block);
+  monthlySnapshot.monthlyRevenue = monthlySnapshot.monthlyRevenue.plus(amount);
+  if (isGovernanceToken) {
+    monthlySnapshot.monthlyGovernanceRevenue = monthlySnapshot.monthlyGovernanceRevenue.plus(amount);
+  } else {
+    monthlySnapshot.monthlyExternalRevenue = monthlySnapshot.monthlyExternalRevenue.plus(amount);
+  }
+  monthlySnapshot.cumulativeRevenue = dtf.totalRevenue;
+  monthlySnapshot.save();
+
+  // Save other snapshots
+  dailySnapshot.save();
+  hourlySnapshot.save();
 }
 
 // ROLES

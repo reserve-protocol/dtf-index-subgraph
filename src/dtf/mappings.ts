@@ -40,6 +40,7 @@ import {
   _handleRebalanceStarted,
   _handleRoleGranted,
   _handleRoleRevoked,
+  _handleRSRBurn,
   _handleSingletonAuctionBid,
   _handleSingletonAuctionLaunched,
   _handleTradeApproved,
@@ -49,6 +50,10 @@ import {
   _handleTradeLaunched1,
   _handleTvlFeeSet,
 } from "./handlers";
+
+export function handleRSRBurn(event: Transfer): void {
+  _handleRSRBurn(event.params.value, event.params.from, event);
+}
 
 export function handleRebalanceStarted(event: RebalanceStarted): void {
   _handleRebalanceStarted(
@@ -118,14 +123,15 @@ export function handleTradeKilled(event: AuctionClosed): void {
 
 // FEES
 export function handleProtocolFeePaid(event: ProtocolFeePaid): void {
-  _handleProtocolFeePaid(event.address, event.params.amount);
+  _handleProtocolFeePaid(event.address, event.params.amount, event);
 }
 
 export function handleFolioFeePaid(event: FolioFeePaid): void {
   _handleFolioFeePaid(
     event.address,
     event.params.recipient,
-    event.params.amount
+    event.params.amount,
+    event
   );
 }
 

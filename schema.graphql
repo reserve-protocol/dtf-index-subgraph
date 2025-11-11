@@ -16,6 +16,64 @@ type Version @entity(immutable: true) {
   blockNumber: BigInt!
 }
 
+type RSRBurn @entity(immutable: true) {
+  " { Transaction hash }-{ Log index } "
+  id: ID!
+  " Amount of RSR burned "
+  amount: BigInt!
+  " Burner address "
+  burner: Bytes!
+  " Block number "
+  blockNumber: BigInt!
+  " Timestamp "
+  timestamp: BigInt!
+  " Transaction hash "
+  transactionHash: String!
+}
+
+type RSRBurnGlobal @entity(immutable: false) {
+  " Singleton: '1' "
+  id: ID!
+  " Total RSR burned all-time "
+  totalBurned: BigInt!
+  " Total number of burn events "
+  totalBurnCount: BigInt!
+  " Last update block "
+  lastUpdateBlock: BigInt!
+  " Last update timestamp "
+  lastUpdateTimestamp: BigInt!
+}
+
+type RSRBurnDailySnapshot @entity(immutable: false) {
+  " { # of days since Unix epoch } "
+  id: ID!
+  " Daily RSR burned "
+  dailyBurnAmount: BigInt!
+  " Number of burn events today "
+  dailyBurnCount: Int!
+  " Cumulative burned up to this day "
+  cumulativeBurned: BigInt!
+  " Block number "
+  blockNumber: BigInt!
+  " Timestamp "
+  timestamp: BigInt!
+}
+
+type RSRBurnMonthlySnapshot @entity(immutable: false) {
+  " { # of months since Unix epoch } "
+  id: ID!
+  " Monthly RSR burned "
+  monthlyBurnAmount: BigInt!
+  " Number of burn events this month "
+  monthlyBurnCount: Int!
+  " Cumulative burned up to this month "
+  cumulativeBurned: BigInt!
+  " Block number "
+  blockNumber: BigInt!
+  " Timestamp "
+  timestamp: BigInt!
+}
+
 #############################
 ####### DTF FOLIO      ######
 #############################
@@ -486,6 +544,18 @@ type TokenDailySnapshot @entity(immutable: false) {
   " Token this snapshot is associated with "
   token: Token!
 
+  " Daily revenue for this DTF "
+  dailyRevenue: BigInt!
+
+  " Daily protocol revenue for this DTF "
+  dailyProtocolRevenue: BigInt!
+
+  " Daily governance revenue for this DTF "
+  dailyGovernanceRevenue: BigInt!
+
+  " Daily external recipients revenue for this DTF "
+  dailyExternalRevenue: BigInt!
+
   " Daily total Supply of the token "
   dailyTotalSupply: BigInt!
 
@@ -530,6 +600,18 @@ type TokenHourlySnapshot @entity(immutable: false) {
   " Token this snapshot is associated with "
   token: Token!
 
+  " Hourly revenue for this DTF "
+  hourlyRevenue: BigInt!
+
+  " Hourly protocol revenue for this DTF "
+  hourlyProtocolRevenue: BigInt!
+
+  " Hourly governance revenue for this DTF "
+  hourlyGovernanceRevenue: BigInt!
+
+  " Hourly external recipients revenue for this DTF "
+  hourlyExternalRevenue: BigInt!
+
   " Hourly total Supply of the token "
   hourlyTotalSupply: BigInt!
 
@@ -564,6 +646,56 @@ type TokenHourlySnapshot @entity(immutable: false) {
   blockNumber: BigInt!
 
   " Timestamp of this snapshot "
+  timestamp: BigInt!
+}
+
+type TokenMonthlySnapshot @entity(immutable: false) {
+  " { Token Address }-{ # of months since Unix epoch } "
+  id: ID!
+
+  " Token this snapshot is for "
+  token: Token!
+
+  " End of month supply "
+  monthlyTotalSupply: BigInt!
+
+  " Monthly mint amount (DTF shares minted) "
+  monthlyMintAmount: BigInt!
+
+  " Monthly mint count (number of mint transactions) "
+  monthlyMintCount: Int!
+
+  " Monthly burn amount (DTF shares burned) "
+  monthlyBurnAmount: BigInt!
+
+  " Monthly burn count "
+  monthlyBurnCount: Int!
+
+  " Monthly total revenue for this DTF "
+  monthlyRevenue: BigInt!
+
+  " Monthly protocol revenue for this DTF "
+  monthlyProtocolRevenue: BigInt!
+
+  " Monthly governance revenue for this DTF "
+  monthlyGovernanceRevenue: BigInt!
+
+  " Monthly external revenue for this DTF "
+  monthlyExternalRevenue: BigInt!
+
+  " Cumulative revenue up to this month "
+  cumulativeRevenue: BigInt!
+
+  " Cumulative protocol revenue "
+  cumulativeProtocolRevenue: BigInt!
+
+  " Cumulative mints "
+  cumulativeMintAmount: BigInt!
+
+  " Block number "
+  blockNumber: BigInt!
+
+  " Timestamp "
   timestamp: BigInt!
 }
 

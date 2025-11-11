@@ -23,6 +23,8 @@ if (!networksData[network]) {
 // Prepare data for the specific network
 const templateData = {
   network: network,
+  rsrAddress: networksData[network].RSR.address,
+  rsrBurnStartBlock: networksData[network].RSR.startBlock,
   FolioDeployer: getWithPostfix(networksData[network].FolioDeployer),
   GovernanceDeployer: getWithPostfix(networksData[network].GovernanceDeployer),
 };

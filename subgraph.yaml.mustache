@@ -1,9 +1,30 @@
-specVersion: 1.0.0
+specVersion: 1.2.0
 indexerHints:
   prune: auto
 schema:
   file: ./schema.graphql
 dataSources:
+  - kind: ethereum
+    name: RSR
+    network: {{network}}
+    source:
+      abi: ERC20
+      address: "{{rsrAddress}}"
+      startBlock: {{rsrBurnStartBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - RSRBurn
+      abis:
+        - name: ERC20
+          file: ./abis/erc20.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleRSRBurn
+          topic2: ["0x000000000000000000000000000000000000dEaD"]
+      file: ./src/dtf/mappings.ts
 {{#FolioDeployer}}
   - kind: ethereum
     name: FolioDeployer{{postfix}}
