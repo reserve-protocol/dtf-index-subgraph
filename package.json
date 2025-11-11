@@ -1,18 +1,22 @@
 {
   "name": "dtf-index-subgraph",
   "license": "UNLICENSED",
-  "version": "1.8.3",
+  "version": "1.8.4",
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ dtf-index-subgraph",
     "create-local": "graph create --node http://localhost:8020/ dtf-index-subgraph",
     "remove-local": "graph remove --node http://localhost:8020/ dtf-index-subgraph",
     "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 dtf-index-subgraph",
     "test": "graph test",
     "parse:mainnet": "node scripts/parse-template.js --network mainnet",
     "parse:base": "node scripts/parse-template.js --network base",
-    "parse:bsc": "node scripts/parse-template.js --network bsc"
+    "parse:bsc": "node scripts/parse-template.js --network bsc",
+    "deploy:mainnet": "node scripts/deploy.js --network mainnet",
+    "deploy:base": "node scripts/deploy.js --network base",
+    "deploy:bsc": "node scripts/deploy.js --network bsc",
+    "deploy:all": "node scripts/deploy-all.js",
+    "deploy": "node scripts/deploy-interactive.js"
   },
   "dependencies": {
     "@graphprotocol/graph-cli": "0.91.1",
