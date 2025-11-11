@@ -50,6 +50,72 @@ npm run codegen
 npm run build
 ```
 
+## Deployment
+
+This subgraph is deployed using Goldsky infrastructure. Multiple deployment options are available:
+
+### Prerequisites
+
+Before deploying, you need to install and configure the Goldsky CLI:
+
+#### Install Goldsky CLI
+
+**For macOS/Linux:**
+```bash
+curl https://goldsky.com | sh
+```
+
+**For Windows:**
+```bash
+npm install -g @goldskycom/cli
+```
+
+#### Configure Authentication
+
+After installation, login with your CLI token:
+```bash
+goldsky login
+```
+
+You'll be prompted to enter your CLI token key. This is required for deployment access.
+
+### Deploy to Specific Network
+
+```bash
+# Deploy to Ethereum Mainnet
+npm run deploy:mainnet
+
+# Deploy to Base
+npm run deploy:base
+
+# Deploy to BSC
+npm run deploy:bsc
+
+# Deploy with custom version
+npm run deploy:mainnet -- --version 1.8.4
+```
+
+### Interactive Deployment
+
+```bash
+# Interactive mode - prompts for network and version
+npm run deploy
+```
+
+### Deploy to All Networks
+
+```bash
+# Deploy to all networks with current version
+npm run deploy:all
+
+# Deploy to all networks with custom version
+npm run deploy:all -- --version 1.8.4
+```
+
+The deployment process automatically:
+1. Generates network-specific configuration using the template system
+2. Deploys to Goldsky with the format: `dtf-index-<network>/<version>`
+
 ## Key Entities
 
 - **DTF**: Represents an index DTF with configuration, fees, and governance settings
