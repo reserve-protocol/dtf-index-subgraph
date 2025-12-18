@@ -1,5 +1,9 @@
 {
   "mainnet": {
+    "grafting": {
+      "base": "",
+      "block": 0
+    },
     "FolioDeployer": [
       {
         "address": "0xaafb13a3df7ce70c140e40c959d58fd5cc443cba",
@@ -40,6 +44,10 @@
     }
   },
   "base": {
+    "grafting": {
+      "base": "",
+      "block": 0
+    },
     "FolioDeployer": [
       {
         "address": "0xe926577a152ffd5f5036f88bf7e8e8d3652b558c",
@@ -80,6 +88,10 @@
     }
   },
   "bsc": {
+    "grafting": {
+      "base": "",
+      "block": 0
+    },
     "FolioDeployer": [
       {
         "address": "0x100E0eFDd7a4f67825E1BE5f0493F8D2AEAc00bb",

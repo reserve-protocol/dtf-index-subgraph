@@ -20,6 +20,10 @@ if (!networksData[network]) {
   process.exit(1);
 }
 
+// Prepare grafting data (only include if base is not empty)
+const graftingConfig = networksData[network].grafting;
+const hasGrafting = graftingConfig && graftingConfig.base && graftingConfig.base !== "";
+
 // Prepare data for the specific network
 const templateData = {
   network: network,
@@ -27,6 +31,7 @@ const templateData = {
   rsrBurnStartBlock: networksData[network].RSR.startBlock,
   FolioDeployer: getWithPostfix(networksData[network].FolioDeployer),
   GovernanceDeployer: getWithPostfix(networksData[network].GovernanceDeployer),
+  grafting: hasGrafting ? graftingConfig : null,
 };
 
 const output = mustache.render(template, templateData);
