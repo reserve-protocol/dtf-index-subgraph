@@ -125,12 +125,23 @@ templates:
         - name: Timelock
           file: ./abis/timelock.json
       eventHandlers:
+        # v4.0 event - separate tokens[], weights[], prices[] arrays
         - event: RebalanceStarted(uint256,uint8,address[],(uint256,uint256,uint256)[],(uint256,uint256)[],(uint256,uint256,uint256),uint256,uint256)
-          handler: handleRebalanceStarted
+          handler: handleRebalanceStartedV4
+        # v5.0 event - uses TokenRebalanceParams[] struct (combines token, weight, price, maxAuctionSize, inRebalance)
+        - event: RebalanceStarted(indexed uint256,uint8,(address,(uint256,uint256,uint256),(uint256,uint256),uint256,bool)[],(uint256,uint256,uint256),uint256,uint256,uint256,bool)
+          handler: handleRebalanceStartedV5
         - event: RebalanceEnded(uint256)
           handler: handleRebalanceEnded
         - event: RebalanceControlSet((bool,uint8))
           handler: handleRebalanceControlSet
+        # v5.0 events
+        - event: BidsEnabledSet(bool)
+          handler: handleBidsEnabledSet
+        - event: NameSet(string)
+          handler: handleNameSet
+        - event: TrustedFillerRegistrySet(address,bool)
+          handler: handleTrustedFillerRegistrySet
         - event: AuctionOpened(indexed uint256,indexed uint256,address[],(uint256,uint256,uint256)[],(uint256,uint256)[],(uint256,uint256,uint256),uint256,uint256)
           handler: handleSingletonAuctionLaunched
         - event: AuctionBid(indexed uint256,indexed address,indexed address,uint256,uint256)

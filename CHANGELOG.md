@@ -5,6 +5,25 @@ All notable changes to the DTF Index Subgraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.6-test1] - 2025-12-18
+
+### Added
+- Full support for DTF protocol version 5.0
+  - New `RebalanceStarted` event with `TokenRebalanceParams[]` struct (combines token, weight, price, maxAuctionSize, inRebalance)
+  - `BidsEnabledSet` event handler
+  - `NameSet` event handler
+  - `TrustedFillerRegistrySet` event handler
+- New schema fields for v5.0 support:
+  - `bidsEnabled`, `trustedFillerRegistry`, `trustedFillerEnabled` on DTF entity
+  - `startedAt`, `bidsEnabled`, `maxAuctionSize`, `inRebalance` on Rebalance entity
+- Optional grafting support for faster subgraph indexing
+
+### Fixed
+- Token snapshot `blockNumber` and `timestamp` fields now properly set
+
+### Changed
+- Renamed rebalance handlers to use V4/V5 suffixes for clarity
+
 ## [1.8.4] - 2025-11-11
 
 ### Changed

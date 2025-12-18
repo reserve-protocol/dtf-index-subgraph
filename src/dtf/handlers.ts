@@ -18,6 +18,8 @@ import {
   RebalanceStartedLimitsStruct,
   RebalanceStartedPricesStruct,
   RebalanceStartedWeightsStruct,
+  RebalanceStarted1TokensStruct,
+  RebalanceStarted1LimitsStruct,
 } from "../../generated/templates/DTF/DTF";
 import { getGovernance } from "../governance/handlers";
 import { removeFromArrayAtIndex } from "../utils/arrays";
@@ -96,7 +98,8 @@ export function _handleRSRBurn(
 }
 
 // Rebalance
-export function _handleRebalanceStarted(
+// v4.0 RebalanceStarted handler - separate tokens[], weights[], prices[] arrays
+export function _handleRebalanceStartedV4(
   dtfAddress: Address,
   nonce: BigInt,
   priceControl: number,
@@ -153,6 +156,73 @@ export function _handleRebalanceStarted(
   }
 }
 
+// v5.0 RebalanceStarted handler - uses TokenRebalanceParams[] struct (combines token, weight, price, maxAuctionSize, inRebalance)
+// Also adds: startedAt, bidsEnabled fields
+export function _handleRebalanceStartedV5(
+  dtfAddress: Address,
+  nonce: BigInt,
+  priceControl: number,
+  tokens: RebalanceStarted1TokensStruct[],
+  limits: RebalanceStarted1LimitsStruct,
+  startedAt: BigInt,
+  restrictedUntil: BigInt,
+  availableUntil: BigInt,
+  bidsEnabled: boolean,
+  event: ethereum.Event
+): void {
+  let rebalance = new Rebalance(
+    `${dtfAddress.toHexString()}-${nonce.toHexString()}`
+  );
+
+  let tokenIds: string[] = [];
+  let weightLowLimit: BigInt[] = [];
+  let weightSpotLimit: BigInt[] = [];
+  let weightHighLimit: BigInt[] = [];
+  let priceLowLimit: BigInt[] = [];
+  let priceHighLimit: BigInt[] = [];
+  let maxAuctionSizes: BigInt[] = [];
+  let inRebalanceFlags: boolean[] = [];
+
+  for (let i = 0; i < tokens.length; i++) {
+    tokenIds.push(getOrCreateToken(tokens[i].token).id);
+    weightLowLimit.push(tokens[i].weight.low);
+    weightSpotLimit.push(tokens[i].weight.spot);
+    weightHighLimit.push(tokens[i].weight.high);
+    priceLowLimit.push(tokens[i].price.low);
+    priceHighLimit.push(tokens[i].price.high);
+    maxAuctionSizes.push(tokens[i].maxAuctionSize);
+    inRebalanceFlags.push(tokens[i].inRebalance);
+  }
+
+  rebalance.dtf = dtfAddress.toHexString();
+  rebalance.tokens = tokenIds;
+  rebalance.nonce = nonce;
+  rebalance.priceControl = priceControl.toString();
+  rebalance.weightLowLimit = weightLowLimit;
+  rebalance.weightSpotLimit = weightSpotLimit;
+  rebalance.weightHighLimit = weightHighLimit;
+  rebalance.priceLowLimit = priceLowLimit;
+  rebalance.priceHighLimit = priceHighLimit;
+  rebalance.rebalanceLowLimit = limits.low;
+  rebalance.rebalanceSpotLimit = limits.spot;
+  rebalance.rebalanceHighLimit = limits.high;
+  rebalance.restrictedUntil = restrictedUntil;
+  rebalance.availableUntil = availableUntil;
+  rebalance.startedAt = startedAt;
+  rebalance.bidsEnabled = bidsEnabled;
+  rebalance.maxAuctionSize = maxAuctionSizes;
+  rebalance.inRebalance = inRebalanceFlags;
+  rebalance.transactionHash = event.transaction.hash.toHexString();
+  rebalance.blockNumber = event.block.number;
+  rebalance.timestamp = event.block.timestamp;
+  rebalance.save();
+
+  // Only 1 rebalance can be ongoing at the time, if there is an active rebalance, we need to close it to keep the data valid
+  if (nonce > BIGINT_ZERO) {
+    _handleRebalanceEnded(dtfAddress, nonce.minus(BIGINT_ONE), event);
+  }
+}
+
 export function _handleRebalanceEnded(
   dtfAddress: Address,
   nonce: BigInt,
@@ -175,6 +245,38 @@ export function _handleRebalanceControlSet(
   let dtf = getDTF(dtfAddress);
   dtf.weightControl = newControl.weightControl;
   dtf.priceControl = newControl.priceControl;
+  dtf.save();
+}
+
+// v5.0 BidsEnabledSet handler
+export function _handleBidsEnabledSet(
+  dtfAddress: Address,
+  bidsEnabled: boolean
+): void {
+  let dtf = getDTF(dtfAddress);
+  dtf.bidsEnabled = bidsEnabled;
+  dtf.save();
+}
+
+// v5.0 NameSet handler
+export function _handleNameSet(
+  dtfAddress: Address,
+  newName: string
+): void {
+  let token = getOrCreateToken(dtfAddress);
+  token.name = newName;
+  token.save();
+}
+
+// v5.0 TrustedFillerRegistrySet handler
+export function _handleTrustedFillerRegistrySet(
+  dtfAddress: Address,
+  trustedFillerRegistry: Address,
+  isEnabled: boolean
+): void {
+  let dtf = getDTF(dtfAddress);
+  dtf.trustedFillerRegistry = trustedFillerRegistry;
+  dtf.trustedFillerEnabled = isEnabled;
   dtf.save();
 }
 
