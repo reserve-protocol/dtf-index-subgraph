@@ -19,6 +19,11 @@
         "address": "0xBE3B47587cEeff7D48008A0114f51cD571beC63A",
         "startBlock": 22897712,
         "_version": "4.0.0"
+      },
+      {
+        "address": "0x4D201a6e5BF975E2CEE9e5cbDfc803C0Ff122073",
+        "startBlock": 23982729,
+        "_version": "5.0.0"
       }
     ],
     "GovernanceDeployer": [
@@ -36,6 +41,11 @@
         "address": "0x5Bed18AcA50E6057E6658Fe8498004092EedCDcF",
         "startBlock": 22897712,
         "_version": "4.0.0"
+      },
+      {
+        "address": "0x72f87239981159ed23673012EE3806Ca6114AB2A",
+        "startBlock": 23982728,
+        "_version": "5.0.0"
       }
     ],
     "RSR": {
@@ -63,6 +73,11 @@
         "address": "0xA203AA351723cf943f91684e9F5eFcA7175Ae7EA",
         "startBlock": 32734503,
         "_version": "4.0.0"
+      },
+      {
+        "address": "0x3451fD177E9a8bB4Eb8271E627A804BD22A816F9",
+        "startBlock": 39292659,
+        "_version": "5.0.0"
       }
     ],
     "GovernanceDeployer": [
@@ -80,6 +95,11 @@
         "address": "0x1A7D043c84fe781b6df046fEfCf673F71110208D",
         "startBlock": 32734503,
         "_version": "4.0.0"
+      },
+      {
+        "address": "0xECA52a5BDBAd98a5B4B6B944C4C9cc636D4D7461",
+        "startBlock": 39292657,
+        "_version": "5.0.0"
       }
     ],
     "RSR": {
@@ -102,6 +122,11 @@
         "address": "0x5Bed18AcA50E6057E6658Fe8498004092EedCDcF",
         "startBlock": 60701791,
         "_version": "4.0.1"
+      },
+      {
+        "address": "0x72f87239981159ed23673012EE3806Ca6114AB2A",
+        "startBlock": 71164194,
+        "_version": "5.0.0"
       }
     ],
     "GovernanceDeployer": [
@@ -114,6 +139,11 @@
         "address": "0x270d928b9Ee38BAD93601D197256390b3c3C13Ec",
         "startBlock": 60701791,
         "_version": "4.0.1"
+      },
+      {
+        "address": "0xA7BC1265C37A8D285cd2B10c842Efb8415A7bF9f",
+        "startBlock": 71164189,
+        "_version": "5.0.0"
       }
     ],
     "RSR": {
