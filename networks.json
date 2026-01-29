@@ -1,8 +1,8 @@
 {
   "mainnet": {
     "grafting": {
-      "base": "QmPGL7w8rMnsEdUxK8eMHS7jfxzipRRZXNKKPTEEuMknYT",
-      "block": 23982720
+      "base": "",
+      "block": 0
     },
     "FolioDeployer": [
       {
@@ -55,8 +55,8 @@
   },
   "base": {
     "grafting": {
-      "base": "QmUkHCubReeXiRcPnGUm6FxuU8Mp6DfXWXQpzyUMtBdeUg",
-      "block": 39292650
+      "base": "",
+      "block": 0
     },
     "FolioDeployer": [
       {
@@ -109,8 +109,8 @@
   },
   "bsc": {
     "grafting": {
-      "base": "Qme3Rbx1TXT7V23BsaKxA1DBqAZGs121HQQ2dCWkz9Q943",
-      "block": 71164180
+      "base": "",
+      "block": 0
     },
     "FolioDeployer": [
       {
