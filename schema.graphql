@@ -113,6 +113,15 @@ type DTF @entity(immutable: false) {
   " Auction length "
   auctionLength: BigInt!
 
+  " Bids enabled (v5.0+) "
+  bidsEnabled: Boolean
+
+  " Trusted filler registry address (v5.0+) "
+  trustedFillerRegistry: Bytes
+
+  " Trusted filler enabled (v5.0+) "
+  trustedFillerEnabled: Boolean
+
   " mandate "
   mandate: String!
 
@@ -216,6 +225,18 @@ type Rebalance @entity(immutable: false) {
 
   " Available until "
   availableUntil: BigInt!
+
+  " Started at timestamp (v5.0+) "
+  startedAt: BigInt
+
+  " Bids enabled for this rebalance (v5.0+) "
+  bidsEnabled: Boolean
+
+  " Max auction size per token (v5.0+) "
+  maxAuctionSize: [BigInt!]
+
+  " In rebalance flag per token (v5.0+) "
+  inRebalance: [Boolean!]
 
   " Transaction hash "
   transactionHash: String!

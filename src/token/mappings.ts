@@ -431,6 +431,8 @@ export function getOrCreateTokenDailySnapshot(
   newSnapshot.dailyProtocolRevenue = BIGINT_ZERO;
   newSnapshot.dailyGovernanceRevenue = BIGINT_ZERO;
   newSnapshot.dailyExternalRevenue = BIGINT_ZERO;
+  newSnapshot.blockNumber = block.number;
+  newSnapshot.timestamp = block.timestamp;
 
   return newSnapshot;
 }
@@ -464,6 +466,8 @@ export function getOrCreateTokenHourlySnapshot(
   newSnapshot.hourlyProtocolRevenue = BIGINT_ZERO;
   newSnapshot.hourlyGovernanceRevenue = BIGINT_ZERO;
   newSnapshot.hourlyExternalRevenue = BIGINT_ZERO;
+  newSnapshot.blockNumber = block.number;
+  newSnapshot.timestamp = block.timestamp;
 
   return newSnapshot;
 }

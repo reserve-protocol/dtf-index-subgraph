@@ -10,17 +10,21 @@ import {
   AuctionOpened1,
   AuctionOpened2,
   AuctionTrustedFillCreated,
+  BidsEnabledSet,
   FeeRecipientsSet,
   FolioFeePaid,
   MandateSet,
   MintFeeSet,
+  NameSet,
   ProtocolFeePaid,
   RebalanceControlSet,
   RebalanceEnded,
   RebalanceStarted,
+  RebalanceStarted1,
   RoleGranted,
   RoleRevoked,
   Transfer,
+  TrustedFillerRegistrySet,
   TVLFeeSet,
 } from "../../generated/templates/DTF/DTF";
 import { _handleTransfer } from "../token/mappings";
@@ -30,14 +34,17 @@ import {
   _handleAuctionLengthSet,
   _handleAuctionTrustedFillCreated,
   _handleBid,
+  _handleBidsEnabledSet,
   _handleFeeRecipientsSet,
   _handleFolioFeePaid,
   _handleMandateSet,
   _handleMintFeeSet,
+  _handleNameSet,
   _handleProtocolFeePaid,
   _handleRebalanceControlSet,
   _handleRebalanceEnded,
-  _handleRebalanceStarted,
+  _handleRebalanceStartedV4,
+  _handleRebalanceStartedV5,
   _handleRoleGranted,
   _handleRoleRevoked,
   _handleRSRBurn,
@@ -48,6 +55,7 @@ import {
   _handleTradeKilled,
   _handleTradeLaunched,
   _handleTradeLaunched1,
+  _handleTrustedFillerRegistrySet,
   _handleTvlFeeSet,
 } from "./handlers";
 
@@ -55,8 +63,9 @@ export function handleRSRBurn(event: Transfer): void {
   _handleRSRBurn(event.params.value, event.params.from, event);
 }
 
-export function handleRebalanceStarted(event: RebalanceStarted): void {
-  _handleRebalanceStarted(
+// v4.0 handler - separate tokens[], weights[], prices[] arrays
+export function handleRebalanceStartedV4(event: RebalanceStarted): void {
+  _handleRebalanceStartedV4(
     event.address,
     event.params.nonce,
     event.params.priceControl,
@@ -76,6 +85,43 @@ export function handleRebalanceEnded(event: RebalanceEnded): void {
 
 export function handleRebalanceControlSet(event: RebalanceControlSet): void {
   _handleRebalanceControlSet(event.address, event.params.newControl);
+}
+
+// v5.0 handler - uses TokenRebalanceParams[] struct (combines token, weight, price, maxAuctionSize, inRebalance)
+export function handleRebalanceStartedV5(event: RebalanceStarted1): void {
+  _handleRebalanceStartedV5(
+    event.address,
+    event.params.nonce,
+    event.params.priceControl,
+    event.params.tokens,
+    event.params.limits,
+    event.params.startedAt,
+    event.params.restrictedUntil,
+    event.params.availableUntil,
+    event.params.bidsEnabled,
+    event
+  );
+}
+
+// v5.0 handler
+export function handleBidsEnabledSet(event: BidsEnabledSet): void {
+  _handleBidsEnabledSet(event.address, event.params.bidsEnabled);
+}
+
+// v5.0 handler
+export function handleNameSet(event: NameSet): void {
+  _handleNameSet(event.address, event.params.newName);
+}
+
+// v5.0 handler
+export function handleTrustedFillerRegistrySet(
+  event: TrustedFillerRegistrySet
+): void {
+  _handleTrustedFillerRegistrySet(
+    event.address,
+    event.params.trustedFillerRegistry,
+    event.params.isEnabled
+  );
 }
 
 export function handleSingletonAuctionLaunched(event: AuctionOpened2): void {
