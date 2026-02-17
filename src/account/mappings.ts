@@ -20,6 +20,14 @@ export function isNewAccount(accountAddress: Bytes): boolean {
   return true;
 }
 
+// Per-token check: has this account ever held this specific token?
+// Uses AccountBalance entity existence (persists even after balance goes to 0)
+export function isNewTokenHolder(accountAddress: Bytes, token: Token): boolean {
+  let accountId = accountAddress.toHex();
+  let balanceId = accountId + "-" + token.id;
+  return AccountBalance.load(balanceId) == null;
+}
+
 export function getOrCreateAccount(accountAddress: Bytes): Account {
   let accountId = accountAddress.toHex();
   let existingAccount = Account.load(accountId);

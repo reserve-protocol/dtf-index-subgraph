@@ -23,7 +23,7 @@ import {
   getOrCreateAccount,
   getOrCreateAccountBalance,
   increaseAccountBalance,
-  isNewAccount,
+  isNewTokenHolder,
   updateAccountBalanceDailySnapshot,
 } from "../account/mappings";
 import { getOrCreateToken } from "../utils/getters";
@@ -231,7 +231,7 @@ function handleMintEvent(
     minting.save();
 
     // Check if receiver is becoming a new holder
-    let isReceiverNewAccount = isNewAccount(destination);
+    let isReceiverFirstHold = isNewTokenHolder(destination, token);
     let receiverAccount = getOrCreateAccount(destination);
     let receiverBalance = getOrCreateAccountBalance(receiverAccount, token);
 
@@ -241,8 +241,8 @@ function handleMintEvent(
       receiverBecomesHolder = BIGINT_ONE;
     }
 
-    // Update cumulative holder count only if this is truly a new account
-    if (isReceiverNewAccount) {
+    // Update cumulative holder count only if this account has never held this token
+    if (isReceiverFirstHold) {
       token.cumulativeHolderCount =
         token.cumulativeHolderCount.plus(BIGINT_ONE);
     }
@@ -349,7 +349,7 @@ function handleTransferEvent(
 
     // Check if receiver is becoming a new holder
     let receiverBecomesHolder = BIGINT_ZERO;
-    let isReceiverNewAccount = isNewAccount(destination);
+    let isReceiverFirstHold = isNewTokenHolder(destination, token);
     let receiverAccount = getOrCreateAccount(destination);
     let receiverBalance = getOrCreateAccountBalance(receiverAccount, token);
 
@@ -358,9 +358,9 @@ function handleTransferEvent(
       receiverBecomesHolder = BIGINT_ONE;
     }
 
-    // Update cumulative holder count only if this is truly a new account that never held this token
+    // Update cumulative holder count only if this account has never held this token
     let toAddressIsNewHolderNum = BIGINT_ZERO;
-    if (isReceiverNewAccount) {
+    if (isReceiverFirstHold) {
       toAddressIsNewHolderNum = BIGINT_ONE;
     }
 

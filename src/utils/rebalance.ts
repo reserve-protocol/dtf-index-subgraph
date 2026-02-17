@@ -165,8 +165,10 @@ export function getAuctionBidsFromReceipt(
 
     // Only push the bid if we found a buy token different from sell token
     if (foundBuy && buyToken != sellToken) {
-      // Net the sell amount (subtract any refund)
-      let netSellAmount = sellAmount.minus(sellTokenRefund);
+      // Net the sell amount (subtract any refund, clamp to 0)
+      let netSellAmount = sellAmount > sellTokenRefund
+        ? sellAmount.minus(sellTokenRefund)
+        : BigInt.zero();
 
       bids.push(
         new ParsedAuctionBid(

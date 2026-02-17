@@ -80,8 +80,8 @@ describe("_handleTransfer", () => {
     );
   });
 
-  test("mint to existing account with 0 balance increments currentHolderCount but not cumulativeHolderCount", () => {
-    // Pre-create account so it's not "new"
+  test("mint to existing account with 0 balance increments both currentHolderCount and cumulativeHolderCount", () => {
+    // Pre-create account so it exists globally, but has never held this token
     let account = getOrCreateAccount(ALICE);
     account.save();
 
@@ -94,11 +94,12 @@ describe("_handleTransfer", () => {
       "currentHolderCount",
       "1"
     );
+    // cumulativeHolderCount increments because ALICE has never held THIS token
     assert.fieldEquals(
       "Token",
       TOKEN_ADDR.toHexString(),
       "cumulativeHolderCount",
-      "0"
+      "1"
     );
   });
 

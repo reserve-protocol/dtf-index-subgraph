@@ -9,12 +9,17 @@ import {
 } from "matchstick-as/assembly/index";
 import {
   _handleRebalanceStartedV4,
+  _handleRebalanceStartedV5,
   _handleRebalanceEnded,
 } from "../src/dtf/handlers";
 import {
   RebalanceStartedWeightsStruct,
   RebalanceStartedPricesStruct,
   RebalanceStartedLimitsStruct,
+  RebalanceStarted1TokensStruct,
+  RebalanceStarted1TokensWeightStruct,
+  RebalanceStarted1TokensPriceStruct,
+  RebalanceStarted1LimitsStruct,
 } from "../generated/templates/DTF/DTF";
 import { BIGINT_ZERO } from "../src/utils/constants";
 import { createTestDTF, createTestToken, createTestRebalance } from "./helpers/mock-entities";
@@ -154,6 +159,140 @@ describe("_handleRebalanceStartedV4", () => {
     );
 
     // Old rebalance (nonce 0) should have availableUntil set to event timestamp
+    let oldId = DTF_ADDR.toHexString() + "-" + BIGINT_ZERO.toHexString();
+    assert.fieldEquals("Rebalance", oldId, "availableUntil", "5000");
+  });
+});
+
+// V5 struct builders
+function buildV5Weight(low: i32, spot: i32, high: i32): RebalanceStarted1TokensWeightStruct {
+  let w = new RebalanceStarted1TokensWeightStruct();
+  w.push(ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(low)));
+  w.push(ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(spot)));
+  w.push(ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(high)));
+  return w;
+}
+
+function buildV5Price(low: i32, high: i32): RebalanceStarted1TokensPriceStruct {
+  let p = new RebalanceStarted1TokensPriceStruct();
+  p.push(ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(low)));
+  p.push(ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(high)));
+  return p;
+}
+
+function buildV5Limits(low: i32, spot: i32, high: i32): RebalanceStarted1LimitsStruct {
+  let l = new RebalanceStarted1LimitsStruct();
+  l.push(ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(low)));
+  l.push(ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(spot)));
+  l.push(ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(high)));
+  return l;
+}
+
+function buildV5Token(
+  token: Address,
+  wLow: i32, wSpot: i32, wHigh: i32,
+  pLow: i32, pHigh: i32,
+  maxAuctionSize: i32,
+  inRebalance: boolean
+): RebalanceStarted1TokensStruct {
+  let t = new RebalanceStarted1TokensStruct();
+  t.push(ethereum.Value.fromAddress(token));
+  t.push(ethereum.Value.fromTuple(buildV5Weight(wLow, wSpot, wHigh)));
+  t.push(ethereum.Value.fromTuple(buildV5Price(pLow, pHigh)));
+  t.push(ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(maxAuctionSize)));
+  t.push(ethereum.Value.fromBoolean(inRebalance));
+  return t;
+}
+
+describe("_handleRebalanceStartedV5", () => {
+  beforeEach(() => {
+    clearStore();
+    createTestDTF(DTF_ADDR);
+  });
+
+  test("creates Rebalance with V5-specific fields", () => {
+    let tokens: RebalanceStarted1TokensStruct[] = [
+      buildV5Token(TOKEN_A, 10, 50, 90, 100, 200, 5000, true),
+      buildV5Token(TOKEN_B, 20, 60, 80, 300, 400, 8000, false),
+    ];
+    let limits = buildV5Limits(1, 5, 10);
+    let event = createRebalanceEvent();
+
+    _handleRebalanceStartedV5(
+      DTF_ADDR,
+      BIGINT_ZERO,
+      1,
+      tokens,
+      limits,
+      BigInt.fromI32(900),   // startedAt
+      BigInt.fromI32(500),   // restrictedUntil
+      BigInt.fromI32(9999),  // availableUntil
+      true,                  // bidsEnabled
+      event
+    );
+
+    let id = DTF_ADDR.toHexString() + "-" + BIGINT_ZERO.toHexString();
+    assert.fieldEquals("Rebalance", id, "startedAt", "900");
+    assert.fieldEquals("Rebalance", id, "bidsEnabled", "true");
+    // maxAuctionSize is an array: [5000, 8000]
+    assert.fieldEquals("Rebalance", id, "maxAuctionSize", "[5000, 8000]");
+    // inRebalance is a boolean array: [true, false]
+    assert.fieldEquals("Rebalance", id, "inRebalance", "[true, false]");
+  });
+
+  test("populates weight and price arrays from nested structs", () => {
+    let tokens: RebalanceStarted1TokensStruct[] = [
+      buildV5Token(TOKEN_A, 10, 50, 90, 100, 200, 5000, true),
+    ];
+    let limits = buildV5Limits(1, 5, 10);
+    let event = createRebalanceEvent();
+
+    _handleRebalanceStartedV5(
+      DTF_ADDR,
+      BIGINT_ZERO,
+      1,
+      tokens,
+      limits,
+      BigInt.fromI32(900),
+      BigInt.fromI32(500),
+      BigInt.fromI32(9999),
+      true,
+      event
+    );
+
+    let id = DTF_ADDR.toHexString() + "-" + BIGINT_ZERO.toHexString();
+    assert.fieldEquals("Rebalance", id, "weightLowLimit", "[10]");
+    assert.fieldEquals("Rebalance", id, "weightSpotLimit", "[50]");
+    assert.fieldEquals("Rebalance", id, "weightHighLimit", "[90]");
+    assert.fieldEquals("Rebalance", id, "priceLowLimit", "[100]");
+    assert.fieldEquals("Rebalance", id, "priceHighLimit", "[200]");
+    assert.fieldEquals("Rebalance", id, "rebalanceLowLimit", "1");
+    assert.fieldEquals("Rebalance", id, "rebalanceSpotLimit", "5");
+    assert.fieldEquals("Rebalance", id, "rebalanceHighLimit", "10");
+  });
+
+  test("nonce > 0 auto-closes previous rebalance", () => {
+    createTestRebalance(DTF_ADDR, BIGINT_ZERO, BigInt.fromI32(999999));
+
+    let tokens: RebalanceStarted1TokensStruct[] = [
+      buildV5Token(TOKEN_A, 10, 50, 90, 100, 200, 5000, true),
+    ];
+    let limits = buildV5Limits(1, 5, 10);
+    let event = createRebalanceEvent(5000);
+
+    _handleRebalanceStartedV5(
+      DTF_ADDR,
+      BigInt.fromI32(1), // nonce 1
+      1,
+      tokens,
+      limits,
+      BigInt.fromI32(900),
+      BigInt.fromI32(500),
+      BigInt.fromI32(9999),
+      true,
+      event
+    );
+
     let oldId = DTF_ADDR.toHexString() + "-" + BIGINT_ZERO.toHexString();
     assert.fieldEquals("Rebalance", oldId, "availableUntil", "5000");
   });

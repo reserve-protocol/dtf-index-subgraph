@@ -3,6 +3,7 @@ import {
   Auction,
   AuctionBid,
   DTF,
+  Governance,
   Rebalance,
   RebalanceAuctionBid,
   RSRBurn,
@@ -21,7 +22,6 @@ import {
   RebalanceStarted1TokensStruct,
   RebalanceStarted1LimitsStruct,
 } from "../../generated/templates/DTF/DTF";
-import { getGovernance } from "../governance/handlers";
 import { removeFromArrayAtIndex } from "../utils/arrays";
 import {
   BIGINT_ONE,
@@ -431,10 +431,13 @@ export function _handleFolioFeePaid(
   hourlySnapshot.hourlyRevenue = hourlySnapshot.hourlyRevenue.plus(amount);
 
   // Check if recipient is governance token to properly track revenue type
-  const isGovernanceToken = dtf.ownerGovernance
-    ? getGovernance(dtf.ownerGovernance as string).token ==
-    recipient.toHexString()
-    : false;
+  let isGovernanceToken = false;
+  if (dtf.ownerGovernance) {
+    let gov = Governance.load(dtf.ownerGovernance as string);
+    if (gov) {
+      isGovernanceToken = gov.token == recipient.toHexString();
+    }
+  }
 
   if (isGovernanceToken) {
     dtf.governanceRevenue = dtf.governanceRevenue.plus(amount);
@@ -536,7 +539,9 @@ export function _handleRoleRevoked(
         : account.toHexString();
 
     let legacy = dtf.legacyAuctionApprovers;
-    legacy.push(gov!);
+    if (legacy.indexOf(gov!) == -1) {
+      legacy.push(gov!);
+    }
     dtf.legacyAuctionApprovers = legacy;
   } else if (role.equals(Bytes.fromHexString(Role.AUCTION_LAUNCHER))) {
     let current = dtf.auctionLaunchers;
@@ -567,7 +572,9 @@ export function _handleRoleRevoked(
         : account.toHexString();
 
     let legacy = dtf.legacyAdmins;
-    legacy.push(gov!);
+    if (legacy.indexOf(gov!) == -1) {
+      legacy.push(gov!);
+    }
     dtf.legacyAdmins = legacy;
   }
 
