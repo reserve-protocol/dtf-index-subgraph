@@ -24,7 +24,7 @@ class Transfer {
   }
 }
 
-class ParsedAuctionBid {
+export class ParsedAuctionBid {
   sellToken: Address;
   sellAmount: BigInt;
   buyToken: Address;

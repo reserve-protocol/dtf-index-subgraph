@@ -28,10 +28,14 @@ import {
   BIGINT_ZERO,
   GovernanceType,
   TradeState,
+  Role
 } from "../utils/constants";
 import {
   createGovernanceTimelock,
   getGovernanceTimelock,
+  getOrCreateRSRBurnGlobal,
+  getOrCreateRSRBurnDailySnapshot,
+  getOrCreateRSRBurnMonthlySnapshot,
   getOrCreateToken,
 } from "../utils/getters";
 import { getAuctionBidsFromReceipt } from "../utils/rebalance";
@@ -41,13 +45,6 @@ import {
   AuctionOpened1AuctionStruct,
   FeeRecipientsSetRecipientsStruct,
 } from "./../../generated/templates/DTF/DTF";
-import { Role, BIGINT_ONE } from "./../utils/constants";
-import {
-  getOrCreateRSRBurnGlobal,
-  getOrCreateRSRBurnDailySnapshot,
-  getOrCreateRSRBurnMonthlySnapshot,
-  getOrCreateToken
-} from "./../utils/getters";
 import {
   getOrCreateTokenDailySnapshot,
   getOrCreateTokenHourlySnapshot,
@@ -436,7 +433,7 @@ export function _handleFolioFeePaid(
   // Check if recipient is governance token to properly track revenue type
   const isGovernanceToken = dtf.ownerGovernance
     ? getGovernance(dtf.ownerGovernance as string).token ==
-      recipient.toHexString()
+    recipient.toHexString()
     : false;
 
   if (isGovernanceToken) {
@@ -804,8 +801,7 @@ export function _handleBid(
   trade.save();
 
   let bid = new AuctionBid(
-    `${dtfAddress.toHexString()}-${tradeId.toString()}-${event.transaction.from.toHexString()}-${
-      event.transaction.hash
+    `${dtfAddress.toHexString()}-${tradeId.toString()}-${event.transaction.from.toHexString()}-${event.transaction.hash
     }-${event.logIndex.toString()}`
   );
   bid.dtf = dtfAddress.toHexString();
