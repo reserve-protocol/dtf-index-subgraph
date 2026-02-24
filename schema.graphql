@@ -813,6 +813,9 @@ type Account @entity(immutable: false) {
   " Locks "
   locks: [Lock!]! @derivedFrom(field: "account")
 
+  " Reward claims "
+  rewardClaims: [RewardClaim!]! @derivedFrom(field: "account")
+
   " Token balances snapshot that this account holds "
   balancesSnapshot: [AccountBalanceDailySnapshot!]!
     @derivedFrom(field: "account")
@@ -1038,6 +1041,8 @@ type Proposal @entity(immutable: false) {
   voteEnd: BigInt!
   "Transaction hash of the proposal being queued"
   queueTxnHash: String
+  "Account that queued the proposal"
+  queueAccount: Account
   "Block number proposal was queued in"
   queueBlock: BigInt
   "Timestamp of block proposal was queued in"
@@ -1046,12 +1051,16 @@ type Proposal @entity(immutable: false) {
   executionETA: BigInt
   "Transaction hash of the proposal execution"
   executionTxnHash: String
+  "Account that executed the proposal"
+  executionAccount: Account
   "Block number proposal was executed in"
   executionBlock: BigInt
   "Timestamp of block proposal was executed in"
   executionTime: BigInt
   "Transaction hash of the proposal cancellation"
   cancellationTxnHash: String
+  "Account that cancelled the proposal"
+  cancellationAccount: Account
   "Block number proposal was canceled in"
   cancellationBlock: BigInt
   "Timestamp of block proposal was canceled in"
@@ -1221,6 +1230,18 @@ type Lock @entity(immutable: false) {
 
   " claimed txn hash "
   claimedTxnHash: String
+}
+
+type RewardClaim @entity(immutable: true) {
+  " { StakingToken Address }-{ Transaction Hash }-{ Log Index } "
+  id: ID!
+  token: StakingToken!
+  account: Account!
+  rewardToken: Token!
+  amount: BigInt!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  txnHash: String!
 }
 
 type Delegate @entity(immutable: false) {

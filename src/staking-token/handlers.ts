@@ -2,6 +2,7 @@ import { Address, BigInt, ethereum } from "@graphprotocol/graph-ts";
 import {
   AccountBalance,
   Lock,
+  RewardClaim,
   StakingTokenRewards,
   UnstakingManager,
 } from "../../generated/schema";
@@ -93,6 +94,31 @@ export function _handleRewardTokenRemoved(
     rewardToken.active = false;
     rewardToken.save();
   }
+}
+
+export function _handleRewardsClaimed(
+  stakingTokenAddress: Address,
+  userAddress: Address,
+  rewardTokenAddress: Address,
+  amount: BigInt,
+  event: ethereum.Event
+): void {
+  let id =
+    stakingTokenAddress.toHexString() +
+    "-" +
+    event.transaction.hash.toHexString() +
+    "-" +
+    event.logIndex.toString();
+
+  let claim = new RewardClaim(id);
+  claim.token = getOrCreateStakingToken(stakingTokenAddress).id;
+  claim.account = getOrCreateAccount(userAddress).id;
+  claim.rewardToken = getOrCreateToken(rewardTokenAddress, TokenType.ASSET).id;
+  claim.amount = amount;
+  claim.blockNumber = event.block.number;
+  claim.timestamp = event.block.timestamp;
+  claim.txnHash = event.transaction.hash.toHexString();
+  claim.save();
 }
 
 export function _handleDelegateChanged(

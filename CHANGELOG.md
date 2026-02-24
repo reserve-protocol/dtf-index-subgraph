@@ -5,6 +5,15 @@ All notable changes to the DTF Index Subgraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.7] - 2026-02-24
+
+### Added
+- `RewardClaim` entity to track `RewardsClaimed` events from StakingVault
+  - New `rewardClaims` derived field on `Account`
+  - Event handler registered in `StakingToken` template
+- `queueAccount`, `executionAccount`, `cancellationAccount` fields on `Proposal` entity
+  - Tracks which account queued, executed, or cancelled a proposal (via `event.transaction.from`)
+
 ## [1.8.6-test1] - 2025-12-18
 
 ### Added

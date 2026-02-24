@@ -25,6 +25,7 @@ import {
   ProposalState,
   VoteChoice,
 } from "../utils/constants";
+import { getOrCreateAccount } from "../account/mappings";
 import { getOrCreateStakingToken } from "../utils/getters";
 
 export const SECONDS_PER_DAY = 60 * 60 * 24;
@@ -227,6 +228,7 @@ export function _handleProposalCanceled(
   const proposal = getProposal(proposalId);
   proposal.state = ProposalState.CANCELED;
   proposal.cancellationTxnHash = event.transaction.hash.toHexString();
+  proposal.cancellationAccount = getOrCreateAccount(event.transaction.from).id;
   proposal.cancellationBlock = event.block.number;
   proposal.cancellationTime = event.block.timestamp;
   proposal.save();
@@ -245,6 +247,7 @@ export function _handleProposalExecuted(
   const proposal = getProposal(proposalId);
   proposal.state = ProposalState.EXECUTED;
   proposal.executionTxnHash = event.transaction.hash.toHexString();
+  proposal.executionAccount = getOrCreateAccount(event.transaction.from).id;
   proposal.executionBlock = event.block.number;
   proposal.executionTime = event.block.timestamp;
   proposal.save();
@@ -275,6 +278,7 @@ export function _handleProposalQueued(
   const proposal = getProposal(proposalId.toString());
   proposal.state = ProposalState.QUEUED;
   proposal.queueTxnHash = event.transaction.hash.toHexString();
+  proposal.queueAccount = getOrCreateAccount(event.transaction.from).id;
   proposal.queueBlock = event.block.number;
   proposal.queueTime = event.block.timestamp;
   proposal.executionETA = eta;
