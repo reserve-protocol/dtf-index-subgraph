@@ -3,6 +3,7 @@ import {
   DelegateChanged,
   DelegateVotesChanged,
   OwnershipTransferred,
+  RewardsClaimed,
   RewardTokenAdded,
   RewardTokenRemoved,
   Transfer,
@@ -19,6 +20,7 @@ import {
   _handleLockClaimed,
   _handleLockCreated,
   _handleOwnershipTransferred,
+  _handleRewardsClaimed,
   _handleRewardTokenAdded,
   _handleRewardTokenRemoved,
 } from "./handlers";
@@ -75,6 +77,16 @@ export function handleOwnershipTransferred(event: OwnershipTransferred): void {
   _handleOwnershipTransferred(
     event.params.previousOwner,
     event.params.newOwner,
+    event
+  );
+}
+
+export function handleRewardsClaimed(event: RewardsClaimed): void {
+  _handleRewardsClaimed(
+    event.address,
+    event.params.user,
+    event.params.rewardToken,
+    event.params.amount,
     event
   );
 }

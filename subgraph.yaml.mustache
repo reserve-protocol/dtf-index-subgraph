@@ -233,6 +233,8 @@ templates:
           handler: handleTransfer
         - event: OwnershipTransferred(indexed address,indexed address)
           handler: handleOwnershipTransferred
+        - event: RewardsClaimed(address,address,uint256)
+          handler: handleRewardsClaimed
       file: ./src/staking-token/mappings.ts
   - name: UnstakingManager
     kind: ethereum/contract
