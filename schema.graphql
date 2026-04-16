@@ -497,6 +497,7 @@ enum TokenType {
   DTF
   VOTE
   ASSET
+  BRIDGED_DTF
 }
 
 type Token @entity(immutable: false) {
