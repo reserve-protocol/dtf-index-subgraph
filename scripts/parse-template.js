@@ -31,6 +31,7 @@ const templateData = {
   rsrBurnStartBlock: networksData[network].RSR.startBlock,
   FolioDeployer: getWithPostfix(networksData[network].FolioDeployer),
   GovernanceDeployer: getWithPostfix(networksData[network].GovernanceDeployer),
+  BridgedDTF: getWithPostfix(networksData[network].BridgedDTF || []),
   grafting: hasGrafting ? graftingConfig : null,
 };
 

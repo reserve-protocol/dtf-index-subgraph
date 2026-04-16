@@ -17,6 +17,7 @@ export namespace TokenType {
   export const DTF = "DTF";
   export const VOTE = "VOTE";
   export const ASSET = "ASSET";
+  export const BRIDGED_DTF = "BRIDGED_DTF";
 }
 
 export namespace TradeState {
