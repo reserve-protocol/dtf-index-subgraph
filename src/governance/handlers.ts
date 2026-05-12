@@ -27,6 +27,7 @@ import {
 } from "../utils/constants";
 import { getOrCreateAccount } from "../account/mappings";
 import { getOrCreateStakingToken } from "../utils/getters";
+import { Governor } from "../../generated/templates/Governance/Governor";
 
 export const SECONDS_PER_DAY = 60 * 60 * 24;
 
@@ -67,7 +68,8 @@ export function createDelegateChange(
   event: ethereum.Event,
   toDelegate: string,
   fromDelegate: string,
-  delegator: string
+  delegator: string,
+  isOptimistic: boolean
 ): DelegateChange {
   const delegateChangeId = `${event.block.timestamp.toI64()}-${event.logIndex}`;
 
@@ -76,6 +78,7 @@ export function createDelegateChange(
   delegateChange.delegate = toDelegate;
   delegateChange.delegator = delegator;
   delegateChange.previousDelegate = fromDelegate;
+  delegateChange.isOptimistic = isOptimistic;
   delegateChange.tokenAddress = event.address.toHexString();
   delegateChange.txnHash = event.transaction.hash.toHexString();
   delegateChange.blockNumber = event.block.number;
@@ -89,7 +92,8 @@ export function createDelegateVotingPowerChange(
   event: ethereum.Event,
   previousBalance: BigInt,
   newBalance: BigInt,
-  delegate: string
+  delegate: string,
+  isOptimistic: boolean
 ): DelegateVotingPowerChange {
   const delegateVotingPwerChangeId = `${event.block.timestamp.toI64()}-${
     event.logIndex
@@ -102,6 +106,7 @@ export function createDelegateVotingPowerChange(
   delegateVPChange.previousBalance = previousBalance;
   delegateVPChange.newBalance = newBalance;
   delegateVPChange.delegate = delegate;
+  delegateVPChange.isOptimistic = isOptimistic;
   delegateVPChange.tokenAddress = event.address.toHexString();
   delegateVPChange.txnHash = event.transaction.hash.toHexString();
   delegateVPChange.blockTimestamp = event.block.timestamp;
@@ -130,19 +135,56 @@ export function getOrCreateDelegate(token: string, address: string): Delegate {
     delegate.token = token;
     delegate.delegatedVotesRaw = BIGINT_ZERO;
     delegate.delegatedVotes = BIGDECIMAL_ZERO;
+    delegate.optimisticDelegatedVotesRaw = BIGINT_ZERO;
+    delegate.optimisticDelegatedVotes = BIGDECIMAL_ZERO;
+    delegate.hasBeenStandardDelegate = false;
+    delegate.hasBeenOptimisticDelegate = false;
     delegate.tokenHoldersRepresentedAmount = 0;
+    delegate.optimisticTokenHoldersRepresentedAmount = 0;
     delegate.numberVotes = 0;
+    delegate.numberOptimisticVotes = 0;
     delegate.save();
-
-    if (address != GENESIS_ADDRESS) {
-      const stakingToken = getOrCreateStakingToken(Address.fromString(token));
-      stakingToken.totalDelegates =
-        stakingToken.totalDelegates.plus(BIGINT_ONE);
-      stakingToken.save();
-    }
   }
 
   return delegate as Delegate;
+}
+
+export function getOrCreateStandardDelegate(
+  token: string,
+  address: string
+): Delegate {
+  const delegate = getOrCreateDelegate(token, address);
+
+  if (!delegate.hasBeenStandardDelegate && address != GENESIS_ADDRESS) {
+    const stakingToken = getOrCreateStakingToken(Address.fromString(token));
+    stakingToken.totalDelegates = stakingToken.totalDelegates.plus(BIGINT_ONE);
+    stakingToken.save();
+
+    delegate.hasBeenStandardDelegate = true;
+    delegate.save();
+  }
+
+  return delegate;
+}
+
+export function getOrCreateOptimisticDelegate(
+  token: string,
+  address: string
+): Delegate {
+  const delegate = getOrCreateDelegate(token, address);
+
+  if (!delegate.hasBeenOptimisticDelegate && address != GENESIS_ADDRESS) {
+    const stakingToken = getOrCreateStakingToken(Address.fromString(token));
+    // totalOptimisticDelegates is nullable in schema for grafting compat but backfilled in getOrCreateStakingToken.
+    stakingToken.totalOptimisticDelegates =
+      stakingToken.totalOptimisticDelegates!.plus(BIGINT_ONE);
+    stakingToken.save();
+
+    delegate.hasBeenOptimisticDelegate = true;
+    delegate.save();
+  }
+
+  return delegate;
 }
 
 export function getOrCreateVoteDailySnapshot(
@@ -161,7 +203,7 @@ export function getOrCreateVoteDailySnapshot(
 }
 
 export function _handleProposalCreated(
-  proposalId: string,
+  proposalId: BigInt,
   proposerAddr: string,
   targets: Address[],
   values: BigInt[],
@@ -173,23 +215,14 @@ export function _handleProposalCreated(
   quorum: BigInt,
   event: ethereum.Event
 ): void {
-  const proposal = getProposal(proposalId);
+  const proposalIdString = proposalId.toString();
+  const proposal = getProposal(proposalIdString);
   const governance = getGovernance(event.address.toHexString());
-  let proposer = getOrCreateDelegate(governance.token, proposerAddr);
+  const contract = Governor.bind(event.address);
+  const isOptimistic = contract.try_isOptimistic(proposalId);
+  const proposalIsOptimistic = !isOptimistic.reverted && isOptimistic.value;
 
-  // Checking if the proposer was a delegate already accounted for, if not we should log an error
-  // since it shouldn't be possible for a delegate to propose anything without first being "created"
-  if (proposer == null) {
-    log.error(
-      "Delegate participant {} not found on ProposalCreated. tx_hash: {}",
-      [proposerAddr, event.transaction.hash.toHexString()]
-    );
-  }
-
-  // Creating it anyway since we will want to account for this event data, even though it should've never happened
-  proposer = getOrCreateDelegate(governance.token, proposerAddr);
-
-  proposal.proposer = proposer.id;
+  proposal.proposer = getOrCreateDelegate(governance.token, proposerAddr).id;
   proposal.txnHash = event.transaction.hash.toHexString();
   proposal.againstDelegateVotes = BIGINT_ZERO;
   proposal.forDelegateVotes = BIGINT_ZERO;
@@ -214,6 +247,14 @@ export function _handleProposalCreated(
       : ProposalState.PENDING;
   proposal.governance = event.address.toHexString();
   proposal.quorumVotes = quorum;
+  proposal.isOptimistic = proposalIsOptimistic;
+
+  if (proposal.isOptimistic) {
+    const vetoThreshold = contract.try_vetoThreshold(proposalId);
+    if (!vetoThreshold.reverted) {
+      proposal.vetoThreshold = vetoThreshold.value;
+    }
+  }
   proposal.save();
 
   // Increment gov proposal count
@@ -325,9 +366,11 @@ export function _handleVoteCast(
 ): void {
   const voteId = voterAddress.concat("-").concat(proposal.id);
   const tokenId = getGovernance(event.address.toHexString()).token;
+  const voter = getOrCreateDelegate(tokenId, voterAddress);
+  const isOptimisticProposal = proposal.isOptimistic;
   const vote = new Vote(voteId);
   vote.proposal = proposal.id;
-  vote.voter = `${tokenId}-${voterAddress}`;
+  vote.voter = voter.id;
   vote.weight = weight;
   vote.reason = reason;
   vote.block = event.block.number;
@@ -359,8 +402,11 @@ export function _handleVoteCast(
   proposal.save();
 
   // Add 1 to participant's proposal voting count
-  const voter = getOrCreateDelegate(tokenId, voterAddress);
-  voter.numberVotes = voter.numberVotes + 1;
+  if (isOptimisticProposal) {
+    voter.numberOptimisticVotes = voter.numberOptimisticVotes + 1;
+  } else {
+    voter.numberVotes = voter.numberVotes + 1;
+  }
   voter.save();
 
   // Take snapshot

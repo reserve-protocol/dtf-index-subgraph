@@ -1,5 +1,5 @@
 import { ERC20 } from "./../../generated/GovernanceDeployer/ERC20";
-import { Address } from "@graphprotocol/graph-ts";
+import { Address, BigInt } from "@graphprotocol/graph-ts";
 
 export const INVALID_TOKEN_DECIMALS = 18;
 export const UNKNOWN_TOKEN_VALUE = "unknown";
@@ -40,4 +40,13 @@ export function fetchTokenDecimals(tokenAddress: Address): i32 {
   }
 
   return INVALID_TOKEN_DECIMALS as i32;
+}
+
+export function fetchTokenTotalSupply(tokenAddress: Address): BigInt {
+  let contract = ERC20.bind(tokenAddress);
+  let result = contract.try_totalSupply();
+  if (!result.reverted) {
+    return result.value;
+  }
+  return BigInt.zero();
 }

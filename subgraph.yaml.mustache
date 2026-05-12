@@ -6,9 +6,6 @@ schema:
 {{#grafting}}
 features:
   - grafting
-graft:
-  base: {{base}}
-  block: {{block}}
 {{/grafting}}
 dataSources:
   - kind: ethereum
@@ -255,6 +252,10 @@ templates:
           handler: handleDelegateChanged
         - event: DelegateVotesChanged(indexed address,uint256,uint256)
           handler: handleDelegateVotesChanged
+        - event: OptimisticDelegateChanged(indexed address,indexed address,indexed address)
+          handler: handleOptimisticDelegateChanged
+        - event: OptimisticDelegateVotesChanged(indexed address,uint256,uint256)
+          handler: handleOptimisticDelegateVotesChanged
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
         - event: OwnershipTransferred(indexed address,indexed address)
@@ -325,6 +326,10 @@ templates:
           handler: handleProposalThresholdSet
         - event: QuorumNumeratorUpdated(uint256,uint256)
           handler: handleQuorumNumeratorUpdated
+        - event: OptimisticParamsUpdated((uint48,uint32,uint256))
+          handler: handleOptimisticParamsUpdated
+        - event: ProposalThrottleUpdated(uint256)
+          handler: handleProposalThrottleUpdated
         - event: VoteCast(indexed address,uint256,uint8,uint256,string)
           handler: handleVoteCast
         - event: VotingDelaySet(uint256,uint256)

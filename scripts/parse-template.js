@@ -20,11 +20,12 @@ if (!networksData[network]) {
   process.exit(1);
 }
 
-// Prepare grafting data (only include if base is not empty)
+// Grafting: networks.json holds <name>/<version> + block for Goldsky's --graft-from CLI flag.
+// The manifest only declares `features: - grafting` (Goldsky's validator requires it);
+// the actual graft target/block are passed via CLI in deploy.js.
 const graftingConfig = networksData[network].grafting;
 const hasGrafting = graftingConfig && graftingConfig.base && graftingConfig.base !== "";
 
-// Prepare data for the specific network
 const templateData = {
   network: network,
   rsrAddress: networksData[network].RSR.address,
@@ -32,7 +33,7 @@ const templateData = {
   FolioDeployer: getWithPostfix(networksData[network].FolioDeployer),
   GovernanceDeployer: getWithPostfix(networksData[network].GovernanceDeployer),
   BridgedDTF: getWithPostfix(networksData[network].BridgedDTF || []),
-  grafting: hasGrafting ? graftingConfig : null,
+  grafting: hasGrafting,
 };
 
 const output = mustache.render(template, templateData);

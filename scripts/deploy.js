@@ -47,6 +47,11 @@ if (versionIndex !== -1 && versionIndex !== args.length - 1) {
 
 const subgraphName = `dtf-index-${network}`;
 
+// Read grafting config from networks.json to pass --graft-from to Goldsky
+const networksJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'networks.json'), 'utf8'));
+const graftingConfig = networksJson[network] && networksJson[network].grafting;
+const graftFrom = graftingConfig && graftingConfig.base ? graftingConfig.base : null;
+
 // Display deployment information
 console.log(`${colors.cyan}${colors.bright}========================================${colors.reset}`);
 console.log(`${colors.blue}${colors.bright}Deploying Subgraph to Goldsky${colors.reset}`);
@@ -54,6 +59,9 @@ console.log(`${colors.cyan}========================================${colors.rese
 console.log(`${colors.yellow}Network:${colors.reset} ${network}`);
 console.log(`${colors.yellow}Version:${colors.reset} ${version}`);
 console.log(`${colors.yellow}Subgraph:${colors.reset} ${subgraphName}/${version}`);
+if (graftFrom) {
+  console.log(`${colors.yellow}Graft from:${colors.reset} ${graftFrom} @ block ${graftingConfig.block}`);
+}
 console.log(`${colors.cyan}========================================${colors.reset}\n`);
 
 // Execute command with live output
@@ -101,8 +109,15 @@ async function deploy() {
     await executeCommand('npm', ['run', 'build'], 'Building subgraph');
 
     // Step 3: Deploy to Goldsky
-    await executeCommand('goldsky', ['subgraph', 'deploy', `${subgraphName}/${version}`, '--path', '.'],
-      `Deploying to Goldsky as ${subgraphName}/${version}`);
+    const deployArgs = ['subgraph', 'deploy', `${subgraphName}/${version}`, '--path', '.'];
+    if (graftFrom) {
+      deployArgs.push('--graft-from', graftFrom);
+      if (graftingConfig.block) {
+        deployArgs.push('--start-block', String(graftingConfig.block));
+      }
+    }
+    await executeCommand('goldsky', deployArgs,
+      `Deploying to Goldsky as ${subgraphName}/${version}${graftFrom ? ` (graft from ${graftFrom} @ block ${graftingConfig.block})` : ''}`);
 
     console.log(`${colors.green}${colors.bright}========================================${colors.reset}`);
     console.log(`${colors.green}${colors.bright}✓ Deployment completed successfully!${colors.reset}`);

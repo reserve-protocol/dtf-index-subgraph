@@ -2,7 +2,6 @@ import { Address, BigInt } from "@graphprotocol/graph-ts";
 import { DTF, UnstakingManager } from "../../generated/schema";
 import {
   DTF as DTFTemplate,
-  StakingToken as StakingTokenTemplate,
   UnstakingManager as UnstakingManagerTemplate,
 } from "../../generated/templates";
 import { StakingVault } from "../../generated/templates/StakingToken/StakingVault";
@@ -89,13 +88,13 @@ export function _handleDeployedGovernedStakingToken(
   governor: Address,
   timelock: Address
 ): void {
+  // Template subscription is now handled inside getOrCreateStakingToken so it works
+  // for both fresh deploys and grafted entities.
   let stakingToken = getOrCreateStakingToken(stTokenAddress);
 
   stakingToken.underlying = getOrCreateToken(underlyingAddress).id;
   stakingToken.governance = getOrCreateGovernance(governor, timelock).id;
   stakingToken.save();
-
-  StakingTokenTemplate.create(stTokenAddress);
 
   // Track unstaking manager events
   let contract = StakingVault.bind(stTokenAddress);

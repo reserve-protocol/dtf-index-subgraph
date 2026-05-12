@@ -61,6 +61,10 @@ export namespace Role {
     "4ff6ae4d6a29e79ca45c6441bdc89b93878ac6118485b33c8baa3749fc3cb130";
   export const AUCTION_LAUNCHER =
     "0x13ff1b2625181b311f257c723b5e6d366eb318b212d9dd694c48fcf227659df5";
+  export const CANCELLER =
+    "0xfd643c72710c63c0180259aba6b2d05451e3591a24e58b62239378085726f783";
+  export const OPTIMISTIC_PROPOSER =
+    "0x26f49d08685d9cdd4951a7470bc8fbe9dd0f00419c1a44c1b89f845867ae12e0";
   // @deprecated role (v4.0)
   export const AUCTION_APPROVER =
     "0x2be23b023f3eee571adc019cdcf3f0bcf041151e6ff405a4bf0c4bfc6faea8c9";

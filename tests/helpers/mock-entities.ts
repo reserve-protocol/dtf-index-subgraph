@@ -170,6 +170,10 @@ export function createTestGovernance(
   stakingToken.currentDelegates = BIGINT_ZERO;
   stakingToken.delegatedVotesRaw = BIGINT_ZERO;
   stakingToken.delegatedVotes = BIGINT_ZERO.toBigDecimal();
+  stakingToken.currentOptimisticDelegates = BIGINT_ZERO;
+  stakingToken.totalOptimisticDelegates = BIGINT_ZERO;
+  stakingToken.optimisticDelegatedVotesRaw = BIGINT_ZERO;
+  stakingToken.optimisticDelegatedVotes = BIGINT_ZERO.toBigDecimal();
   stakingToken.legacyGovernance = [];
   stakingToken.save();
 

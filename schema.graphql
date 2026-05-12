@@ -838,6 +838,9 @@ type AccountBalance @entity(immutable: false) {
   " Delegate, used for stTokens "
   delegate: Delegate
 
+  " Optimistic delegate, used for optimistic governance voting power "
+  optimisticDelegate: Delegate
+
   " Block number in which the balance was last modified "
   blockNumber: BigInt
 
@@ -942,6 +945,27 @@ type Governance @entity(immutable: false) {
   "Quorum fraction denominator value. (OZ: quorum = totalSupply * numerator / denominator)"
   quorumDenominator: BigInt
 
+  "Whether this governance contract supports optimistic proposals"
+  isOptimistic: Boolean
+
+  "Optimistic veto delay in seconds"
+  optimisticVetoDelay: BigInt
+
+  "Optimistic veto period in seconds"
+  optimisticVetoPeriod: BigInt
+
+  "Optimistic veto threshold as a D18 fraction"
+  optimisticVetoThreshold: BigInt
+
+  "Optimistic proposal throttle capacity per account"
+  optimisticProposalThrottleCapacity: BigInt
+
+  "Optimistic selector registry address"
+  optimisticSelectorRegistry: Bytes
+
+  "Current optimistic proposers from the governance timelock"
+  optimisticProposers: [String!]
+
   "Total number of proposals created"
   proposalCount: BigInt!
   "Number of proposals currently queued for execution"
@@ -953,6 +977,7 @@ type Governance @entity(immutable: false) {
 
   " Proposal list "
   proposals: [Proposal!]! @derivedFrom(field: "governance")
+
 }
 
 type GovernanceTimelock @entity(immutable: false) {
@@ -962,8 +987,10 @@ type GovernanceTimelock @entity(immutable: false) {
   governance: Governance
   "Number of blocks that are required to pass from the time a proposal reaches quorum until its voting period ends"
   executionDelay: BigInt!
-  "Guardians"
+  "Guardians (timelock CANCELLER_ROLE members)"
   guardians: [String!]!
+  "Optimistic proposers"
+  optimisticProposers: [String!]
   " governed entity stakingToken or DTF "
   entity: String!
   " type could be staking token trading or owner or owner of staking token "
@@ -1004,6 +1031,10 @@ type Proposal @entity(immutable: false) {
   proposer: Delegate!
   "State of the proposal"
   state: ProposalState!
+  "Whether this proposal uses optimistic governance semantics"
+  isOptimistic: Boolean
+  "Proposal-specific optimistic veto threshold as a D18 fraction"
+  vetoThreshold: BigInt
   "The number of votes for a proposal to succeed."
   quorumVotes: BigInt!
   "Number of tokenholders at start of voting"
@@ -1152,6 +1183,22 @@ type StakingToken @entity(immutable: false) {
   "Total number of votes delegated expressed as a BigDecimal normalized value for the token"
   delegatedVotes: BigDecimal!
 
+  "Total number of optimistic delegates participating currently"
+  # TODO: add it as required when we push a non-grafting version
+  currentOptimisticDelegates: BigInt
+
+  "Total number of optimistic delegates that held delegated votes"
+  # TODO: add it as required when we push a non-grafting version
+  totalOptimisticDelegates: BigInt
+
+  "Total optimistic votes delegated expressed in the smallest unit of the token"
+  # TODO: add it as required when we push a non-grafting version
+  optimisticDelegatedVotesRaw: BigInt
+
+  "Total optimistic votes delegated expressed as a BigDecimal normalized value for the token"
+  # TODO: add it as required when we push a non-grafting version
+  optimisticDelegatedVotes: BigDecimal
+
   " Delegates "
   delegates: [Delegate!]! @derivedFrom(field: "token")
 
@@ -1163,6 +1210,10 @@ type StakingToken @entity(immutable: false) {
 
   " Rewards "
   rewards: [StakingTokenRewards!]! @derivedFrom(field: "stToken")
+
+  "Internal: true once StakingToken template is subscribed. Nullable for grafting compat (grafted entities have null and trigger lazy subscription on first access)."
+  # TODO: add it as required when we push a non-grafting version
+  templateInstantiated: Boolean
 }
 
 type StakingTokenRewards @entity(immutable: false) {
@@ -1261,17 +1312,45 @@ type Delegate @entity(immutable: false) {
   "Amount of votes delegated to this delegate to be used on proposal votings expressed as a BigDecimal normalized value"
   delegatedVotes: BigDecimal!
 
+  "Amount of optimistic votes delegated in the smallest unit of the token"
+  # TODO: add it as required when we push a non-grafting version
+  optimisticDelegatedVotesRaw: BigInt
+
+  "Amount of optimistic votes delegated as a BigDecimal normalized value"
+  # TODO: add it as required when we push a non-grafting version
+  optimisticDelegatedVotes: BigDecimal
+
+  "Whether this delegate has been counted in standard delegate totals"
+  # TODO: add it as required when we push a non-grafting version
+  hasBeenStandardDelegate: Boolean
+
+  "Whether this delegate has been counted in optimistic delegate totals"
+  # TODO: add it as required when we push a non-grafting version
+  hasBeenOptimisticDelegate: Boolean
+
   "Total token holders that this delegate represents"
   tokenHoldersRepresentedAmount: Int!
 
+  "Total token holders that this optimistic delegate represents"
+  # TODO: add it as required when we push a non-grafting version
+  optimisticTokenHoldersRepresentedAmount: Int
+
   "Token holders that this delegate represents"
   tokenHoldersRepresented: [AccountBalance!]! @derivedFrom(field: "delegate")
+
+  "Token holders that this optimistic delegate represents"
+  optimisticTokenHoldersRepresented: [AccountBalance!]!
+    @derivedFrom(field: "optimisticDelegate")
 
   "Votes that a delegate has made in different proposals"
   votes: [Vote!]! @derivedFrom(field: "voter")
 
   "Number of proposals voted on"
   numberVotes: Int!
+
+  "Number of optimistic proposals voted on"
+  # TODO: add it as required when we push a non-grafting version
+  numberOptimisticVotes: Int
 
   "Proposals that the delegate has created"
   proposals: [Proposal!]! @derivedFrom(field: "proposer")
@@ -1288,6 +1367,8 @@ type DelegateChange @entity(immutable: true) {
   delegate: String!
   "Address for previous delegate"
   previousDelegate: String!
+  "Whether this is an optimistic delegation change"
+  isOptimistic: Boolean
   "Block time change happened"
   blockTimestamp: BigInt!
   "Transaction hash of the delegate change event"
@@ -1309,6 +1390,8 @@ type DelegateVotingPowerChange @entity(immutable: true) {
   previousBalance: BigInt!
   "New voting power of delegate"
   newBalance: BigInt!
+  "Whether this is an optimistic voting power change"
+  isOptimistic: Boolean
   "Block time change happened"
   blockTimestamp: BigInt!
   "Transaction hash of the voting power change"

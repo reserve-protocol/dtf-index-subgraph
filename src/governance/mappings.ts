@@ -1,4 +1,4 @@
-import { Address, BigInt, log } from "@graphprotocol/graph-ts";
+import { Address, BigInt, Bytes, log } from "@graphprotocol/graph-ts";
 import {
   GovernanceTimelock,
   Proposal,
@@ -25,7 +25,7 @@ import {
   getProposal,
 } from "../governance/handlers";
 import { removeFromArrayAtIndex } from "../utils/arrays";
-import { BIGINT_ONE, GovernanceType, ProposalState } from "../utils/constants";
+import { BIGINT_ONE, BIGINT_ZERO, ProposalState, Role } from "../utils/constants";
 import {
   Governor,
   ProposalCanceled,
@@ -33,16 +33,14 @@ import {
   ProposalExecuted,
   ProposalQueued,
   ProposalThresholdSet,
+  OptimisticParamsUpdated,
+  ProposalThrottleUpdated,
   QuorumNumeratorUpdated,
   VoteCast,
   VotingDelaySet,
   VotingPeriodSet,
 } from "./../../generated/templates/Governance/Governor";
-import {
-  getOrCreateGovernance,
-  getOrCreateStakingToken,
-} from "../utils/getters";
-import { getDTF } from "../dtf/handlers";
+import { attachGovernanceToTimelock } from "../utils/getters";
 
 // ProposalCanceled(proposalId)
 export function handleProposalCanceled(event: ProposalCanceled): void {
@@ -60,7 +58,7 @@ export function handleProposalCreated(event: ProposalCreated): void {
   // e.g.  { proposalId: event.params.proposalId, proposer: event.params.proposer, ...}
   // but graph wasm compilation breaks for unknown reasons
   _handleProposalCreated(
-    event.params.proposalId.toString(),
+    event.params.proposalId,
     event.params.proposer.toHexString(),
     event.params.targets,
     event.params.values,
@@ -165,6 +163,27 @@ export function handleQuorumNumeratorUpdated(
   governance.save();
 }
 
+export function handleOptimisticParamsUpdated(
+  event: OptimisticParamsUpdated
+): void {
+  const governance = getGovernance(event.address.toHexString());
+  governance.isOptimistic = true;
+  governance.optimisticVetoDelay = event.params.optimisticParams.vetoDelay;
+  governance.optimisticVetoPeriod = event.params.optimisticParams.vetoPeriod;
+  governance.optimisticVetoThreshold =
+    event.params.optimisticParams.vetoThreshold;
+  governance.save();
+}
+
+export function handleProposalThrottleUpdated(
+  event: ProposalThrottleUpdated
+): void {
+  const governance = getGovernance(event.address.toHexString());
+  governance.isOptimistic = true;
+  governance.optimisticProposalThrottleCapacity = event.params.throttleCapacity;
+  governance.save();
+}
+
 function getLatestProposalValues(proposalId: string): Proposal {
   const proposal = getProposal(proposalId);
   const governance = getGovernance(proposal.governance);
@@ -180,7 +199,15 @@ function getLatestProposalValues(proposalId: string): Proposal {
     );
 
     proposal.tokenHoldersAtStart = token.currentHolderCount;
-    proposal.delegatesAtStart = stakingToken.currentDelegates;
+
+    if (proposal.isOptimistic) {
+      // currentOptimisticDelegates is nullable in schema for grafting compat; fall back to zero
+      // for entities that predate optimistic governance.
+      const optDelegates = stakingToken.currentOptimisticDelegates;
+      proposal.delegatesAtStart = optDelegates !== null ? optDelegates : BIGINT_ZERO;
+    } else {
+      proposal.delegatesAtStart = stakingToken.currentDelegates;
+    }
   }
   return proposal;
 }
@@ -214,36 +241,31 @@ export function handleVotingPeriodSet(event: VotingPeriodSet): void {
 export function handleTimelockRoleGranted(event: RoleGranted): void {
   let timelock = GovernanceTimelock.load(event.address.toHexString())!;
   let timelockContract = Timelock.bind(event.address);
-  // TODO: Only listens for guardian role
   let guardianRole = timelockContract.CANCELLER_ROLE();
   let proposerRole = timelockContract.PROPOSER_ROLE();
+  let optimisticProposerRole = Bytes.fromHexString(Role.OPTIMISTIC_PROPOSER);
+  let account = event.params.account.toHexString();
 
   if (event.params.role.equals(guardianRole)) {
-    let current = timelock.get("guardians")!.toStringArray();
-    current.push(event.params.account.toHexString());
-    timelock.guardians = current;
+    timelock.guardians = addUniqueString(timelock.guardians, account);
     timelock.save();
-  } else if (event.params.role.equals(proposerRole)) {
-    // Track Governor
-    let governance = getOrCreateGovernance(event.params.account, event.address);
-    timelock.governance = governance.id;
+  } else if (event.params.role.equals(optimisticProposerRole)) {
+    timelock.optimisticProposers = addUniqueString(
+      getNullableStringArray(timelock.optimisticProposers),
+      account
+    );
     timelock.save();
 
-    if (timelock.type == GovernanceType.VOTE_LOCKING) {
-      let stakingToken = getOrCreateStakingToken(
-        Address.fromString(timelock.entity)
+    if (timelock.governance !== null) {
+      const governance = getGovernance(timelock.governance!);
+      governance.optimisticProposers = getNullableStringArray(
+        timelock.optimisticProposers
       );
-      stakingToken.governance = governance.id;
-      stakingToken.save();
-    } else {
-      let dtf = getDTF(Address.fromString(timelock.entity));
-      if (timelock.type == GovernanceType.OWNER) {
-        dtf.ownerGovernance = governance.id;
-      } else {
-        dtf.tradingGovernance = governance.id;
-      }
-      dtf.save();
+      governance.save();
     }
+  } else if (event.params.role.equals(proposerRole)) {
+    // Track Governor
+    attachGovernanceToTimelock(timelock, event.params.account);
   }
 }
 
@@ -252,16 +274,51 @@ export function handleTimelockRoleRevoked(event: RoleRevoked): void {
 
   let timelockContract = Timelock.bind(event.address);
   let guardianRole = timelockContract.CANCELLER_ROLE();
+  let optimisticProposerRole = Bytes.fromHexString(Role.OPTIMISTIC_PROPOSER);
+  let account = event.params.account.toHexString();
 
   if (event.params.role.equals(guardianRole)) {
     let current = timelock.guardians;
-    let index = current.indexOf(event.params.account.toHexString());
+    let index = current.indexOf(account);
 
     if (index != -1) {
       timelock.guardians = removeFromArrayAtIndex(current, index);
+    }
+
+    timelock.save();
+  } else if (event.params.role.equals(optimisticProposerRole)) {
+    let optimisticProposers = getNullableStringArray(
+      timelock.optimisticProposers
+    );
+    let index = optimisticProposers.indexOf(account);
+
+    if (index != -1) {
+      timelock.optimisticProposers = removeFromArrayAtIndex(
+        optimisticProposers,
+        index
+      );
       timelock.save();
+
+      if (timelock.governance !== null) {
+        const governance = getGovernance(timelock.governance!);
+        governance.optimisticProposers = getNullableStringArray(
+          timelock.optimisticProposers
+        );
+        governance.save();
+      }
     }
   }
+}
+
+function getNullableStringArray(value: Array<string> | null): Array<string> {
+  return value !== null ? value : new Array<string>();
+}
+
+function addUniqueString(value: Array<string>, item: string): Array<string> {
+  if (value.indexOf(item) == -1) {
+    value.push(item);
+  }
+  return value;
 }
 
 function getQuorumFromContract(

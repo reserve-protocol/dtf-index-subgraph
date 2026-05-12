@@ -351,6 +351,93 @@
   },
   {
     "type": "function",
+    "name": "isOptimistic",
+    "inputs": [
+      {
+        "name": "proposalId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "optimisticParams",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "vetoDelay",
+        "type": "uint48",
+        "internalType": "uint48"
+      },
+      {
+        "name": "vetoPeriod",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "vetoThreshold",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "proposalThrottleCapacity",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "selectorRegistry",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "vetoThreshold",
+    "inputs": [
+      {
+        "name": "proposalId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getVotes",
     "inputs": [
       {
@@ -1117,6 +1204,68 @@
         "type": "uint64",
         "indexed": false,
         "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OptimisticParamsUpdated",
+    "inputs": [
+      {
+        "name": "optimisticParams",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct IReserveOptimisticGovernor.OptimisticGovernanceParams",
+        "components": [
+          {
+            "name": "vetoDelay",
+            "type": "uint48",
+            "internalType": "uint48"
+          },
+          {
+            "name": "vetoPeriod",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "vetoThreshold",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OptimisticProposalCreated",
+    "inputs": [
+      {
+        "name": "proposalId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "vetoThreshold",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ProposalThrottleUpdated",
+    "inputs": [
+      {
+        "name": "throttleCapacity",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false

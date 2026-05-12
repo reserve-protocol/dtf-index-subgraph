@@ -1,5 +1,6 @@
-import { Address, BigDecimal, BigInt, ethereum } from "@graphprotocol/graph-ts";
+import { Address, BigDecimal, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
 import {
+  DTF,
   Governance,
   GovernanceTimelock,
   StakingToken,
@@ -12,18 +13,21 @@ import {
 } from "../../generated/schema";
 import {
   Governance as GovernanceTemplate,
+  StakingToken as StakingTokenTemplate,
   Timelock as TimelockTemplate,
 } from "../../generated/templates";
 import { Governor } from "../../generated/templates/Governance/Governor";
 import { Timelock } from "../../generated/templates/Governance/Timelock";
 import {
   BIGINT_ZERO,
+  GovernanceType,
+  Role,
   TokenType,
   SECONDS_PER_DAY,
   SECONDS_PER_HOUR,
   SECONDS_PER_MONTH
 } from "./constants";
-import { fetchTokenDecimals, fetchTokenName, fetchTokenSymbol } from "./tokens";
+import { fetchTokenDecimals, fetchTokenName, fetchTokenSymbol, fetchTokenTotalSupply } from "./tokens";
 
 export function getOrCreateToken(
   tokenAddress: Address,
@@ -57,13 +61,59 @@ export function getOrCreateStakingToken(tokenAddress: Address): StakingToken {
 
   if (!stakingToken) {
     stakingToken = new StakingToken(tokenAddress.toHexString());
-    stakingToken.token = getOrCreateToken(tokenAddress, TokenType.VOTE).id;
+    const voteToken = getOrCreateToken(tokenAddress, TokenType.VOTE);
+    // Seed totalSupply from on-chain — Transfer history before this point
+    // (e.g. the initial mint) won't be replayed, and is only relevant for staking
+    // tokens (vote-locks) where supply correctness matters for governance metrics.
+    voteToken.totalSupply = fetchTokenTotalSupply(tokenAddress);
+    voteToken.save();
+    stakingToken.token = voteToken.id;
     stakingToken.totalDelegates = BIGINT_ZERO;
     stakingToken.currentDelegates = BIGINT_ZERO;
     stakingToken.delegatedVotesRaw = BIGINT_ZERO;
     stakingToken.delegatedVotes = BigDecimal.fromString("0");
+    stakingToken.currentOptimisticDelegates = BIGINT_ZERO;
+    stakingToken.totalOptimisticDelegates = BIGINT_ZERO;
+    stakingToken.optimisticDelegatedVotesRaw = BIGINT_ZERO;
+    stakingToken.optimisticDelegatedVotes = BigDecimal.fromString("0");
     stakingToken.legacyGovernance = [];
+    stakingToken.templateInstantiated = true;
     stakingToken.save();
+
+    StakingTokenTemplate.create(tokenAddress);
+  } else {
+    // Backfill optimistic fields for grafted entities (predate optimistic governance).
+    // TODO: remove these backfills when we push a non-grafting version.
+    if (stakingToken.currentOptimisticDelegates === null) {
+      stakingToken.currentOptimisticDelegates = BIGINT_ZERO;
+    }
+    if (stakingToken.totalOptimisticDelegates === null) {
+      stakingToken.totalOptimisticDelegates = BIGINT_ZERO;
+    }
+    if (stakingToken.optimisticDelegatedVotesRaw === null) {
+      stakingToken.optimisticDelegatedVotesRaw = BIGINT_ZERO;
+    }
+    if (stakingToken.optimisticDelegatedVotes === null) {
+      stakingToken.optimisticDelegatedVotes = BigDecimal.fromString("0");
+    }
+
+    // Resilience: if this entity was grafted from a base subgraph, its StakingToken
+    // template subscription was lost in the graft. Re-instantiate the template here.
+    // Safe because we only reach this branch through code paths that have already
+    // validated the entity (e.g. via getOrCreateGovernance reading governance.token()
+    // from the on-chain Governor contract).
+    if (!stakingToken.templateInstantiated) {
+      StakingTokenTemplate.create(tokenAddress);
+      stakingToken.templateInstantiated = true;
+      // Also seed totalSupply from on-chain — the Token may have been created
+      // earlier as a stub (totalSupply=0) and the pre-subscription mints aren't replayed.
+      const voteToken = Token.load(tokenAddress.toHexString());
+      if (voteToken) {
+        voteToken.totalSupply = fetchTokenTotalSupply(tokenAddress);
+        voteToken.save();
+      }
+      stakingToken.save();
+    }
   }
 
   return stakingToken as StakingToken;
@@ -86,12 +136,36 @@ export function createGovernanceTimelock(
     return;
   }
 
+  const cancellerRole = timelockContract.try_CANCELLER_ROLE();
+
   let timelock = new GovernanceTimelock(timelockAddress.toHexString());
-  timelock.guardians = [];
+  timelock.guardians = cancellerRole.reverted
+    ? []
+    : getRoleMembers(timelockContract, cancellerRole.value);
+  timelock.optimisticProposers = getRoleMembers(
+    timelockContract,
+    Bytes.fromHexString(Role.OPTIMISTIC_PROPOSER)
+  );
   timelock.entity = entity;
   timelock.type = entityType;
   timelock.executionDelay = delay.value;
   timelock.save();
+
+  const proposerRole = timelockContract.try_PROPOSER_ROLE();
+  if (!proposerRole.reverted) {
+    const governorResult = timelockContract.try_getRoleMember(
+      proposerRole.value,
+      BIGINT_ZERO
+    );
+
+    if (!governorResult.reverted) {
+      const governorAddress = governorResult.value;
+      const governorContract = Governor.bind(governorAddress);
+      if (!governorContract.try_token().reverted) {
+        attachGovernanceToTimelock(timelock, governorAddress);
+      }
+    }
+  }
 
   // Track timelock events
   TimelockTemplate.create(timelockAddress);
@@ -103,13 +177,45 @@ export function getGovernanceTimelock(
   return GovernanceTimelock.load(timelockAddress.toHexString());
 }
 
+export function attachGovernanceToTimelock(
+  timelock: GovernanceTimelock,
+  governorAddress: Address
+): Governance {
+  const governance = getOrCreateGovernance(
+    governorAddress,
+    Address.fromString(timelock.id)
+  );
+  timelock.governance = governance.id;
+  timelock.save();
+
+  if (timelock.type == GovernanceType.VOTE_LOCKING) {
+    const stakingToken = getOrCreateStakingToken(
+      Address.fromString(timelock.entity)
+    );
+    stakingToken.governance = governance.id;
+    stakingToken.save();
+  } else {
+    const dtf = DTF.load(timelock.entity);
+    if (dtf) {
+      if (timelock.type == GovernanceType.OWNER) {
+        dtf.ownerGovernance = governance.id;
+      } else {
+        dtf.tradingGovernance = governance.id;
+      }
+      dtf.save();
+    }
+  }
+
+  return governance;
+}
+
 export function getOrCreateGovernance(
   governanceAddress: Address,
   timelockAddress: Address
 ): Governance {
   let governance = Governance.load(governanceAddress.toHexString());
   if (governance) {
-    return governance;
+    return governance as Governance;
   }
 
   governance = new Governance(governanceAddress.toHexString());
@@ -131,12 +237,70 @@ export function getOrCreateGovernance(
   governance.proposalsExecuted = BIGINT_ZERO;
   governance.proposalsCanceled = BIGINT_ZERO;
   governance.timelock = timelockAddress.toHexString();
+  governance.isOptimistic = false;
+  governance.optimisticProposers = [];
+
+  const optimisticParams = contract.try_optimisticParams();
+  if (!optimisticParams.reverted) {
+    governance.isOptimistic = true;
+    governance.optimisticVetoDelay = optimisticParams.value.getVetoDelay();
+    governance.optimisticVetoPeriod = optimisticParams.value.getVetoPeriod();
+    governance.optimisticVetoThreshold = optimisticParams.value.getVetoThreshold();
+
+    const proposalThrottle = contract.try_proposalThrottleCapacity();
+    if (!proposalThrottle.reverted) {
+      governance.optimisticProposalThrottleCapacity = proposalThrottle.value;
+    }
+
+    const selectorRegistry = contract.try_selectorRegistry();
+    if (!selectorRegistry.reverted) {
+      governance.optimisticSelectorRegistry = selectorRegistry.value;
+    }
+
+    const timelock = GovernanceTimelock.load(timelockAddress.toHexString());
+    if (timelock) {
+      const timelockContract = Timelock.bind(timelockAddress);
+      const optimisticProposers = getRoleMembers(
+        timelockContract,
+        Bytes.fromHexString(Role.OPTIMISTIC_PROPOSER)
+      );
+      const cancellerRole = timelockContract.try_CANCELLER_ROLE();
+
+      governance.optimisticProposers = optimisticProposers;
+      timelock.optimisticProposers = optimisticProposers;
+      timelock.guardians = cancellerRole.reverted
+        ? []
+        : getRoleMembers(timelockContract, cancellerRole.value);
+      timelock.save();
+    }
+  }
   governance.save();
 
   // Track governor events
   GovernanceTemplate.create(governanceAddress);
 
   return governance as Governance;
+}
+
+function getRoleMembers(
+  timelock: Timelock,
+  role: Bytes
+): Array<string> {
+  const members = new Array<string>();
+  const count = timelock.try_getRoleMemberCount(role);
+
+  if (count.reverted) {
+    return members;
+  }
+
+  for (let i = BIGINT_ZERO; i.lt(count.value); i = i.plus(BigInt.fromI32(1))) {
+    const member = timelock.try_getRoleMember(role, i);
+    if (!member.reverted) {
+      members.push(member.value.toHexString());
+    }
+  }
+
+  return members;
 }
 
 // RSR Burn helper functions
