@@ -1,6 +1,7 @@
 import { Address, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
 
 import {
+  DTF,
   Token,
   TokenDailySnapshot,
   TokenHourlySnapshot,
@@ -147,6 +148,9 @@ function handleBurnEvent(
     monthlySnapshot.monthlyTotalSupply = token.totalSupply;
     monthlySnapshot.monthlyBurnAmount = monthlySnapshot.monthlyBurnAmount.plus(amount);
     monthlySnapshot.monthlyBurnCount += 1;
+    monthlySnapshot.monthlyEventCount += 1;
+    monthlySnapshot.currentHolderCount = token.currentHolderCount;
+    monthlySnapshot.cumulativeBurnAmount = token.totalBurned;
     monthlySnapshot.blockNumber = event.block.number;
     monthlySnapshot.timestamp = event.block.timestamp;
 
@@ -277,7 +281,13 @@ function handleMintEvent(
     monthlySnapshot.monthlyTotalSupply = token.totalSupply;
     monthlySnapshot.monthlyMintAmount = monthlySnapshot.monthlyMintAmount.plus(amount);
     monthlySnapshot.monthlyMintCount += 1;
+    monthlySnapshot.monthlyEventCount += 1;
     monthlySnapshot.cumulativeMintAmount = token.totalMinted;
+    monthlySnapshot.currentHolderCount = token.currentHolderCount;
+    if (isReceiverFirstHold) {
+      monthlySnapshot.cumulativeHolderCount =
+        monthlySnapshot.cumulativeHolderCount.plus(BIGINT_ONE);
+    }
     monthlySnapshot.blockNumber = event.block.number;
     monthlySnapshot.timestamp = event.block.timestamp;
 
@@ -395,9 +405,21 @@ function handleTransferEvent(
     hourlySnapshot.blockNumber = event.block.number;
     hourlySnapshot.timestamp = event.block.timestamp;
 
+    let monthlySnapshot = getOrCreateTokenMonthlySnapshot(token, event.block);
+    monthlySnapshot.currentHolderCount = token.currentHolderCount;
+    monthlySnapshot.cumulativeHolderCount =
+      monthlySnapshot.cumulativeHolderCount.plus(toAddressIsNewHolderNum);
+    monthlySnapshot.monthlyEventCount += 1;
+    monthlySnapshot.monthlyTransferCount += 1;
+    monthlySnapshot.monthlyTransferAmount =
+      monthlySnapshot.monthlyTransferAmount.plus(amount);
+    monthlySnapshot.blockNumber = event.block.number;
+    monthlySnapshot.timestamp = event.block.timestamp;
+
     token.save();
     dailySnapshot.save();
     hourlySnapshot.save();
+    monthlySnapshot.save();
   }
 
   return transferEvent;
@@ -491,13 +513,33 @@ export function getOrCreateTokenMonthlySnapshot(
   newSnapshot.monthlyMintCount = 0;
   newSnapshot.monthlyBurnAmount = BIGINT_ZERO;
   newSnapshot.monthlyBurnCount = 0;
+  newSnapshot.monthlyTransferCount = 0;
+  newSnapshot.monthlyTransferAmount = BIGINT_ZERO;
+  newSnapshot.monthlyEventCount = 0;
+  newSnapshot.currentHolderCount = token.currentHolderCount;
+  newSnapshot.cumulativeHolderCount = token.cumulativeHolderCount;
   newSnapshot.monthlyRevenue = BIGINT_ZERO;
   newSnapshot.monthlyProtocolRevenue = BIGINT_ZERO;
   newSnapshot.monthlyGovernanceRevenue = BIGINT_ZERO;
   newSnapshot.monthlyExternalRevenue = BIGINT_ZERO;
+  // Seed cumulatives from the parent running totals so months with no fee
+  // events (Transfer-first months) inherit the correct lifetime values instead
+  // of resetting to zero. Source of truth: Token + DTF entity running totals.
+  newSnapshot.cumulativeMintAmount = token.totalMinted;
+  newSnapshot.cumulativeBurnAmount = token.totalBurned;
   newSnapshot.cumulativeRevenue = BIGINT_ZERO;
   newSnapshot.cumulativeProtocolRevenue = BIGINT_ZERO;
-  newSnapshot.cumulativeMintAmount = BIGINT_ZERO;
+  newSnapshot.cumulativeGovernanceRevenue = BIGINT_ZERO;
+  newSnapshot.cumulativeExternalRevenue = BIGINT_ZERO;
+  if (token.type == "DTF") {
+    let dtf = DTF.load(token.id);
+    if (dtf) {
+      newSnapshot.cumulativeRevenue = dtf.totalRevenue;
+      newSnapshot.cumulativeProtocolRevenue = dtf.protocolRevenue;
+      newSnapshot.cumulativeGovernanceRevenue = dtf.governanceRevenue;
+      newSnapshot.cumulativeExternalRevenue = dtf.externalRevenue;
+    }
+  }
   newSnapshot.blockNumber = block.number;
   newSnapshot.timestamp = block.timestamp;
 

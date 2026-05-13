@@ -56,65 +56,32 @@ export function getOrCreateToken(
   return token as Token;
 }
 
+// Canonical "first time we see this stToken" hook. On CREATE: initializes
+// entity state, seeds totalSupply from chain (so pre-discovery Transfers aren't
+// lost), and subscribes to the StakingToken template so future events index.
+// All three side effects fire exactly once per stToken lifetime — there is no
+// other place that needs to subscribe. Callers don't need to coordinate.
 export function getOrCreateStakingToken(tokenAddress: Address): StakingToken {
   let stakingToken = StakingToken.load(tokenAddress.toHexString());
+  if (stakingToken) return stakingToken as StakingToken;
 
-  if (!stakingToken) {
-    stakingToken = new StakingToken(tokenAddress.toHexString());
-    const voteToken = getOrCreateToken(tokenAddress, TokenType.VOTE);
-    // Seed totalSupply from on-chain — Transfer history before this point
-    // (e.g. the initial mint) won't be replayed, and is only relevant for staking
-    // tokens (vote-locks) where supply correctness matters for governance metrics.
-    voteToken.totalSupply = fetchTokenTotalSupply(tokenAddress);
-    voteToken.save();
-    stakingToken.token = voteToken.id;
-    stakingToken.totalDelegates = BIGINT_ZERO;
-    stakingToken.currentDelegates = BIGINT_ZERO;
-    stakingToken.delegatedVotesRaw = BIGINT_ZERO;
-    stakingToken.delegatedVotes = BigDecimal.fromString("0");
-    stakingToken.currentOptimisticDelegates = BIGINT_ZERO;
-    stakingToken.totalOptimisticDelegates = BIGINT_ZERO;
-    stakingToken.optimisticDelegatedVotesRaw = BIGINT_ZERO;
-    stakingToken.optimisticDelegatedVotes = BigDecimal.fromString("0");
-    stakingToken.legacyGovernance = [];
-    stakingToken.templateInstantiated = true;
-    stakingToken.save();
+  stakingToken = new StakingToken(tokenAddress.toHexString());
+  const voteToken = getOrCreateToken(tokenAddress, TokenType.VOTE);
+  voteToken.totalSupply = fetchTokenTotalSupply(tokenAddress);
+  voteToken.save();
+  stakingToken.token = voteToken.id;
+  stakingToken.totalDelegates = BIGINT_ZERO;
+  stakingToken.currentDelegates = BIGINT_ZERO;
+  stakingToken.delegatedVotesRaw = BIGINT_ZERO;
+  stakingToken.delegatedVotes = BigDecimal.fromString("0");
+  stakingToken.currentOptimisticDelegates = BIGINT_ZERO;
+  stakingToken.totalOptimisticDelegates = BIGINT_ZERO;
+  stakingToken.optimisticDelegatedVotesRaw = BIGINT_ZERO;
+  stakingToken.optimisticDelegatedVotes = BigDecimal.fromString("0");
+  stakingToken.legacyGovernance = [];
+  stakingToken.save();
 
-    StakingTokenTemplate.create(tokenAddress);
-  } else {
-    // Backfill optimistic fields for grafted entities (predate optimistic governance).
-    // TODO: remove these backfills when we push a non-grafting version.
-    if (stakingToken.currentOptimisticDelegates === null) {
-      stakingToken.currentOptimisticDelegates = BIGINT_ZERO;
-    }
-    if (stakingToken.totalOptimisticDelegates === null) {
-      stakingToken.totalOptimisticDelegates = BIGINT_ZERO;
-    }
-    if (stakingToken.optimisticDelegatedVotesRaw === null) {
-      stakingToken.optimisticDelegatedVotesRaw = BIGINT_ZERO;
-    }
-    if (stakingToken.optimisticDelegatedVotes === null) {
-      stakingToken.optimisticDelegatedVotes = BigDecimal.fromString("0");
-    }
-
-    // Resilience: if this entity was grafted from a base subgraph, its StakingToken
-    // template subscription was lost in the graft. Re-instantiate the template here.
-    // Safe because we only reach this branch through code paths that have already
-    // validated the entity (e.g. via getOrCreateGovernance reading governance.token()
-    // from the on-chain Governor contract).
-    if (!stakingToken.templateInstantiated) {
-      StakingTokenTemplate.create(tokenAddress);
-      stakingToken.templateInstantiated = true;
-      // Also seed totalSupply from on-chain — the Token may have been created
-      // earlier as a stub (totalSupply=0) and the pre-subscription mints aren't replayed.
-      const voteToken = Token.load(tokenAddress.toHexString());
-      if (voteToken) {
-        voteToken.totalSupply = fetchTokenTotalSupply(tokenAddress);
-        voteToken.save();
-      }
-      stakingToken.save();
-    }
-  }
+  StakingTokenTemplate.create(tokenAddress);
 
   return stakingToken as StakingToken;
 }
@@ -222,6 +189,9 @@ export function getOrCreateGovernance(
   const contract = Governor.bind(governanceAddress);
 
   let token = contract.token();
+  // getOrCreateStakingToken handles supply seed + template subscription on first
+  // creation, so we don't need to coordinate that here — covers both normal flow
+  // and untracked-deployer / manual-deploy stTokens uniformly.
   governance.token = getOrCreateStakingToken(token).id;
 
   // Params

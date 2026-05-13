@@ -212,19 +212,18 @@ export function _handleDelegateVotesChanged(
   const stakingToken = getOrCreateStakingToken(event.address);
 
   if (isOptimistic) {
-    // Optimistic fields are nullable in schema for grafting compat but backfilled to BIGINT_ZERO in getOrCreateStakingToken.
     if (previousBalance == BIGINT_ZERO && newBalance > BIGINT_ZERO) {
       stakingToken.currentOptimisticDelegates =
-        stakingToken.currentOptimisticDelegates!.plus(BIGINT_ONE);
+        stakingToken.currentOptimisticDelegates.plus(BIGINT_ONE);
     }
     if (newBalance == BIGINT_ZERO) {
       stakingToken.currentOptimisticDelegates =
-        stakingToken.currentOptimisticDelegates!.minus(BIGINT_ONE);
+        stakingToken.currentOptimisticDelegates.minus(BIGINT_ONE);
     }
     stakingToken.optimisticDelegatedVotesRaw =
-      stakingToken.optimisticDelegatedVotesRaw!.plus(votesDifference);
+      stakingToken.optimisticDelegatedVotesRaw.plus(votesDifference);
     stakingToken.optimisticDelegatedVotes = toDecimal(
-      stakingToken.optimisticDelegatedVotesRaw!
+      stakingToken.optimisticDelegatedVotesRaw
     );
   } else {
     if (previousBalance == BIGINT_ZERO && newBalance > BIGINT_ZERO) {

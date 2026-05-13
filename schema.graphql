@@ -693,6 +693,21 @@ type TokenMonthlySnapshot @entity(immutable: false) {
   " Monthly burn count "
   monthlyBurnCount: Int!
 
+  " Monthly transfer count "
+  monthlyTransferCount: Int!
+
+  " Monthly transfer amount "
+  monthlyTransferAmount: BigInt!
+
+  " Total events occurred in the month (mint + burn + transfer) "
+  monthlyEventCount: Int!
+
+  " Holders at end of month "
+  currentHolderCount: BigInt!
+
+  " Cumulative unique holders "
+  cumulativeHolderCount: BigInt!
+
   " Monthly total revenue for this DTF "
   monthlyRevenue: BigInt!
 
@@ -711,8 +726,17 @@ type TokenMonthlySnapshot @entity(immutable: false) {
   " Cumulative protocol revenue "
   cumulativeProtocolRevenue: BigInt!
 
+  " Cumulative governance revenue "
+  cumulativeGovernanceRevenue: BigInt!
+
+  " Cumulative external revenue "
+  cumulativeExternalRevenue: BigInt!
+
   " Cumulative mints "
   cumulativeMintAmount: BigInt!
+
+  " Cumulative burns "
+  cumulativeBurnAmount: BigInt!
 
   " Block number "
   blockNumber: BigInt!
@@ -1184,20 +1208,16 @@ type StakingToken @entity(immutable: false) {
   delegatedVotes: BigDecimal!
 
   "Total number of optimistic delegates participating currently"
-  # TODO: add it as required when we push a non-grafting version
-  currentOptimisticDelegates: BigInt
+  currentOptimisticDelegates: BigInt!
 
   "Total number of optimistic delegates that held delegated votes"
-  # TODO: add it as required when we push a non-grafting version
-  totalOptimisticDelegates: BigInt
+  totalOptimisticDelegates: BigInt!
 
   "Total optimistic votes delegated expressed in the smallest unit of the token"
-  # TODO: add it as required when we push a non-grafting version
-  optimisticDelegatedVotesRaw: BigInt
+  optimisticDelegatedVotesRaw: BigInt!
 
   "Total optimistic votes delegated expressed as a BigDecimal normalized value for the token"
-  # TODO: add it as required when we push a non-grafting version
-  optimisticDelegatedVotes: BigDecimal
+  optimisticDelegatedVotes: BigDecimal!
 
   " Delegates "
   delegates: [Delegate!]! @derivedFrom(field: "token")
@@ -1210,10 +1230,6 @@ type StakingToken @entity(immutable: false) {
 
   " Rewards "
   rewards: [StakingTokenRewards!]! @derivedFrom(field: "stToken")
-
-  "Internal: true once StakingToken template is subscribed. Nullable for grafting compat (grafted entities have null and trigger lazy subscription on first access)."
-  # TODO: add it as required when we push a non-grafting version
-  templateInstantiated: Boolean
 }
 
 type StakingTokenRewards @entity(immutable: false) {
@@ -1313,27 +1329,22 @@ type Delegate @entity(immutable: false) {
   delegatedVotes: BigDecimal!
 
   "Amount of optimistic votes delegated in the smallest unit of the token"
-  # TODO: add it as required when we push a non-grafting version
-  optimisticDelegatedVotesRaw: BigInt
+  optimisticDelegatedVotesRaw: BigInt!
 
   "Amount of optimistic votes delegated as a BigDecimal normalized value"
-  # TODO: add it as required when we push a non-grafting version
-  optimisticDelegatedVotes: BigDecimal
+  optimisticDelegatedVotes: BigDecimal!
 
   "Whether this delegate has been counted in standard delegate totals"
-  # TODO: add it as required when we push a non-grafting version
-  hasBeenStandardDelegate: Boolean
+  hasBeenStandardDelegate: Boolean!
 
   "Whether this delegate has been counted in optimistic delegate totals"
-  # TODO: add it as required when we push a non-grafting version
-  hasBeenOptimisticDelegate: Boolean
+  hasBeenOptimisticDelegate: Boolean!
 
   "Total token holders that this delegate represents"
   tokenHoldersRepresentedAmount: Int!
 
   "Total token holders that this optimistic delegate represents"
-  # TODO: add it as required when we push a non-grafting version
-  optimisticTokenHoldersRepresentedAmount: Int
+  optimisticTokenHoldersRepresentedAmount: Int!
 
   "Token holders that this delegate represents"
   tokenHoldersRepresented: [AccountBalance!]! @derivedFrom(field: "delegate")
@@ -1349,8 +1360,7 @@ type Delegate @entity(immutable: false) {
   numberVotes: Int!
 
   "Number of optimistic proposals voted on"
-  # TODO: add it as required when we push a non-grafting version
-  numberOptimisticVotes: Int
+  numberOptimisticVotes: Int!
 
   "Proposals that the delegate has created"
   proposals: [Proposal!]! @derivedFrom(field: "proposer")

@@ -2,6 +2,10 @@ catalogMode: manual
 blockExoticSubdeps: true
 cleanupUnusedCatalogs: true
 minimumReleaseAge: 1440
+# matchstick (the subgraph test runner) expects assemblyscript/asc at node_modules/assemblyscript/bin/asc.
+# pnpm's strict layout hides transitive deps in .pnpm/, so hoist this one explicitly.
+publicHoistPattern:
+  - assemblyscript
 allowBuilds:
   keccak: true
   protobufjs: true

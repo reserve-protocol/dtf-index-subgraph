@@ -17,3 +17,9 @@ export function mockERC20(
     ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(decimals)),
   ]);
 }
+
+export function mockERC20TotalSupply(address: Address, supply: BigInt): void {
+  createMockedFunction(address, "totalSupply", "totalSupply():(uint256)").returns([
+    ethereum.Value.fromUnsignedBigInt(supply),
+  ]);
+}

@@ -25,7 +25,7 @@ import {
   getProposal,
 } from "../governance/handlers";
 import { removeFromArrayAtIndex } from "../utils/arrays";
-import { BIGINT_ONE, BIGINT_ZERO, ProposalState, Role } from "../utils/constants";
+import { BIGINT_ONE, ProposalState, Role } from "../utils/constants";
 import {
   Governor,
   ProposalCanceled,
@@ -201,10 +201,7 @@ function getLatestProposalValues(proposalId: string): Proposal {
     proposal.tokenHoldersAtStart = token.currentHolderCount;
 
     if (proposal.isOptimistic) {
-      // currentOptimisticDelegates is nullable in schema for grafting compat; fall back to zero
-      // for entities that predate optimistic governance.
-      const optDelegates = stakingToken.currentOptimisticDelegates;
-      proposal.delegatesAtStart = optDelegates !== null ? optDelegates : BIGINT_ZERO;
+      proposal.delegatesAtStart = stakingToken.currentOptimisticDelegates;
     } else {
       proposal.delegatesAtStart = stakingToken.currentDelegates;
     }

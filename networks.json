@@ -55,8 +55,8 @@
   },
   "base": {
     "grafting": {
-      "base": "dtf-index-base/1.8.7",
-      "block": 45049500
+      "base": "",
+      "block": 0
     },
     "FolioDeployer": [
       {

@@ -175,9 +175,8 @@ export function getOrCreateOptimisticDelegate(
 
   if (!delegate.hasBeenOptimisticDelegate && address != GENESIS_ADDRESS) {
     const stakingToken = getOrCreateStakingToken(Address.fromString(token));
-    // totalOptimisticDelegates is nullable in schema for grafting compat but backfilled in getOrCreateStakingToken.
     stakingToken.totalOptimisticDelegates =
-      stakingToken.totalOptimisticDelegates!.plus(BIGINT_ONE);
+      stakingToken.totalOptimisticDelegates.plus(BIGINT_ONE);
     stakingToken.save();
 
     delegate.hasBeenOptimisticDelegate = true;
