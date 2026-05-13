@@ -2,6 +2,8 @@ import { _handleTransfer } from "../token/mappings";
 import {
   DelegateChanged,
   DelegateVotesChanged,
+  OptimisticDelegateChanged,
+  OptimisticDelegateVotesChanged,
   OwnershipTransferred,
   RewardsClaimed,
   RewardTokenAdded,
@@ -39,6 +41,7 @@ export function handleDelegateChanged(event: DelegateChanged): void {
     event.params.delegator.toHexString(),
     event.params.fromDelegate.toHexString(),
     event.params.toDelegate.toHexString(),
+    false,
     event
   );
 }
@@ -50,6 +53,33 @@ export function handleDelegateVotesChanged(event: DelegateVotesChanged): void {
     event.params.delegate.toHexString(),
     event.params.previousVotes,
     event.params.newVotes,
+    false,
+    event
+  );
+}
+
+// OptimisticDelegateChanged(indexed address,indexed address,indexed address)
+export function handleOptimisticDelegateChanged(
+  event: OptimisticDelegateChanged
+): void {
+  _handleDelegateChanged(
+    event.params.delegator.toHexString(),
+    event.params.fromDelegate.toHexString(),
+    event.params.toDelegate.toHexString(),
+    true,
+    event
+  );
+}
+
+// OptimisticDelegateVotesChanged(indexed address,uint256,uint256)
+export function handleOptimisticDelegateVotesChanged(
+  event: OptimisticDelegateVotesChanged
+): void {
+  _handleDelegateVotesChanged(
+    event.params.delegate.toHexString(),
+    event.params.previousVotes,
+    event.params.newVotes,
+    true,
     event
   );
 }

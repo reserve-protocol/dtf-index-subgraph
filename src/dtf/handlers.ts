@@ -458,8 +458,10 @@ export function _handleFolioFeePaid(
   monthlySnapshot.monthlyRevenue = monthlySnapshot.monthlyRevenue.plus(amount);
   if (isGovernanceToken) {
     monthlySnapshot.monthlyGovernanceRevenue = monthlySnapshot.monthlyGovernanceRevenue.plus(amount);
+    monthlySnapshot.cumulativeGovernanceRevenue = dtf.governanceRevenue;
   } else {
     monthlySnapshot.monthlyExternalRevenue = monthlySnapshot.monthlyExternalRevenue.plus(amount);
+    monthlySnapshot.cumulativeExternalRevenue = dtf.externalRevenue;
   }
   monthlySnapshot.cumulativeRevenue = dtf.totalRevenue;
   monthlySnapshot.save();

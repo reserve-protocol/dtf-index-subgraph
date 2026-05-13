@@ -13,7 +13,8 @@ import {
 import {
   createDelegateChange,
   createDelegateVotingPowerChange,
-  getOrCreateDelegate,
+  getOrCreateOptimisticDelegate,
+  getOrCreateStandardDelegate,
   toDecimal,
 } from "../governance/handlers";
 import {
@@ -125,38 +126,52 @@ export function _handleDelegateChanged(
   delegator: string,
   fromDelegate: string,
   toDelegate: string,
+  isOptimistic: boolean,
   event: ethereum.Event
 ): void {
   const tokenHolder = getOrCreateStakeTokenHolder(delegator, event.address);
 
   if (fromDelegate != GENESIS_ADDRESS) {
-    const previousDelegate = getOrCreateDelegate(
-      event.address.toHexString(),
-      fromDelegate
-    );
+    const previousDelegate = isOptimistic
+      ? getOrCreateOptimisticDelegate(event.address.toHexString(), fromDelegate)
+      : getOrCreateStandardDelegate(event.address.toHexString(), fromDelegate);
 
-    previousDelegate.tokenHoldersRepresentedAmount =
-      previousDelegate.tokenHoldersRepresentedAmount - 1;
+    if (isOptimistic) {
+      previousDelegate.optimisticTokenHoldersRepresentedAmount =
+        previousDelegate.optimisticTokenHoldersRepresentedAmount - 1;
+    } else {
+      previousDelegate.tokenHoldersRepresentedAmount =
+        previousDelegate.tokenHoldersRepresentedAmount - 1;
+    }
     previousDelegate.save();
   }
 
-  const newDelegate = getOrCreateDelegate(
-    event.address.toHexString(),
-    toDelegate
-  );
+  const newDelegate = isOptimistic
+    ? getOrCreateOptimisticDelegate(event.address.toHexString(), toDelegate)
+    : getOrCreateStandardDelegate(event.address.toHexString(), toDelegate);
 
-  tokenHolder.delegate = newDelegate.id;
+  if (isOptimistic) {
+    tokenHolder.optimisticDelegate = newDelegate.id;
+  } else {
+    tokenHolder.delegate = newDelegate.id;
+  }
   tokenHolder.save();
 
-  newDelegate.tokenHoldersRepresentedAmount =
-    newDelegate.tokenHoldersRepresentedAmount + 1;
+  if (isOptimistic) {
+    newDelegate.optimisticTokenHoldersRepresentedAmount =
+      newDelegate.optimisticTokenHoldersRepresentedAmount + 1;
+  } else {
+    newDelegate.tokenHoldersRepresentedAmount =
+      newDelegate.tokenHoldersRepresentedAmount + 1;
+  }
   newDelegate.save();
 
   const delegateChanged = createDelegateChange(
     event,
     toDelegate,
     fromDelegate,
-    delegator
+    delegator,
+    isOptimistic
   );
 
   delegateChanged.save();
@@ -166,16 +181,22 @@ export function _handleDelegateVotesChanged(
   delegateAddress: string,
   previousBalance: BigInt,
   newBalance: BigInt,
+  isOptimistic: boolean,
   event: ethereum.Event
 ): void {
   const votesDifference = newBalance.minus(previousBalance);
 
-  const delegate = getOrCreateDelegate(
-    event.address.toHexString(),
-    delegateAddress
-  );
-  delegate.delegatedVotesRaw = newBalance;
-  delegate.delegatedVotes = toDecimal(newBalance);
+  const delegate = isOptimistic
+    ? getOrCreateOptimisticDelegate(event.address.toHexString(), delegateAddress)
+    : getOrCreateStandardDelegate(event.address.toHexString(), delegateAddress);
+
+  if (isOptimistic) {
+    delegate.optimisticDelegatedVotesRaw = newBalance;
+    delegate.optimisticDelegatedVotes = toDecimal(newBalance);
+  } else {
+    delegate.delegatedVotesRaw = newBalance;
+    delegate.delegatedVotes = toDecimal(newBalance);
+  }
   delegate.save();
 
   // Create DelegateVotingPowerChange
@@ -183,23 +204,40 @@ export function _handleDelegateVotesChanged(
     event,
     previousBalance,
     newBalance,
-    delegateAddress
+    delegateAddress,
+    isOptimistic
   );
   delegateVPChange.save();
 
-  // Update governance delegate count
   const stakingToken = getOrCreateStakingToken(event.address);
-  if (previousBalance == BIGINT_ZERO && newBalance > BIGINT_ZERO) {
-    stakingToken.currentDelegates =
-      stakingToken.currentDelegates.plus(BIGINT_ONE);
+
+  if (isOptimistic) {
+    if (previousBalance == BIGINT_ZERO && newBalance > BIGINT_ZERO) {
+      stakingToken.currentOptimisticDelegates =
+        stakingToken.currentOptimisticDelegates.plus(BIGINT_ONE);
+    }
+    if (newBalance == BIGINT_ZERO) {
+      stakingToken.currentOptimisticDelegates =
+        stakingToken.currentOptimisticDelegates.minus(BIGINT_ONE);
+    }
+    stakingToken.optimisticDelegatedVotesRaw =
+      stakingToken.optimisticDelegatedVotesRaw.plus(votesDifference);
+    stakingToken.optimisticDelegatedVotes = toDecimal(
+      stakingToken.optimisticDelegatedVotesRaw
+    );
+  } else {
+    if (previousBalance == BIGINT_ZERO && newBalance > BIGINT_ZERO) {
+      stakingToken.currentDelegates =
+        stakingToken.currentDelegates.plus(BIGINT_ONE);
+    }
+    if (newBalance == BIGINT_ZERO) {
+      stakingToken.currentDelegates =
+        stakingToken.currentDelegates.minus(BIGINT_ONE);
+    }
+    stakingToken.delegatedVotesRaw =
+      stakingToken.delegatedVotesRaw.plus(votesDifference);
+    stakingToken.delegatedVotes = toDecimal(stakingToken.delegatedVotesRaw);
   }
-  if (newBalance == BIGINT_ZERO) {
-    stakingToken.currentDelegates =
-      stakingToken.currentDelegates.minus(BIGINT_ONE);
-  }
-  stakingToken.delegatedVotesRaw =
-    stakingToken.delegatedVotesRaw.plus(votesDifference);
-  stakingToken.delegatedVotes = toDecimal(stakingToken.delegatedVotesRaw);
   stakingToken.save();
 }
 
