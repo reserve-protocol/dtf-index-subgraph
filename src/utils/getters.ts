@@ -169,6 +169,12 @@ export function attachGovernanceToTimelock(
       } else {
         dtf.tradingGovernance = governance.id;
       }
+      // Backfill DTF → stToken link if it wasn't set by GovernedFolioDeployed
+      // (e.g. DTF was deployed via FolioDeployed only, governance attached later).
+      if (!dtf.stToken) {
+        dtf.stToken = governance.token;
+        dtf.stTokenAddress = Address.fromString(governance.token);
+      }
       dtf.save();
     }
   }
