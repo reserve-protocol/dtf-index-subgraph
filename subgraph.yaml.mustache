@@ -52,6 +52,8 @@ dataSources:
           file: ./abis/governor.json
         - name: Timelock
           file: ./abis/timelock.json
+        - name: StakingVault
+          file: ./abis/staking-vault.json
       eventHandlers:
         - event: FolioDeployed(indexed address,indexed address,address)
           handler: handleDTFDeployed
@@ -354,6 +356,8 @@ templates:
           file: ./abis/governor.json
         - name: ERC20
           file: ./abis/erc20.json
+        - name: StakingVault
+          file: ./abis/staking-vault.json
       eventHandlers:
         - event: RoleGranted(indexed bytes32,indexed address,indexed address)
           handler: handleTimelockRoleGranted

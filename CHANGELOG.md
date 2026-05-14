@@ -5,13 +5,23 @@ All notable changes to the DTF Index Subgraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.2] - 2026-05-14
+
+Follows up on 1.9.1 with two more fixes for the same class of DTFs/stTokens that don't go through the standard deploy event path. Smoke-tested on-chain against `0xd45e4170834a803D084b2bB145c9ad08f3BdD651` before implementation.
+
+### Fixed
+- **Both `ownerGovernance` and `tradingGovernance` linked when a single timelock holds both roles on a DTF.** Previously `createGovernanceTimelock` recorded only the timelock type from whichever role-grant event arrived first (e.g. `REBALANCE_MANAGER` then `DEFAULT_ADMIN` for the shared timelock → type stayed `TRADING` → only `tradingGovernance` ever linked). `attachGovernanceToTimelock` now consults `dtf.admins` / `dtf.auctionApprovers` membership instead of relying on `timelock.type`, so both fields get set when one timelock controls both.
+- **stToken's own governance chain discovered when its deploy event was missed.** When a staking token is encountered via the resilience path (untracked deployer, manual deploy), `getOrCreateGovernance` now reads `getRoleMember(DEFAULT_ADMIN_ROLE, 0)` on the vault to find its timelock, then defers to existing `createGovernanceTimelock` to set up the timelock entity, subscribe its template, locate its Governor via `PROPOSER_ROLE`, and attach governance. Only runs when the staking token entity didn't already exist — no redundant work in the normal deploy flow.
+
+### Changed
+- `abis/staking-vault.json` extended with `getRoleMember` and `getRoleMemberCount` (the AccessControlEnumerable methods we now call on the vault).
+- Manifest: `StakingVault` ABI added to the `FolioDeployer` data source and `Timelock` template so the binding above works from those contexts.
+- Re-indexed from scratch (no grafting from 1.9.x). The role-grant events for affected DTFs fired before the pruned data window, so a graft couldn't replay them — clean reindex was the only way to fix existing entities.
+
 ## [1.9.1] - 2026-05-13
 
 ### Fixed
 - DTFs that go through the `FolioDeployed`-only path (governance attached later via Timelock role grant, no upfront `GovernedFolioDeployed`) were ending up with `stToken` and `stTokenAddress` left as `null`. `attachGovernanceToTimelock` now backfills both from the governance's token reference when they aren't already set. Idempotent — no-op when the deploy-time path already populated them. Concretely fixes the test DTF `0xd45e4170834a803D084b2bB145c9ad08f3BdD651`.
-
-### Changed
-- Re-indexed from scratch (no grafting from 1.9.0). The affected `RoleGranted` events for existing DTFs fired before 1.9.0's pruned data window, so a graft couldn't replay them — the only way to fix existing entities was a clean reindex.
 
 ## [1.9.0] - 2026-05-12
 
