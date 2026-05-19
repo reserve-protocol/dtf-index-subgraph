@@ -3,6 +3,10 @@ indexerHints:
   prune: auto
 schema:
   file: ./schema.graphql
+{{#grafting}}
+features:
+  - grafting
+{{/grafting}}
 dataSources:
   - kind: ethereum
     name: RSR
@@ -23,7 +27,6 @@ dataSources:
       eventHandlers:
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleRSRBurn
-          topic2: ["0x000000000000000000000000000000000000dEaD"]
       file: ./src/dtf/mappings.ts
 {{#FolioDeployer}}
   - kind: ethereum
@@ -52,6 +55,8 @@ dataSources:
           file: ./abis/governor.json
         - name: Timelock
           file: ./abis/timelock.json
+        - name: StakingVault
+          file: ./abis/staking-vault.json
       eventHandlers:
         - event: FolioDeployed(indexed address,indexed address,address)
           handler: handleDTFDeployed
@@ -143,6 +148,8 @@ templates:
           file: ./abis/governor.json
         - name: Timelock
           file: ./abis/timelock.json
+        - name: StakingVault
+          file: ./abis/staking-vault.json
       eventHandlers:
         # v4.0 event - separate tokens[], weights[], prices[] arrays
         - event: RebalanceStarted(uint256,uint8,address[],(uint256,uint256,uint256)[],(uint256,uint256)[],(uint256,uint256,uint256),uint256,uint256)
@@ -354,6 +361,8 @@ templates:
           file: ./abis/governor.json
         - name: ERC20
           file: ./abis/erc20.json
+        - name: StakingVault
+          file: ./abis/staking-vault.json
       eventHandlers:
         - event: RoleGranted(indexed bytes32,indexed address,indexed address)
           handler: handleTimelockRoleGranted

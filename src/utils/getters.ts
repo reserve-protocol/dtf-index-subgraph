@@ -1,4 +1,10 @@
-import { Address, BigDecimal, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
+import {
+  Address,
+  BigDecimal,
+  BigInt,
+  Bytes,
+  ethereum,
+} from "@graphprotocol/graph-ts";
 import {
   DTF,
   Governance,
@@ -18,6 +24,7 @@ import {
 } from "../../generated/templates";
 import { Governor } from "../../generated/templates/Governance/Governor";
 import { Timelock } from "../../generated/templates/Governance/Timelock";
+import { StakingVault } from "../../generated/templates/StakingToken/StakingVault";
 import {
   BIGINT_ZERO,
   GovernanceType,
@@ -25,13 +32,18 @@ import {
   TokenType,
   SECONDS_PER_DAY,
   SECONDS_PER_HOUR,
-  SECONDS_PER_MONTH
+  SECONDS_PER_MONTH,
 } from "./constants";
-import { fetchTokenDecimals, fetchTokenName, fetchTokenSymbol, fetchTokenTotalSupply } from "./tokens";
+import {
+  fetchTokenDecimals,
+  fetchTokenName,
+  fetchTokenSymbol,
+  fetchTokenTotalSupply,
+} from "./tokens";
 
 export function getOrCreateToken(
   tokenAddress: Address,
-  type: string = TokenType.ASSET
+  type: string = TokenType.ASSET,
 ): Token {
   let token = Token.load(tokenAddress.toHexString());
 
@@ -89,7 +101,7 @@ export function getOrCreateStakingToken(tokenAddress: Address): StakingToken {
 export function createGovernanceTimelock(
   timelockAddress: Address,
   entity: string,
-  entityType: string
+  entityType: string,
 ): void {
   if (GovernanceTimelock.load(timelockAddress.toHexString())) {
     return;
@@ -111,7 +123,7 @@ export function createGovernanceTimelock(
     : getRoleMembers(timelockContract, cancellerRole.value);
   timelock.optimisticProposers = getRoleMembers(
     timelockContract,
-    Bytes.fromHexString(Role.OPTIMISTIC_PROPOSER)
+    Bytes.fromHexString(Role.OPTIMISTIC_PROPOSER),
   );
   timelock.entity = entity;
   timelock.type = entityType;
@@ -122,7 +134,7 @@ export function createGovernanceTimelock(
   if (!proposerRole.reverted) {
     const governorResult = timelockContract.try_getRoleMember(
       proposerRole.value,
-      BIGINT_ZERO
+      BIGINT_ZERO,
     );
 
     if (!governorResult.reverted) {
@@ -139,38 +151,45 @@ export function createGovernanceTimelock(
 }
 
 export function getGovernanceTimelock(
-  timelockAddress: Address
+  timelockAddress: Address,
 ): GovernanceTimelock | null {
   return GovernanceTimelock.load(timelockAddress.toHexString());
 }
 
 export function attachGovernanceToTimelock(
   timelock: GovernanceTimelock,
-  governorAddress: Address
+  governorAddress: Address,
 ): Governance {
   const governance = getOrCreateGovernance(
     governorAddress,
-    Address.fromString(timelock.id)
+    Address.fromString(timelock.id),
   );
   timelock.governance = governance.id;
   timelock.save();
 
   if (timelock.type == GovernanceType.VOTE_LOCKING) {
     const stakingToken = getOrCreateStakingToken(
-      Address.fromString(timelock.entity)
+      Address.fromString(timelock.entity),
     );
     stakingToken.governance = governance.id;
     stakingToken.save();
   } else {
     const dtf = DTF.load(timelock.entity);
     if (dtf) {
-      if (timelock.type == GovernanceType.OWNER) {
+      // A single timelock can hold multiple DTF roles (e.g. DEFAULT_ADMIN +
+      // REBALANCE_MANAGER). Use the DTF's own role membership rather than
+      // timelock.type — which only records whichever role was granted first.
+      const timelockId = timelock.id;
+      if (dtf.admins.indexOf(timelockId) != -1 && !dtf.ownerGovernance) {
         dtf.ownerGovernance = governance.id;
-      } else {
+      }
+      if (
+        dtf.auctionApprovers.indexOf(timelockId) != -1 &&
+        !dtf.tradingGovernance
+      ) {
         dtf.tradingGovernance = governance.id;
       }
-      // Backfill DTF → stToken link if it wasn't set by GovernedFolioDeployed
-      // (e.g. DTF was deployed via FolioDeployed only, governance attached later).
+      // Backfill DTF → stToken link if it wasn't set by GovernedFolioDeployed.
       if (!dtf.stToken) {
         dtf.stToken = governance.token;
         dtf.stTokenAddress = Address.fromString(governance.token);
@@ -184,7 +203,7 @@ export function attachGovernanceToTimelock(
 
 export function getOrCreateGovernance(
   governanceAddress: Address,
-  timelockAddress: Address
+  timelockAddress: Address,
 ): Governance {
   let governance = Governance.load(governanceAddress.toHexString());
   if (governance) {
@@ -195,10 +214,35 @@ export function getOrCreateGovernance(
   const contract = Governor.bind(governanceAddress);
 
   let token = contract.token();
-  // getOrCreateStakingToken handles supply seed + template subscription on first
-  // creation, so we don't need to coordinate that here — covers both normal flow
-  // and untracked-deployer / manual-deploy stTokens uniformly.
+  // Capture missing-ness BEFORE getOrCreateStakingToken creates the entity —
+  // the resilience block below needs to know whether we just discovered this
+  // stToken for the first time.
+  const stTokenWasMissing = StakingToken.load(token.toHexString()) === null;
   governance.token = getOrCreateStakingToken(token).id;
+
+  if (stTokenWasMissing) {
+    // Resilience: discover the stToken's own timelock via DEFAULT_ADMIN role
+    // member 0 (the typical AccessControl pattern for vote-locks), then defer
+    // to createGovernanceTimelock to set up the timelock entity, subscribe its
+    // template, find its Governor via PROPOSER_ROLE, and attach governance.
+    const vault = StakingVault.bind(token);
+    const adminCount = vault.try_getRoleMemberCount(
+      Bytes.fromHexString(Role.DEFAULT_ADMIN),
+    );
+    if (!adminCount.reverted && adminCount.value.gt(BIGINT_ZERO)) {
+      const admin = vault.try_getRoleMember(
+        Bytes.fromHexString(Role.DEFAULT_ADMIN),
+        BIGINT_ZERO,
+      );
+      if (!admin.reverted) {
+        createGovernanceTimelock(
+          admin.value,
+          token.toHexString(),
+          GovernanceType.VOTE_LOCKING,
+        );
+      }
+    }
+  }
 
   // Params
   governance.name = contract.name();
@@ -221,7 +265,8 @@ export function getOrCreateGovernance(
     governance.isOptimistic = true;
     governance.optimisticVetoDelay = optimisticParams.value.getVetoDelay();
     governance.optimisticVetoPeriod = optimisticParams.value.getVetoPeriod();
-    governance.optimisticVetoThreshold = optimisticParams.value.getVetoThreshold();
+    governance.optimisticVetoThreshold =
+      optimisticParams.value.getVetoThreshold();
 
     const proposalThrottle = contract.try_proposalThrottleCapacity();
     if (!proposalThrottle.reverted) {
@@ -238,7 +283,7 @@ export function getOrCreateGovernance(
       const timelockContract = Timelock.bind(timelockAddress);
       const optimisticProposers = getRoleMembers(
         timelockContract,
-        Bytes.fromHexString(Role.OPTIMISTIC_PROPOSER)
+        Bytes.fromHexString(Role.OPTIMISTIC_PROPOSER),
       );
       const cancellerRole = timelockContract.try_CANCELLER_ROLE();
 
@@ -258,10 +303,7 @@ export function getOrCreateGovernance(
   return governance as Governance;
 }
 
-function getRoleMembers(
-  timelock: Timelock,
-  role: Bytes
-): Array<string> {
+function getRoleMembers(timelock: Timelock, role: Bytes): Array<string> {
   const members = new Array<string>();
   const count = timelock.try_getRoleMemberCount(role);
 
@@ -293,7 +335,7 @@ export function getOrCreateRSRBurnGlobal(): RSRBurnGlobal {
 }
 
 export function getOrCreateRSRBurnDailySnapshot(
-  block: ethereum.Block
+  block: ethereum.Block,
 ): RSRBurnDailySnapshot {
   let dayID = block.timestamp.toI64() / SECONDS_PER_DAY;
   let snapshotID = dayID.toString();
@@ -311,7 +353,7 @@ export function getOrCreateRSRBurnDailySnapshot(
 }
 
 export function getOrCreateRSRBurnMonthlySnapshot(
-  block: ethereum.Block
+  block: ethereum.Block,
 ): RSRBurnMonthlySnapshot {
   let monthID = block.timestamp.toI64() / SECONDS_PER_MONTH;
   let snapshotID = monthID.toString();

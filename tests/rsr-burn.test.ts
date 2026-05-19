@@ -7,8 +7,14 @@ import {
   beforeEach,
   newMockEvent,
 } from "matchstick-as/assembly/index";
+import { Transfer } from "../generated/templates/DTF/DTF";
+import { handleRSRBurn } from "../src/dtf/mappings";
 import { _handleRSRBurn } from "../src/dtf/handlers";
-import { SECONDS_PER_DAY, SECONDS_PER_MONTH } from "../src/utils/constants";
+import {
+  RSR_BURN_ADDRESS,
+  SECONDS_PER_DAY,
+  SECONDS_PER_MONTH,
+} from "../src/utils/constants";
 
 const BURNER = Address.fromString(
   "0x1111111111111111111111111111111111111111"
@@ -16,6 +22,7 @@ const BURNER = Address.fromString(
 const BURNER_2 = Address.fromString(
   "0x2222222222222222222222222222222222222222"
 );
+const RSR_BURN = Address.fromString(RSR_BURN_ADDRESS);
 
 function createBurnEvent(
   blockNumber: BigInt,
@@ -28,6 +35,68 @@ function createBurnEvent(
   event.logIndex = logIndex;
   return event;
 }
+
+function createTransferEvent(
+  amount: BigInt,
+  from: Address,
+  to: Address,
+  blockNumber: BigInt,
+  timestamp: BigInt,
+  logIndex: BigInt
+): Transfer {
+  let event = changetype<Transfer>(
+    createBurnEvent(blockNumber, timestamp, logIndex)
+  );
+  event.parameters = new Array<ethereum.EventParam>();
+  event.parameters.push(
+    new ethereum.EventParam("from", ethereum.Value.fromAddress(from))
+  );
+  event.parameters.push(
+    new ethereum.EventParam("to", ethereum.Value.fromAddress(to))
+  );
+  event.parameters.push(
+    new ethereum.EventParam("value", ethereum.Value.fromUnsignedBigInt(amount))
+  );
+  return event;
+}
+
+describe("handleRSRBurn", () => {
+  beforeEach(() => {
+    clearStore();
+  });
+
+  test("ignores transfers not sent to the burn address", () => {
+    let event = createTransferEvent(
+      BigInt.fromI32(100),
+      BURNER,
+      BURNER_2,
+      BigInt.fromI32(100),
+      BigInt.fromI32(1000),
+      BigInt.fromI32(0)
+    );
+
+    handleRSRBurn(event);
+
+    assert.entityCount("RSRBurn", 0);
+    assert.entityCount("RSRBurnGlobal", 0);
+  });
+
+  test("indexes transfers sent to the burn address", () => {
+    let event = createTransferEvent(
+      BigInt.fromI32(100),
+      BURNER,
+      RSR_BURN,
+      BigInt.fromI32(100),
+      BigInt.fromI32(1000),
+      BigInt.fromI32(0)
+    );
+
+    handleRSRBurn(event);
+
+    assert.entityCount("RSRBurn", 1);
+    assert.fieldEquals("RSRBurnGlobal", "1", "totalBurned", "100");
+  });
+});
 
 describe("_handleRSRBurn", () => {
   beforeEach(() => {

@@ -28,7 +28,11 @@ import {
   TVLFeeSet,
 } from "../../generated/templates/DTF/DTF";
 import { _handleTransfer } from "../token/mappings";
-import { BIGINT_ONE, BIGINT_ZERO } from "./../utils/constants";
+import {
+  BIGINT_ONE,
+  BIGINT_ZERO,
+  RSR_BURN_ADDRESS,
+} from "./../utils/constants";
 import {
   _handleAuctionDelaySet,
   _handleAuctionLengthSet,
@@ -60,6 +64,8 @@ import {
 } from "./handlers";
 
 export function handleRSRBurn(event: Transfer): void {
+  if (event.params.to.toHexString() != RSR_BURN_ADDRESS) return;
+
   _handleRSRBurn(event.params.value, event.params.from, event);
 }
 
