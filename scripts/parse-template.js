@@ -24,7 +24,8 @@ if (!networksData[network]) {
 // The manifest only declares `features: - grafting` (Goldsky's validator requires it);
 // the actual graft target/block are passed via CLI in deploy.js.
 const graftingConfig = networksData[network].grafting;
-const hasGrafting = graftingConfig && graftingConfig.base && graftingConfig.base !== "";
+const hasGrafting =
+  graftingConfig && graftingConfig.base && graftingConfig.base !== "";
 
 const templateData = {
   network: network,

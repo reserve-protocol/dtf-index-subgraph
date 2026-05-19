@@ -2,6 +2,7 @@ import { BigDecimal, BigInt } from "@graphprotocol/graph-ts";
 
 export const DEFAULT_DECIMALS = 18;
 export const GENESIS_ADDRESS = "0x0000000000000000000000000000000000000000";
+export const RSR_BURN_ADDRESS = "0x000000000000000000000000000000000000dead";
 
 export const SECONDS_PER_DAY = 60 * 60 * 24;
 export const SECONDS_PER_HOUR = 60 * 60;

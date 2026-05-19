@@ -5,6 +5,11 @@ All notable changes to the DTF Index Subgraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.3] - 2026-05-15
+
+### Fixed
+- **RSR burns indexed correctly on mainnet.** Mainnet now indexes RSR `Transfer` events without the manifest `topic2` filter and filters to the burn address in `handleRSRBurn`, working around Goldsky's historical `topic2` backfill miss. Non-mainnet deployments keep the manifest `topic2` filter.
+
 ## [1.9.2] - 2026-05-14
 
 Follows up on 1.9.1 with two more fixes for the same class of DTFs/stTokens that don't go through the standard deploy event path. Smoke-tested on-chain against `0xd45e4170834a803D084b2bB145c9ad08f3BdD651` before implementation.
