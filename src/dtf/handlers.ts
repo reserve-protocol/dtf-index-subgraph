@@ -486,6 +486,7 @@ export function _handleRoleGranted(
     let current = dtf.auctionApprovers;
     current.push(account.toHexString());
     dtf.auctionApprovers = current;
+    dtf.save();
     // Track basket governance
     createGovernanceTimelock(
       account,
@@ -496,14 +497,17 @@ export function _handleRoleGranted(
     let current = dtf.auctionLaunchers;
     current.push(account.toHexString());
     dtf.auctionLaunchers = current;
+    dtf.save();
   } else if (role.equals(Bytes.fromHexString(Role.BRAND_MANAGER))) {
     let current = dtf.brandManagers;
     current.push(account.toHexString());
     dtf.brandManagers = current;
+    dtf.save();
   } else if (role.equals(Bytes.fromHexString(Role.DEFAULT_ADMIN))) {
     let current = dtf.admins;
     current.push(account.toHexString());
     dtf.admins = current;
+    dtf.save();
     // Track owner governance
     createGovernanceTimelock(
       account,
@@ -511,8 +515,6 @@ export function _handleRoleGranted(
       GovernanceType.OWNER
     );
   }
-
-  dtf.save();
 }
 
 export function _handleRoleRevoked(

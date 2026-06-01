@@ -11,6 +11,7 @@ import {
   DelegateChange,
   DelegateVotingPowerChange,
   Governance,
+  OptimisticProposalMetadata,
   Proposal,
   TimelockOperation,
   TimelockOperationByTx,
@@ -28,8 +29,10 @@ import {
 import { getOrCreateAccount } from "../account/mappings";
 import { getOrCreateStakingToken } from "../utils/getters";
 import { Governor } from "../../generated/templates/Governance/Governor";
+import { StakingVault } from "../../generated/templates/Governance/StakingVault";
 
 export const SECONDS_PER_DAY = 60 * 60 * 24;
+const BIGINT_D18 = BigInt.fromString("1000000000000000000");
 
 export function toDecimal(value: BigInt, decimals: number = 18): BigDecimal {
   return value.divDecimal(
@@ -217,9 +220,8 @@ export function _handleProposalCreated(
   const proposalIdString = proposalId.toString();
   const proposal = getProposal(proposalIdString);
   const governance = getGovernance(event.address.toHexString());
-  const contract = Governor.bind(event.address);
-  const isOptimistic = contract.try_isOptimistic(proposalId);
-  const proposalIsOptimistic = !isOptimistic.reverted && isOptimistic.value;
+  const governor = Governor.bind(event.address);
+  const optimisticMetadata = OptimisticProposalMetadata.load(proposalIdString);
 
   proposal.proposer = getOrCreateDelegate(governance.token, proposerAddr).id;
   proposal.txnHash = event.transaction.hash.toHexString();
@@ -246,19 +248,116 @@ export function _handleProposalCreated(
       : ProposalState.PENDING;
   proposal.governance = event.address.toHexString();
   proposal.quorumVotes = quorum;
-  proposal.isOptimistic = proposalIsOptimistic;
+  proposal.isOptimistic = optimisticMetadata !== null;
 
   if (proposal.isOptimistic) {
-    const vetoThreshold = contract.try_vetoThreshold(proposalId);
-    if (!vetoThreshold.reverted) {
-      proposal.vetoThreshold = vetoThreshold.value;
-    }
+    proposal.vetoThreshold = optimisticMetadata!.vetoThreshold;
+    proposal.optimisticSnapshot = voteStart;
+    setOptimisticProposalVetoThresholdVotes(
+      proposal,
+      governance,
+      governor,
+      proposalId,
+      event.block.timestamp.minus(BIGINT_ONE)
+    );
   }
   proposal.save();
 
   // Increment gov proposal count
   governance.proposalCount = governance.proposalCount.plus(BIGINT_ONE);
   governance.save();
+}
+
+export function _handleOptimisticProposalCreated(
+  proposalId: BigInt,
+  vetoThreshold: BigInt,
+  event: ethereum.Event
+): void {
+  const metadata = new OptimisticProposalMetadata(proposalId.toString());
+  const governance = getGovernance(event.address.toHexString());
+
+  metadata.governance = governance.id;
+  metadata.vetoThreshold = vetoThreshold;
+  metadata.vetoDelay = governance.optimisticVetoDelay;
+  metadata.vetoPeriod = governance.optimisticVetoPeriod;
+  metadata.txnHash = event.transaction.hash.toHexString();
+  metadata.blockNumber = event.block.number;
+  metadata.timestamp = event.block.timestamp;
+  metadata.save();
+}
+
+export function setOptimisticProposalVetoThresholdVotes(
+  proposal: Proposal,
+  governance: Governance,
+  governor: Governor,
+  proposalId: BigInt,
+  fallbackSupplyTimepoint: BigInt | null
+): void {
+  const vetoThreshold = proposal.vetoThreshold;
+
+  if (vetoThreshold === null) return;
+
+  const voteToken = StakingVault.bind(Address.fromString(governance.token));
+
+  const snapshot = governor.try_proposalSnapshot(proposalId);
+  if (!snapshot.reverted) {
+    proposal.optimisticSnapshot = snapshot.value;
+
+    if (
+      setOptimisticProposalVetoThresholdVotesAt(
+        proposal,
+        voteToken,
+        vetoThreshold,
+        snapshot.value
+      )
+    ) {
+      return;
+    }
+  }
+
+  if (fallbackSupplyTimepoint === null) return;
+
+  setOptimisticProposalVetoThresholdVotesAt(
+    proposal,
+    voteToken,
+    vetoThreshold,
+    fallbackSupplyTimepoint
+  );
+}
+
+function setOptimisticProposalVetoThresholdVotesAt(
+  proposal: Proposal,
+  voteToken: StakingVault,
+  vetoThreshold: BigInt,
+  supplyTimepoint: BigInt
+): boolean {
+  const snapshotSupply = voteToken.try_getPastTotalSupply(supplyTimepoint);
+  if (snapshotSupply.reverted) return false;
+
+  proposal.optimisticSnapshotSupply = snapshotSupply.value;
+
+  const thresholdVotes = getOptimisticThresholdVotes(
+    vetoThreshold,
+    snapshotSupply.value
+  );
+
+  proposal.vetoThresholdVotes = thresholdVotes;
+  proposal.quorumVotes = thresholdVotes;
+
+  return true;
+}
+
+function getOptimisticThresholdVotes(
+  vetoThreshold: BigInt,
+  snapshotSupply: BigInt
+): BigInt {
+  let thresholdVotes = vetoThreshold.times(snapshotSupply).div(BIGINT_D18);
+
+  if (thresholdVotes.equals(BIGINT_ZERO)) {
+    thresholdVotes = BIGINT_ONE;
+  }
+
+  return thresholdVotes;
 }
 
 export function _handleProposalCanceled(
