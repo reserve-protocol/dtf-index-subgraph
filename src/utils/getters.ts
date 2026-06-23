@@ -97,10 +97,11 @@ export function getOrCreateStakingToken(
   stakingToken.optimisticDelegatedVotes = BigDecimal.fromString("0");
   stakingToken.legacyGovernance = [];
 
+  const vault = StakingVault.bind(tokenAddress);
+
   let underlying = underlyingAddress;
   if (underlying === null) {
-    const contract = StakingVault.bind(tokenAddress);
-    const asset = contract.try_asset();
+    const asset = vault.try_asset();
     if (!asset.reverted) {
       underlying = asset.value;
     }
@@ -109,6 +110,15 @@ export function getOrCreateStakingToken(
   if (underlying !== null) {
     stakingToken.underlying = getOrCreateToken(underlying).id;
   }
+
+  // New StakingVault routes the governance-share fees to a tokenJar (converted to
+  // the underlying and dripped to lockers). Cache it so fee handlers can credit
+  // those fees to governance. Legacy vaults / non-vault tokens revert → null.
+  let jarResult = vault.try_tokenJar();
+  stakingToken.tokenJar =
+    jarResult.reverted || jarResult.value.equals(Address.zero())
+      ? null
+      : jarResult.value.toHexString();
 
   stakingToken.save();
 
