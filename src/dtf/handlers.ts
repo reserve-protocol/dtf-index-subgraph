@@ -7,6 +7,7 @@ import {
   Rebalance,
   RebalanceAuctionBid,
   RSRBurn,
+  StakingToken,
   Trade,
 } from "../../generated/schema";
 import {
@@ -435,7 +436,19 @@ export function _handleFolioFeePaid(
   if (dtf.ownerGovernance) {
     let gov = Governance.load(dtf.ownerGovernance as string);
     if (gov) {
-      isGovernanceToken = gov.token == recipient.toHexString();
+      let recipientHex = recipient.toHexString();
+      isGovernanceToken = gov.token == recipientHex;
+      if (!isGovernanceToken) {
+        // New StakingVault routes the governance share to a tokenJar (converted
+        // to the underlying and dripped to lockers) — credit it to governance.
+        let stakingToken = StakingToken.load(gov.token);
+        if (stakingToken != null) {
+          let jar = stakingToken.tokenJar;
+          if (jar != null) {
+            isGovernanceToken = jar == recipientHex;
+          }
+        }
+      }
     }
   }
 

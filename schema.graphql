@@ -1189,6 +1189,9 @@ type StakingToken @entity(immutable: false) {
   " Stake token "
   token: Token!
 
+  " Reward jar that converts governance-share fees into the underlying token (new StakingVault); null if the vault has none "
+  tokenJar: String
+
   " Governance "
   governance: Governance
 

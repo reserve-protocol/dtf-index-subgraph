@@ -91,6 +91,16 @@ export function getOrCreateStakingToken(tokenAddress: Address): StakingToken {
   stakingToken.optimisticDelegatedVotesRaw = BIGINT_ZERO;
   stakingToken.optimisticDelegatedVotes = BigDecimal.fromString("0");
   stakingToken.legacyGovernance = [];
+
+  // New StakingVault routes the governance-share fees to a tokenJar (converted to
+  // the underlying and dripped to lockers). Cache it so fee handlers can credit
+  // those fees to governance. Legacy vaults / non-vault tokens revert → null.
+  let jarResult = StakingVault.bind(tokenAddress).try_tokenJar();
+  stakingToken.tokenJar =
+    jarResult.reverted || jarResult.value.equals(Address.zero())
+      ? null
+      : jarResult.value.toHexString();
+
   stakingToken.save();
 
   StakingTokenTemplate.create(tokenAddress);
