@@ -19,13 +19,20 @@ import {
   _handleProposalCanceled,
   _handleProposalCreated,
   _handleProposalExecuted,
+  _handleOptimisticProposalCreated,
   _handleProposalQueued,
   _handleVoteCast,
   getGovernance,
   getProposal,
+  setOptimisticProposalVetoThresholdVotes,
 } from "../governance/handlers";
 import { removeFromArrayAtIndex } from "../utils/arrays";
-import { BIGINT_ONE, ProposalState, Role } from "../utils/constants";
+import {
+  BIGINT_ONE,
+  BIGINT_ZERO,
+  ProposalState,
+  Role,
+} from "../utils/constants";
 import {
   Governor,
   ProposalCanceled,
@@ -34,6 +41,7 @@ import {
   ProposalQueued,
   ProposalThresholdSet,
   OptimisticParamsUpdated,
+  OptimisticProposalCreated,
   ProposalThrottleUpdated,
   QuorumNumeratorUpdated,
   VoteCast,
@@ -68,6 +76,16 @@ export function handleProposalCreated(event: ProposalCreated): void {
     event.params.voteEnd,
     event.params.description,
     quorumVotes,
+    event
+  );
+}
+
+export function handleOptimisticProposalCreated(
+  event: OptimisticProposalCreated
+): void {
+  _handleOptimisticProposalCreated(
+    event.params.proposalId,
+    event.params.vetoThreshold,
     event
   );
 }
@@ -186,26 +204,36 @@ export function handleProposalThrottleUpdated(
 
 function getLatestProposalValues(proposalId: string): Proposal {
   const proposal = getProposal(proposalId);
+
+  if (!proposal.totalDelegateVotes.equals(BIGINT_ZERO)) return proposal;
+
   const governance = getGovernance(proposal.governance);
   const stakingToken = StakingToken.load(governance.token)!;
   const token = Token.load(stakingToken.token)!;
 
-  // On first vote, set state and quorum values
   if (proposal.state == ProposalState.PENDING) {
     proposal.state = ProposalState.ACTIVE;
+  }
+
+  proposal.tokenHoldersAtStart = token.currentHolderCount;
+
+  if (proposal.isOptimistic) {
+    proposal.delegatesAtStart = stakingToken.currentOptimisticDelegates;
+    setOptimisticProposalVetoThresholdVotes(
+      proposal,
+      governance,
+      Governor.bind(Address.fromString(proposal.governance)),
+      BigInt.fromString(proposal.id),
+      null
+    );
+  } else {
+    proposal.delegatesAtStart = stakingToken.currentDelegates;
     proposal.quorumVotes = getQuorumFromContract(
       Address.fromString(proposal.governance),
       proposal.voteStart
     );
-
-    proposal.tokenHoldersAtStart = token.currentHolderCount;
-
-    if (proposal.isOptimistic) {
-      proposal.delegatesAtStart = stakingToken.currentOptimisticDelegates;
-    } else {
-      proposal.delegatesAtStart = stakingToken.currentDelegates;
-    }
   }
+
   return proposal;
 }
 

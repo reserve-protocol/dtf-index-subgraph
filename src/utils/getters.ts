@@ -26,7 +26,9 @@ import { Governor } from "../../generated/templates/Governance/Governor";
 import { Timelock } from "../../generated/templates/Governance/Timelock";
 import { StakingVault } from "../../generated/templates/StakingToken/StakingVault";
 import {
+  BIGINT_ONE,
   BIGINT_ZERO,
+  DEFAULT_GOVERNANCE_PROPOSAL_THRESHOLD,
   GovernanceType,
   Role,
   TokenType,
@@ -73,7 +75,10 @@ export function getOrCreateToken(
 // lost), and subscribes to the StakingToken template so future events index.
 // All three side effects fire exactly once per stToken lifetime — there is no
 // other place that needs to subscribe. Callers don't need to coordinate.
-export function getOrCreateStakingToken(tokenAddress: Address): StakingToken {
+export function getOrCreateStakingToken(
+  tokenAddress: Address,
+  underlyingAddress: Address | null = null
+): StakingToken {
   let stakingToken = StakingToken.load(tokenAddress.toHexString());
   if (stakingToken) return stakingToken as StakingToken;
 
@@ -91,6 +96,30 @@ export function getOrCreateStakingToken(tokenAddress: Address): StakingToken {
   stakingToken.optimisticDelegatedVotesRaw = BIGINT_ZERO;
   stakingToken.optimisticDelegatedVotes = BigDecimal.fromString("0");
   stakingToken.legacyGovernance = [];
+
+  const vault = StakingVault.bind(tokenAddress);
+
+  let underlying = underlyingAddress;
+  if (underlying === null) {
+    const asset = vault.try_asset();
+    if (!asset.reverted) {
+      underlying = asset.value;
+    }
+  }
+
+  if (underlying !== null) {
+    stakingToken.underlying = getOrCreateToken(underlying).id;
+  }
+
+  // New StakingVault routes the governance-share fees to a tokenJar (converted to
+  // the underlying and dripped to lockers). Cache it so fee handlers can credit
+  // those fees to governance. Legacy vaults / non-vault tokens revert → null.
+  let jarResult = vault.try_tokenJar();
+  stakingToken.tokenJar =
+    jarResult.reverted || jarResult.value.equals(Address.zero())
+      ? null
+      : jarResult.value.toHexString();
+
   stakingToken.save();
 
   StakingTokenTemplate.create(tokenAddress);
@@ -103,7 +132,11 @@ export function createGovernanceTimelock(
   entity: string,
   entityType: string,
 ): void {
-  if (GovernanceTimelock.load(timelockAddress.toHexString())) {
+  const existingTimelock = GovernanceTimelock.load(
+    timelockAddress.toHexString(),
+  );
+  if (existingTimelock) {
+    refreshGovernanceLinks(existingTimelock);
     return;
   }
 
@@ -167,6 +200,21 @@ export function attachGovernanceToTimelock(
   timelock.governance = governance.id;
   timelock.save();
 
+  refreshGovernanceLinks(timelock);
+
+  return governance;
+}
+
+function refreshGovernanceLinks(timelock: GovernanceTimelock): void {
+  if (timelock.governance === null) {
+    return;
+  }
+
+  const governance = Governance.load(timelock.governance!);
+  if (!governance) {
+    return;
+  }
+
   if (timelock.type == GovernanceType.VOTE_LOCKING) {
     const stakingToken = getOrCreateStakingToken(
       Address.fromString(timelock.entity),
@@ -180,12 +228,13 @@ export function attachGovernanceToTimelock(
       // REBALANCE_MANAGER). Use the DTF's own role membership rather than
       // timelock.type — which only records whichever role was granted first.
       const timelockId = timelock.id;
-      if (dtf.admins.indexOf(timelockId) != -1 && !dtf.ownerGovernance) {
+      if (dtf.admins.indexOf(timelockId) != -1) {
         dtf.ownerGovernance = governance.id;
+        dtf.stToken = governance.token;
+        dtf.stTokenAddress = Address.fromString(governance.token);
       }
       if (
-        dtf.auctionApprovers.indexOf(timelockId) != -1 &&
-        !dtf.tradingGovernance
+        dtf.auctionApprovers.indexOf(timelockId) != -1
       ) {
         dtf.tradingGovernance = governance.id;
       }
@@ -197,8 +246,6 @@ export function attachGovernanceToTimelock(
       dtf.save();
     }
   }
-
-  return governance;
 }
 
 export function getOrCreateGovernance(
@@ -249,9 +296,16 @@ export function getOrCreateGovernance(
   governance.version = contract.version();
   governance.votingDelay = contract.votingDelay();
   governance.votingPeriod = contract.votingPeriod();
-  governance.proposalThreshold = contract.proposalThreshold();
+  const proposalThreshold = contract.proposalThreshold();
+  // Dynamic FolioGovernor.proposalThreshold() returns votes, and zero vote supply rounds to 1.
+  governance.proposalThreshold = proposalThreshold.equals(BIGINT_ONE)
+    ? DEFAULT_GOVERNANCE_PROPOSAL_THRESHOLD
+    : proposalThreshold;
   governance.quorumDenominator = contract.quorumDenominator();
-  governance.quorumNumerator = BIGINT_ZERO;
+  const quorumNumerator = contract.try_quorumNumerator1();
+  governance.quorumNumerator = quorumNumerator.reverted
+    ? BIGINT_ZERO
+    : quorumNumerator.value;
   governance.proposalCount = BIGINT_ZERO;
   governance.proposalsQueued = BIGINT_ZERO;
   governance.proposalsExecuted = BIGINT_ZERO;

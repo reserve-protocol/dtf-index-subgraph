@@ -5,6 +5,30 @@ All notable changes to the DTF Index Subgraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.8] - 2026-06-23
+
+### Fixed
+- **Governance-share fees routed to a StakingVault's `tokenJar` are now counted as `governanceRevenue` instead of `externalRevenue`.** The new StakingVault sends the DTF's governance fee share to a `tokenJar` contract (which converts it to the vault's underlying and drips it to lockers) rather than to the stToken directly. `_handleFolioFeePaid` previously credited `governanceRevenue` only when the recipient was the stToken itself, so jar-routed fees fell into `externalRevenue` — undercounting governance revenue (and the vote-lock APR derived from it) for affected DTFs. The fee handler now also credits the recipient matching the vault's `tokenJar`.
+
+### Changed
+- `StakingToken` entity gains a `tokenJar` field, resolved once via `StakingVault.tokenJar()` when the staking token is first indexed (legacy / non-jar vaults revert → `null`). The fee handler reads the cached value, so it makes no extra on-chain calls per fee event.
+- `abis/staking-vault.json` extended with `tokenJar()`.
+- Requires a reindex from the affected deploy blocks for historical revenue to be reclassified — the `tokenJar` resolution runs at staking-token creation.
+
+## [1.9.7] - 2026-06-01
+
+> The version jumped straight from 1.9.3 to 1.9.7 in a single release — 1.9.4 through 1.9.6 were never published.
+
+### Added
+- **`OptimisticProposalMetadata` entity** recording each optimistic proposal's veto parameters at creation (`vetoThreshold`, `vetoDelay`, `vetoPeriod`) plus the derived `vetoThresholdVotes`, `optimisticSnapshot`, and `optimisticSnapshotSupply`.
+
+### Fixed
+- **Veto threshold for optimistic proposals is now computed correctly.** The threshold in votes is derived from the proposal's snapshot supply (`proposalSnapshot` / past total supply) instead of the previous approximation. `Proposal` gains `vetoThresholdVotes`, `optimisticSnapshot`, and `optimisticSnapshotSupply`.
+- **Staking token `underlying` resolved on indexing.** `getOrCreateStakingToken` now reads the vault's `asset()` (or an explicitly passed `underlyingAddress`) and links `StakingToken.underlying`.
+
+### Changed
+- `getOrCreateStakingToken` gains an optional `underlyingAddress` parameter; added a `DEFAULT_GOVERNANCE_PROPOSAL_THRESHOLD` constant and optimistic veto-threshold handling across `governance/handlers.ts` and `governance/mappings.ts` (with role-handler test coverage).
+
 ## [1.9.3] - 2026-05-15
 
 ### Fixed

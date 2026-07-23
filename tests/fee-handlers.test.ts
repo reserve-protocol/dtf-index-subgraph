@@ -11,6 +11,7 @@ import {
   _handleProtocolFeePaid,
   _handleFolioFeePaid,
 } from "../src/dtf/handlers";
+import { StakingToken } from "../generated/schema";
 import { SECONDS_PER_DAY, SECONDS_PER_HOUR } from "../src/utils/constants";
 import { createTestDTF, createTestToken, createTestGovernance } from "./helpers/mock-entities";
 import { mockERC20 } from "./helpers/mock-erc20";
@@ -29,6 +30,9 @@ const ST_TOKEN_ADDR = Address.fromString(
 );
 const RANDOM_RECIPIENT = Address.fromString(
   "0xDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+);
+const TOKEN_JAR_ADDR = Address.fromString(
+  "0xEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
 );
 
 // Mock ERC20 for DTF token (used by getOrCreateToken in fee handlers)
@@ -238,6 +242,67 @@ describe("_handleFolioFeePaid", () => {
       "TokenDailySnapshot",
       dayId,
       "dailyExternalRevenue",
+      "0"
+    );
+  });
+
+  test("tokenJar recipient adds to governanceRevenue", () => {
+    let dtf = createTestDTF(DTF_ADDR);
+    let governance = createTestGovernance(
+      GOVERNANCE_ADDR,
+      TIMELOCK_ADDR,
+      ST_TOKEN_ADDR
+    );
+    dtf.ownerGovernance = governance.id;
+    dtf.save();
+
+    // Cache the vault's tokenJar on the StakingToken (done at creation in prod)
+    let st = StakingToken.load(ST_TOKEN_ADDR.toHexString()) as StakingToken;
+    st.tokenJar = TOKEN_JAR_ADDR.toHexString();
+    st.save();
+
+    let event = createFeeEvent();
+    _handleFolioFeePaid(DTF_ADDR, TOKEN_JAR_ADDR, BigInt.fromI32(600), event);
+
+    assert.fieldEquals(
+      "DTF",
+      DTF_ADDR.toHexString(),
+      "governanceRevenue",
+      "600"
+    );
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "externalRevenue", "0");
+
+    let dayId = DTF_ADDR.toHexString() + "-1";
+    assert.fieldEquals(
+      "TokenDailySnapshot",
+      dayId,
+      "dailyGovernanceRevenue",
+      "600"
+    );
+  });
+
+  test("recipient that is neither stToken nor tokenJar stays external", () => {
+    let dtf = createTestDTF(DTF_ADDR);
+    let governance = createTestGovernance(
+      GOVERNANCE_ADDR,
+      TIMELOCK_ADDR,
+      ST_TOKEN_ADDR
+    );
+    dtf.ownerGovernance = governance.id;
+    dtf.save();
+
+    let st = StakingToken.load(ST_TOKEN_ADDR.toHexString()) as StakingToken;
+    st.tokenJar = TOKEN_JAR_ADDR.toHexString();
+    st.save();
+
+    let event = createFeeEvent();
+    _handleFolioFeePaid(DTF_ADDR, RANDOM_RECIPIENT, BigInt.fromI32(250), event);
+
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "externalRevenue", "250");
+    assert.fieldEquals(
+      "DTF",
+      DTF_ADDR.toHexString(),
+      "governanceRevenue",
       "0"
     );
   });

@@ -90,9 +90,8 @@ export function _handleDeployedGovernedStakingToken(
 ): void {
   // Template subscription is now handled inside getOrCreateStakingToken so it works
   // for both fresh deploys and grafted entities.
-  let stakingToken = getOrCreateStakingToken(stTokenAddress);
+  let stakingToken = getOrCreateStakingToken(stTokenAddress, underlyingAddress);
 
-  stakingToken.underlying = getOrCreateToken(underlyingAddress).id;
   stakingToken.governance = getOrCreateGovernance(governor, timelock).id;
   stakingToken.save();
 

@@ -11,6 +11,9 @@ export const SECONDS_PER_MONTH = 60 * 60 * 24 * 30; // 30 days approximation
 export const BIGINT_ZERO = BigInt.fromI32(0);
 export const BIGINT_ONE = BigInt.fromI32(1);
 export const BIGINT_TWO = BigInt.fromI32(2);
+export const DEFAULT_GOVERNANCE_PROPOSAL_THRESHOLD = BigInt.fromString(
+  "1000000000000000",
+);
 export const BIGDECIMAL_ZERO = new BigDecimal(BIGINT_ZERO);
 export const BIGDECIMAL_ONE = new BigDecimal(BIGINT_ONE);
 

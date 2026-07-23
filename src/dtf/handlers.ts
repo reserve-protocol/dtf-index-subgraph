@@ -7,6 +7,7 @@ import {
   Rebalance,
   RebalanceAuctionBid,
   RSRBurn,
+  StakingToken,
   Trade,
 } from "../../generated/schema";
 import {
@@ -435,7 +436,19 @@ export function _handleFolioFeePaid(
   if (dtf.ownerGovernance) {
     let gov = Governance.load(dtf.ownerGovernance as string);
     if (gov) {
-      isGovernanceToken = gov.token == recipient.toHexString();
+      let recipientHex = recipient.toHexString();
+      isGovernanceToken = gov.token == recipientHex;
+      if (!isGovernanceToken) {
+        // New StakingVault routes the governance share to a tokenJar (converted
+        // to the underlying and dripped to lockers) — credit it to governance.
+        let stakingToken = StakingToken.load(gov.token);
+        if (stakingToken != null) {
+          let jar = stakingToken.tokenJar;
+          if (jar != null) {
+            isGovernanceToken = jar == recipientHex;
+          }
+        }
+      }
     }
   }
 
@@ -486,6 +499,7 @@ export function _handleRoleGranted(
     let current = dtf.auctionApprovers;
     current.push(account.toHexString());
     dtf.auctionApprovers = current;
+    dtf.save();
     // Track basket governance
     createGovernanceTimelock(
       account,
@@ -496,14 +510,17 @@ export function _handleRoleGranted(
     let current = dtf.auctionLaunchers;
     current.push(account.toHexString());
     dtf.auctionLaunchers = current;
+    dtf.save();
   } else if (role.equals(Bytes.fromHexString(Role.BRAND_MANAGER))) {
     let current = dtf.brandManagers;
     current.push(account.toHexString());
     dtf.brandManagers = current;
+    dtf.save();
   } else if (role.equals(Bytes.fromHexString(Role.DEFAULT_ADMIN))) {
     let current = dtf.admins;
     current.push(account.toHexString());
     dtf.admins = current;
+    dtf.save();
     // Track owner governance
     createGovernanceTimelock(
       account,
@@ -511,8 +528,6 @@ export function _handleRoleGranted(
       GovernanceType.OWNER
     );
   }
-
-  dtf.save();
 }
 
 export function _handleRoleRevoked(
