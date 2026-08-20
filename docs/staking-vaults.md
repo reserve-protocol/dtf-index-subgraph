@@ -18,7 +18,7 @@ Tokens that are not vaults (every vault read reverts) still get a `StakingToken`
 |---|---|---|
 | `GovernedFolioDeployed` | `FolioDeployer` (all versions) | DTF + its governances |
 | `DeployedGovernedStakingToken` | `GovernanceDeployer` (all versions) | legacy Ownable vaults |
-| `ReserveOptimisticGovernorSystemDeployed` | `OptimisticGovernorDeployer` (reserve-governor repo) | `stakingVault = 0x0` ⇒ `deployWithExistingStakingVault`: only a governance reusing a shared vault. Non-zero ⇒ new AccessControl vault; the timelock entity is created here because the vault emits no `OwnershipTransferred`. |
+| `ReserveOptimisticGovernorSystemDeployed` | `OptimisticGovernorDeployer` (reserve-governor repo) | `stakingVault = 0x0` ⇒ `deployWithExistingStakingVault`: a DTF governance reusing a shared vault — only the vault is discovered here (`Governor.token()`); the Governance entity is created by the DTF role grant, which is the only point where its timelock (and therefore `optimisticProposers`) is known. Non-zero ⇒ new AccessControl vault; governance + timelock are created here because the vault emits no `OwnershipTransferred`. |
 
 Optimistic deployers (one per chain, different addresses): mainnet `0x2acc45e1…` (block 25245938), base `0x604d70d1…` (46904843), bsc `0x1c10e68b…` (102317103). Adding one = append to `networks.json` `OptimisticGovernorDeployer` with address + creation block.
 

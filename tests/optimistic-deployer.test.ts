@@ -264,7 +264,7 @@ describe("handleOptimisticGovernorSystemDeployed", () => {
     assert.dataSourceCount("UnstakingManager", 1);
   });
 
-  test("deployWithExistingStakingVault (vault = 0x0): DTF governance is indexed and the shared vault keeps its own governance", () => {
+  test("deployWithExistingStakingVault (vault = 0x0): the shared vault is untouched and the DTF governance is left to the role-grant path", () => {
     handleOptimisticGovernorSystemDeployed(
       createSystemDeployedEvent(VAULT, GOVERNOR, TIMELOCK, 102317233)
     );
@@ -277,19 +277,10 @@ describe("handleOptimisticGovernorSystemDeployed", () => {
       )
     );
 
-    assert.fieldEquals(
-      "Governance",
-      DTF_GOVERNOR.toHexString(),
-      "token",
-      VAULT.toHexString()
-    );
-    assert.fieldEquals(
-      "Governance",
-      DTF_GOVERNOR.toHexString(),
-      "timelock",
-      DTF_TIMELOCK.toHexString()
-    );
-    assert.dataSourceExists("Governance", DTF_GOVERNOR.toHexString());
+    // Creating the Governance here would freeze optimisticProposers to [] (its
+    // timelock entity does not exist yet); the DTF role grant creates both later.
+    assert.notInStore("Governance", DTF_GOVERNOR.toHexString());
+    assert.notInStore("GovernanceTimelock", DTF_TIMELOCK.toHexString());
 
     // The vault's own governance is untouched by a DTF reusing it
     assert.fieldEquals(
@@ -299,13 +290,12 @@ describe("handleOptimisticGovernorSystemDeployed", () => {
       GOVERNOR.toHexString()
     );
     assert.entityCount("StakingToken", 1);
+    assert.entityCount("Governance", 1);
     assert.dataSourceCount("StakingToken", 1);
     assert.dataSourceCount("UnstakingManager", 1);
-    // DTF timelock entity is created later by the DTF role grant, not here
-    assert.notInStore("GovernanceTimelock", DTF_TIMELOCK.toHexString());
   });
 
-  test("deployWithExistingStakingVault on a never-seen vault discovers it (manager included) through Governor.token()", () => {
+  test("deployWithExistingStakingVault on a never-seen vault still discovers it (manager included) through Governor.token()", () => {
     handleOptimisticGovernorSystemDeployed(
       createSystemDeployedEvent(
         Address.zero(),
@@ -321,15 +311,8 @@ describe("handleOptimisticGovernorSystemDeployed", () => {
       "unstakingManager",
       MANAGER.toHexString()
     );
-    // Resilience path: vault DEFAULT_ADMIN member 0 → timelock → PROPOSER_ROLE → governor
-    assert.fieldEquals(
-      "StakingToken",
-      VAULT.toHexString(),
-      "governance",
-      GOVERNOR.toHexString()
-    );
+    assert.dataSourceExists("StakingToken", VAULT.toHexString());
     assert.dataSourceExists("UnstakingManager", MANAGER.toHexString());
-    assert.dataSourceExists("Governance", GOVERNOR.toHexString());
-    assert.dataSourceExists("Governance", DTF_GOVERNOR.toHexString());
+    assert.notInStore("Governance", DTF_GOVERNOR.toHexString());
   });
 });

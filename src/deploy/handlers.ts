@@ -1,6 +1,7 @@
 import { Address, BigInt } from "@graphprotocol/graph-ts";
 import { DTF } from "../../generated/schema";
 import { DTF as DTFTemplate } from "../../generated/templates";
+import { Governor } from "../../generated/templates/Governance/Governor";
 import {
   BIGINT_ZERO,
   GENESIS_ADDRESS,
@@ -103,16 +104,20 @@ export function _handleDeployedGovernedStakingToken(
 //   govern it. The vault uses AccessControl (no OwnershipTransferred), so the timelock entity
 //   must be created here instead of relying on the legacy ownership hook.
 // - deployWithExistingStakingVault: stakingVault is address(0); governor/timelock are a DTF
-//   governance reusing a shared vault (e.g. BSC vlRSR). Governor.token() resolves the vault.
+//   governance reusing a shared vault (e.g. BSC vlRSR). Only the vault is discovered here
+//   (Governor.token()). The Governance entity itself is created when the DTF grants the
+//   timelock a role — same as the FolioDeployer path — because getOrCreateGovernance reads
+//   optimisticProposers from the timelock entity, which does not exist yet at this point.
 export function _handleOptimisticGovernorSystemDeployed(
   stakingVault: Address,
   governor: Address,
   timelock: Address
 ): void {
   if (stakingVault.toHexString() == GENESIS_ADDRESS) {
-    // The timelock entity gets created when the DTF grants it a role — same as the
-    // FolioDeployer path.
-    getOrCreateGovernance(governor, timelock);
+    const token = Governor.bind(governor).try_token();
+    if (!token.reverted) {
+      getOrCreateStakingToken(token.value);
+    }
     return;
   }
 
