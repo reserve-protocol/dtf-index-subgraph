@@ -22,7 +22,7 @@ The DTF Index Subgraph tracks and indexes:
 This subgraph uses a Mustache-based template system to generate network-specific configurations:
 
 1. **Template File**: `subgraph.yaml.mustache` contains the base configuration with placeholders
-2. **Network Configuration**: `networks.json` stores deployment addresses and block numbers for each network
+2. **Network Configuration**: `networks.json` stores deployment addresses and block numbers for each network, plus `secondsPerBlock` (drives the exchange-rate polling cadence, see below)
 3. **Parser Script**: `scripts/parse-template.js` generates the final `subgraph.yaml`
 
 ### How It Works
@@ -30,7 +30,8 @@ This subgraph uses a Mustache-based template system to generate network-specific
 The template parsing process:
 1. Takes a network argument (e.g., "mainnet", "base", "bsc")
 2. Loads network-specific addresses and block numbers from `networks.json`
-3. Handles multiple protocol versions (1.0.0, 2.0.0, 4.0.0) with different deployer contracts
+3. Handles multiple protocol versions (1.0.0, 2.0.0, 4.0.0, 5.0.0) with different deployer contracts, plus the standalone `ReserveOptimisticGovernorDeployer` (`OptimisticGovernorDeployer` in `networks.json`)
+4. Converts the 10-minute exchange-rate polling cadence into a per-network block count (`every: round(600 / secondsPerBlock)`)
 4. Generates `subgraph.yaml` with all network-specific values filled in
 
 ### Building for Different Networks
@@ -123,6 +124,7 @@ The deployment process automatically:
 - **Token**: ERC20 tokens with transfer history and holder analytics
 - **Governance**: Proposals, votes, delegates, and timelock operations
 - **VoteLockedToken**: stDAO tokens with delegation and vote-locking mechanisms
+- **StakingPosition / exchange rate**: per-account principal vs. current value for appreciating vaults — see `docs/staking-vaults.md`
 
 ## Version Support
 

@@ -4,6 +4,7 @@
       "base": "",
       "block": 0
     },
+    "secondsPerBlock": 12,
     "FolioDeployer": [
       {
         "address": "0xaafb13a3df7ce70c140e40c959d58fd5cc443cba",
@@ -48,6 +49,20 @@
         "_version": "5.0.0"
       }
     ],
+    "OptimisticGovernorDeployer": [
+      {
+        "address": "0x2acc45e12776579f40ae3419764eef7022763735",
+        "startBlock": 25245938,
+        "_version": "1.0.0"
+      }
+    ],
+    "TrackedVault": [
+      {
+        "address": "0xABbDD9AC016e43c7CA85e2258E669948f029BC0c",
+        "startBlock": 25245945,
+        "_symbol": "vlRSR"
+      }
+    ],
     "RSR": {
       "address": "0x320623b8e4ff03373931769a31fc52a4e78b5d70",
       "startBlock": 22380000
@@ -58,6 +73,7 @@
       "base": "",
       "block": 0
     },
+    "secondsPerBlock": 2,
     "FolioDeployer": [
       {
         "address": "0xe926577a152ffd5f5036f88bf7e8e8d3652b558c",
@@ -102,6 +118,20 @@
         "_version": "5.0.0"
       }
     ],
+    "OptimisticGovernorDeployer": [
+      {
+        "address": "0x604d70d128b11019c10b45a789148ec362fda040",
+        "startBlock": 46904843,
+        "_version": "1.0.0"
+      }
+    ],
+    "TrackedVault": [
+      {
+        "address": "0x2F0D6538807a77d4AdDCd4b4DAf214Ea2E818E3D",
+        "startBlock": 46904963,
+        "_symbol": "vlRSR"
+      }
+    ],
     "RSR": {
       "address": "0xaB36452DbAC151bE02b16Ca17d8919826072f64a",
       "startBlock": 29600000
@@ -119,6 +149,7 @@
       "base": "",
       "block": 0
     },
+    "secondsPerBlock": 0.45,
     "FolioDeployer": [
       {
         "address": "0x100E0eFDd7a4f67825E1BE5f0493F8D2AEAc00bb",
@@ -151,6 +182,20 @@
         "address": "0xA7BC1265C37A8D285cd2B10c842Efb8415A7bF9f",
         "startBlock": 71164188,
         "_version": "5.0.0"
+      }
+    ],
+    "OptimisticGovernorDeployer": [
+      {
+        "address": "0x1c10e68b0fbfd0da41969120bf499e8d39d66495",
+        "startBlock": 102317103,
+        "_version": "1.0.0"
+      }
+    ],
+    "TrackedVault": [
+      {
+        "address": "0xE744C8157c346B2931807F42552c8CBc0BB6D34f",
+        "startBlock": 102317233,
+        "_symbol": "vlRSR"
       }
     ],
     "RSR": {

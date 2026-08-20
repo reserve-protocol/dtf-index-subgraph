@@ -1,14 +1,25 @@
+import { dataSource, ethereum } from "@graphprotocol/graph-ts";
 import { _handleTransfer } from "../token/mappings";
+import { GENESIS_ADDRESS } from "../utils/constants";
+import {
+  _handlePositionTransfer,
+  _handleVaultDeposit,
+  _handleVaultWithdraw,
+} from "./positions";
 import {
   DelegateChanged,
   DelegateVotesChanged,
+  Deposit,
   OptimisticDelegateChanged,
   OptimisticDelegateVotesChanged,
   OwnershipTransferred,
   RewardsClaimed,
+  RewardRatioSet,
   RewardTokenAdded,
   RewardTokenRemoved,
   Transfer,
+  UnstakingDelaySet,
+  Withdraw,
 } from "./../../generated/templates/StakingToken/StakingVault";
 import {
   LockCancelled,
@@ -18,13 +29,16 @@ import {
 import {
   _handleDelegateChanged,
   _handleDelegateVotesChanged,
+  _handleExchangeRatePoll,
   _handleLockCancelled,
   _handleLockClaimed,
   _handleLockCreated,
   _handleOwnershipTransferred,
+  _handleRewardRatioSet,
   _handleRewardsClaimed,
   _handleRewardTokenAdded,
   _handleRewardTokenRemoved,
+  _handleUnstakingDelaySet,
 } from "./handlers";
 
 export function handleRewardTokenAdded(event: RewardTokenAdded): void {
@@ -128,4 +142,54 @@ export function handleTransfer(event: Transfer): void {
     event.params.value,
     event
   );
+
+  // Mints / burns are accounted by Deposit / Withdraw; only wallet moves here.
+  const isMint = event.params.from.toHexString() == GENESIS_ADDRESS;
+  const isBurn = event.params.to.toHexString() == GENESIS_ADDRESS;
+  if (!isMint && !isBurn) {
+    _handlePositionTransfer(
+      event.address,
+      event.params.from,
+      event.params.to,
+      event.params.value,
+      event
+    );
+  }
+}
+
+export function handleDeposit(event: Deposit): void {
+  _handleVaultDeposit(
+    event.address,
+    event.params.sender,
+    event.params.owner,
+    event.params.assets,
+    event.params.shares,
+    event
+  );
+}
+
+export function handleWithdraw(event: Withdraw): void {
+  _handleVaultWithdraw(
+    event.address,
+    event.params.owner,
+    event.params.assets,
+    event.params.shares,
+    event
+  );
+}
+
+export function handleUnstakingDelaySet(event: UnstakingDelaySet): void {
+  _handleUnstakingDelaySet(event.address, event.params.delay);
+}
+
+export function handleRewardRatioSet(event: RewardRatioSet): void {
+  _handleRewardRatioSet(
+    event.address,
+    event.params.rewardRatio,
+    event.params.halfLife
+  );
+}
+
+export function handleExchangeRatePoll(block: ethereum.Block): void {
+  _handleExchangeRatePoll(dataSource.address(), block);
 }

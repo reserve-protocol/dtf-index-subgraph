@@ -175,6 +175,8 @@ export function createTestGovernance(
   stakingToken.optimisticDelegatedVotesRaw = BIGINT_ZERO;
   stakingToken.optimisticDelegatedVotes = BIGINT_ZERO.toBigDecimal();
   stakingToken.legacyGovernance = [];
+  stakingToken.exchangeRate = BigInt.fromI32(10).pow(18);
+  stakingToken.totalAssets = BIGINT_ZERO;
   stakingToken.save();
 
   // Create required GovernanceTimelock

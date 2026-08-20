@@ -1964,11 +1964,23 @@
     "name": "getRoleMember",
     "stateMutability": "view",
     "inputs": [
-      { "name": "role", "type": "bytes32", "internalType": "bytes32" },
-      { "name": "index", "type": "uint256", "internalType": "uint256" }
+      {
+        "name": "role",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
     ],
     "outputs": [
-      { "name": "", "type": "address", "internalType": "address" }
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
     ]
   },
   {
@@ -1976,10 +1988,70 @@
     "name": "getRoleMemberCount",
     "stateMutability": "view",
     "inputs": [
-      { "name": "role", "type": "bytes32", "internalType": "bytes32" }
+      {
+        "name": "role",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
     ],
     "outputs": [
-      { "name": "", "type": "uint256", "internalType": "uint256" }
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
     ]
+  },
+  {
+    "inputs": [],
+    "name": "versionRegistry",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "rewardTokenRegistry",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "versionRegistry",
+        "type": "address"
+      }
+    ],
+    "name": "VersionRegistrySet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "rewardTokenRegistry",
+        "type": "address"
+      }
+    ],
+    "name": "RewardTokenRegistrySet",
+    "type": "event"
   }
 ]

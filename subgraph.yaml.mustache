@@ -46,6 +46,7 @@ dataSources:
         - Governance
         - GovernanceTimelock
         - StakingToken
+        - UnstakingManager
       abis:
         - name: FolioDeployer
           file: ./abis/folio-deployer.json
@@ -81,6 +82,7 @@ dataSources:
         - StakingToken
         - Governance
         - Token
+        - UnstakingManager
       abis:
         - name: ERC20
           file: ./abis/erc20.json
@@ -98,6 +100,79 @@ dataSources:
           handler: handleDeployedGovernedStakingToken
       file: ./src/deploy/mappings.ts
 {{/GovernanceDeployer}}
+{{#OptimisticGovernorDeployer}}
+  - kind: ethereum
+    name: OptimisticGovernorDeployer{{postfix}}
+    network: {{network}}
+    source:
+      abi: OptimisticGovernorDeployer
+      address: "{{address}}"
+      startBlock: {{startBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - StakingToken
+        - UnstakingManager
+        - Governance
+        - GovernanceTimelock
+        - Token
+      abis:
+        - name: OptimisticGovernorDeployer
+          file: ./abis/optimistic-governor-deployer.json
+        - name: ERC20
+          file: ./abis/erc20.json
+        - name: Governor
+          file: ./abis/governor.json
+        - name: Timelock
+          file: ./abis/timelock.json
+        - name: StakingVault
+          file: ./abis/staking-vault.json
+      eventHandlers:
+        - event: ReserveOptimisticGovernorSystemDeployed(indexed address,indexed address,indexed address,address)
+          handler: handleOptimisticGovernorSystemDeployed
+      file: ./src/deploy/mappings.ts
+{{/OptimisticGovernorDeployer}}
+{{#TrackedVault}}
+  # Hardcoded vault whose share -> asset rate is sampled on a time cadence
+  # (native asset() rewards stream into totalAssets, so the rate moves every
+  # block). `every` is derived per network from networks.json secondsPerBlock
+  # (~10 minutes). Events for this vault still flow through the StakingToken
+  # template; this data source only runs the poll.
+  - kind: ethereum
+    name: TrackedVault{{postfix}}
+    network: {{network}}
+    source:
+      abi: StakingVault
+      address: "{{address}}"
+      startBlock: {{startBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - StakingToken
+        - StakingTokenExchangeRateSnapshot
+        - StakingTokenExchangeRateDailySnapshot
+        - UnstakingManager
+        - Token
+      abis:
+        - name: StakingVault
+          file: ./abis/staking-vault.json
+        - name: ERC20
+          file: ./abis/erc20.json
+        - name: Governor
+          file: ./abis/governor.json
+        - name: Timelock
+          file: ./abis/timelock.json
+      blockHandlers:
+        - handler: handleExchangeRatePoll
+          filter:
+            kind: polling
+            every: {{exchangeRatePollingBlocks}}
+      file: ./src/staking-token/mappings.ts
+{{/TrackedVault}}
 {{#BridgedDTF}}
   - kind: ethereum
     name: BridgedDTF{{postfix}}
@@ -139,6 +214,8 @@ templates:
         - Governance
         - Trade
         - GovernanceTimelock
+        - StakingToken
+        - UnstakingManager
       abis:
         - name: DTF
           file: ./abis/dtf.json
@@ -231,6 +308,10 @@ templates:
       language: wasm/assemblyscript
       entities:
         - StakingToken
+        - StakingPosition
+        - StakingPositionRecord
+        - StakingPositionDailySnapshot
+        - UnstakingManager
         - Delegate
         - Token
         - Account
@@ -265,6 +346,14 @@ templates:
           handler: handleOwnershipTransferred
         - event: RewardsClaimed(address,address,uint256)
           handler: handleRewardsClaimed
+        - event: Deposit(indexed address,indexed address,uint256,uint256)
+          handler: handleDeposit
+        - event: Withdraw(indexed address,indexed address,indexed address,uint256,uint256)
+          handler: handleWithdraw
+        - event: UnstakingDelaySet(uint256)
+          handler: handleUnstakingDelaySet
+        - event: RewardRatioSet(uint256,uint256)
+          handler: handleRewardRatioSet
       file: ./src/staking-token/mappings.ts
   - name: UnstakingManager
     kind: ethereum/contract
@@ -304,6 +393,7 @@ templates:
       language: wasm/assemblyscript
       entities:
         - StakingToken
+        - UnstakingManager
         - Token
         - Governance
         - GovernanceTimelock
@@ -357,6 +447,7 @@ templates:
         - GovernanceTimelock
         - Governance
         - StakingToken
+        - UnstakingManager
         - DTF
       abis:
         - name: Timelock

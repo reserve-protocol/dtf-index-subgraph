@@ -3,6 +3,7 @@ import {
   AccountBalance,
   Lock,
   RewardClaim,
+  StakingToken,
   StakingTokenRewards,
   UnstakingManager,
 } from "../../generated/schema";
@@ -30,6 +31,8 @@ import {
   getOrCreateStakingToken,
   getOrCreateToken,
 } from "../utils/getters";
+import { sampleExchangeRate } from "../utils/staking-vault";
+import { StakingVault } from "../../generated/templates/StakingToken/StakingVault";
 
 function getOrCreateStakeTokenHolder(
   delegator: string,
@@ -111,9 +114,11 @@ export function _handleRewardsClaimed(
     "-" +
     event.logIndex.toString();
 
+  let account = getOrCreateAccount(userAddress);
+  account.save();
   let claim = new RewardClaim(id);
   claim.token = getOrCreateStakingToken(stakingTokenAddress).id;
-  claim.account = getOrCreateAccount(userAddress).id;
+  claim.account = account.id;
   claim.rewardToken = getOrCreateToken(rewardTokenAddress, TokenType.ASSET).id;
   claim.amount = amount;
   claim.blockNumber = event.block.number;
@@ -250,10 +255,14 @@ export function _handleLockCreated(
   event: ethereum.Event
 ): void {
   let token = getTokenFromManager(manager);
+  // The receiver of a withdraw may never have held the vault token, so the
+  // Account entity can be new here — save it or Lock.account dangles.
+  let account = getOrCreateAccount(user);
+  account.save();
   let lock = new Lock(manager.toHexString() + "-" + lockId.toString());
   lock.lockId = lockId;
   lock.token = token;
-  lock.account = getOrCreateAccount(user).id;
+  lock.account = account.id;
   lock.amount = amount;
   lock.unlockTime = unlockTime;
   lock.createdBlock = event.block.number;
@@ -321,4 +330,42 @@ export function _handleOwnershipTransferred(
 
 export function getTokenFromManager(manager: Address): string {
   return UnstakingManager.load(manager.toHexString())!.token;
+}
+
+export function _handleUnstakingDelaySet(
+  stakingTokenAddress: Address,
+  delay: BigInt
+): void {
+  let stakingToken = getOrCreateStakingToken(stakingTokenAddress);
+  stakingToken.unstakingDelay = delay;
+  stakingToken.save();
+}
+
+export function _handleRewardRatioSet(
+  stakingTokenAddress: Address,
+  rewardRatio: BigInt,
+  halfLife: BigInt
+): void {
+  let stakingToken = getOrCreateStakingToken(stakingTokenAddress);
+  stakingToken.rewardRatio = rewardRatio;
+  stakingToken.rewardHalfLife = halfLife;
+  stakingToken.save();
+}
+
+// Polling block handler of the hardcoded TrackedVault data sources (one vlRSR
+// vault per chain, ~10 min cadence, see subgraph.yaml.mustache). Goes through
+// getOrCreateStakingToken so the tracked vault is indexed from its start block
+// even if no deployer event ever named it.
+export function _handleExchangeRatePoll(
+  stakingTokenAddress: Address,
+  block: ethereum.Block
+): void {
+  let stakingToken = getOrCreateStakingToken(stakingTokenAddress);
+  // No manager ⇔ not a StakingVault (every vault version exposes one): skip the
+  // two eth_calls instead of letting them revert every poll forever.
+  if (stakingToken.unstakingManager === null) {
+    return;
+  }
+  sampleExchangeRate(stakingToken, StakingVault.bind(stakingTokenAddress), block);
+  stakingToken.save();
 }

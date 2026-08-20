@@ -42,6 +42,11 @@ import {
   fetchTokenSymbol,
   fetchTokenTotalSupply,
 } from "./tokens";
+import {
+  oneShare,
+  sampleExchangeRate,
+  subscribeUnstakingManager,
+} from "./staking-vault";
 
 export function getOrCreateToken(
   tokenAddress: Address,
@@ -71,10 +76,11 @@ export function getOrCreateToken(
 }
 
 // Canonical "first time we see this stToken" hook. On CREATE: initializes
-// entity state, seeds totalSupply from chain (so pre-discovery Transfers aren't
-// lost), and subscribes to the StakingToken template so future events index.
-// All three side effects fire exactly once per stToken lifetime — there is no
-// other place that needs to subscribe. Callers don't need to coordinate.
+// entity state, seeds totalSupply / exchange rate from chain (so pre-discovery
+// Transfers aren't lost), and subscribes BOTH the StakingToken template and the
+// vault's UnstakingManager template so future events index. Every discovery path
+// (deployer events, Governor.token(), timelock role grants) goes through here, so
+// a vault from an untracked deployer still gets its locks indexed.
 export function getOrCreateStakingToken(
   tokenAddress: Address,
   underlyingAddress: Address | null = null
@@ -119,6 +125,21 @@ export function getOrCreateStakingToken(
     jarResult.reverted || jarResult.value.equals(Address.zero())
       ? null
       : jarResult.value.toHexString();
+
+  const unstakingDelay = vault.try_unstakingDelay();
+  stakingToken.unstakingDelay = unstakingDelay.reverted
+    ? null
+    : unstakingDelay.value;
+
+  const rewardRatio = vault.try_rewardRatio();
+  stakingToken.rewardRatio = rewardRatio.reverted ? null : rewardRatio.value;
+
+  // Defaults for tokens that are not ERC4626 vaults (calls below revert): 1:1.
+  stakingToken.exchangeRate = oneShare(stakingToken);
+  stakingToken.totalAssets = BIGINT_ZERO;
+  sampleExchangeRate(stakingToken, vault, null);
+
+  subscribeUnstakingManager(stakingToken, vault);
 
   stakingToken.save();
 
