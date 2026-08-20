@@ -40,8 +40,6 @@ export function getOrCreateStakingPosition(
   position.totalDeposited = BIGINT_ZERO;
   position.totalWithdrawn = BIGINT_ZERO;
   position.realizedRewards = BIGINT_ZERO;
-  position.accountingComplete = true;
-  position.untrackedShares = BIGINT_ZERO;
   position.depositCount = 0;
   position.withdrawCount = 0;
   position.blockNumber = block.number;
@@ -102,16 +100,10 @@ export function _handleVaultWithdraw(
   const stakingToken = getOrCreateStakingToken(vault);
   const position = getOrCreateStakingPosition(owner, stakingToken, event.block);
 
-  const trackedShares = trackedPortion(position, shares);
-  const principalReleased = principalFor(position, trackedShares);
-  // Only the underlying paid out for shares with a known basis can be compared to it
-  const trackedAssets = shares.equals(BIGINT_ZERO)
-    ? BIGINT_ZERO
-    : assets.times(trackedShares).div(shares);
-  const realized = trackedAssets.minus(principalReleased);
+  const principalReleased = principalFor(position, shares);
+  const realized = assets.minus(principalReleased);
 
-  removeUntracked(position, shares.minus(trackedShares));
-  position.shares = position.shares.minus(trackedShares);
+  position.shares = subtractShares(position.shares, shares);
   position.principal = position.principal.minus(principalReleased);
   position.totalWithdrawn = position.totalWithdrawn.plus(assets);
   position.realizedRewards = position.realizedRewards.plus(realized);
@@ -148,19 +140,13 @@ export function _handlePositionTransfer(
   const sender = getOrCreateStakingPosition(from, stakingToken, event.block);
   const receiver = getOrCreateStakingPosition(to, stakingToken, event.block);
 
-  const trackedShares = trackedPortion(sender, shares);
-  const principalMoved = principalFor(sender, trackedShares);
-  const untrackedShares = shares.minus(trackedShares);
+  const principalMoved = principalFor(sender, shares);
 
-  removeUntracked(sender, untrackedShares);
-  sender.shares = sender.shares.minus(trackedShares);
+  sender.shares = subtractShares(sender.shares, shares);
   sender.principal = sender.principal.minus(principalMoved);
   touch(sender, event.block);
 
-  // Unknown-basis shares stay quarantined on the receiver: they never enter
-  // `shares`, so a later withdrawal cannot turn them into realized rewards.
-  addUntracked(receiver, untrackedShares);
-  receiver.shares = receiver.shares.plus(trackedShares);
+  receiver.shares = receiver.shares.plus(shares);
   receiver.principal = receiver.principal.plus(principalMoved);
   touch(receiver, event.block);
 
@@ -186,49 +172,19 @@ export function _handlePositionTransfer(
   );
 }
 
-// A position is two pools: `shares` with a known cost basis and
-// `untrackedShares` without one (received from an account whose own basis was
-// unknown, or — for shares we never saw enter at all — a vault discovered after
-// the account had deposited). Shares leaving take from both pools pro rata; only
-// the tracked part releases principal or earns realized rewards.
-function trackedPortion(position: StakingPosition, shares: BigInt): BigInt {
-  const held = position.shares.plus(position.untrackedShares);
-  if (held.equals(BIGINT_ZERO)) {
-    return BIGINT_ZERO;
-  }
-  if (shares.ge(held)) {
-    return position.shares;
-  }
-  return shares.times(position.shares).div(held);
-}
-
-function addUntracked(position: StakingPosition, shares: BigInt): void {
-  if (shares.equals(BIGINT_ZERO)) {
-    return;
-  }
-  position.accountingComplete = false;
-  position.untrackedShares = position.untrackedShares.plus(shares);
-}
-
-// Unknown-basis shares leaving: consume the quarantined pool first; anything
-// beyond it was never seen entering (late discovery) and just flags the position.
-function removeUntracked(position: StakingPosition, shares: BigInt): void {
-  if (shares.equals(BIGINT_ZERO)) {
-    return;
-  }
-  position.accountingComplete = false;
-  position.untrackedShares = shares.ge(position.untrackedShares)
-    ? BIGINT_ZERO
-    : position.untrackedShares.minus(shares);
-}
-
-// Principal carried by `trackedShares` out of the position, pro rata. Releasing
-// everything when the last tracked share leaves avoids stranded rounding dust.
-function principalFor(position: StakingPosition, trackedShares: BigInt): BigInt {
-  if (trackedShares.ge(position.shares)) {
+// Principal carried by `shares` leaving the position, pro rata. Releasing
+// everything when the last share leaves avoids stranded rounding dust. Vaults are
+// discovered at creation (deployer events / TrackedVault), so every share was
+// seen entering; the clamps only keep the numbers sane if that ever stops holding.
+function principalFor(position: StakingPosition, shares: BigInt): BigInt {
+  if (shares.ge(position.shares)) {
     return position.principal;
   }
-  return position.principal.times(trackedShares).div(position.shares);
+  return position.principal.times(shares).div(position.shares);
+}
+
+function subtractShares(current: BigInt, shares: BigInt): BigInt {
+  return shares.ge(current) ? BIGINT_ZERO : current.minus(shares);
 }
 
 // Underlying per whole share implied by the event itself.
@@ -262,8 +218,6 @@ function touch(position: StakingPosition, block: ethereum.Block): void {
   snapshot.totalDeposited = position.totalDeposited;
   snapshot.totalWithdrawn = position.totalWithdrawn;
   snapshot.realizedRewards = position.realizedRewards;
-  snapshot.accountingComplete = position.accountingComplete;
-  snapshot.untrackedShares = position.untrackedShares;
   snapshot.blockNumber = block.number;
   snapshot.timestamp = block.timestamp;
   snapshot.save();
