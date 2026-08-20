@@ -61,7 +61,7 @@ Goal: "locked 100 RSR, got 96 vlRSR; 3 months later still 96 vlRSR but worth 120
 
 Mints/burns are skipped by the transfer path (ERC4626 always pairs them with `Deposit`/`Withdraw`).
 
-**Late discovery.** If more shares leave than were seen entering (only possible when a vault was discovered after the account had deposited — an untracked deployer), the excess releases no principal, earns no realized rewards, is added to `untrackedShares`, and flips `accountingComplete = false` on the sender *and* on a transfer receiver. The UI must hide percentage returns for incomplete positions; absolute `shares × exchangeRate` is still right. With the tracked deployers and a clean reindex this never triggers (the BSC vlRSR deployer event at block 102317233 precedes its first deposit at 112726978).
+**Unknown-basis shares.** A position is two pools: `shares` (known cost basis) and `untrackedShares` (no basis — received from a holder whose own basis was unknown, or never seen entering because the vault was discovered after the account deposited). Exits take from both pools pro rata; only the tracked part releases principal or books realized rewards, and unknown shares passed on by transfer stay unknown for the next holder. Touching unknown shares flips `accountingComplete = false`. The UI must hide percentage returns for incomplete positions; the wallet balance is `shares + untrackedShares` and `(shares + untrackedShares) × exchangeRate` is still the right value. With the tracked deployers and a clean reindex this never triggers (the BSC vlRSR deployer event at block 102317233 precedes its first deposit at 112726978).
 
 Derived in the UI / API:
 

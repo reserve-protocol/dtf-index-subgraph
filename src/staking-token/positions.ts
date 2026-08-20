@@ -104,13 +104,13 @@ export function _handleVaultWithdraw(
 
   const trackedShares = trackedPortion(position, shares);
   const principalReleased = principalFor(position, trackedShares);
-  // Only the underlying paid out for shares we saw enter can be compared to a cost basis
+  // Only the underlying paid out for shares with a known basis can be compared to it
   const trackedAssets = shares.equals(BIGINT_ZERO)
     ? BIGINT_ZERO
     : assets.times(trackedShares).div(shares);
   const realized = trackedAssets.minus(principalReleased);
 
-  markUntracked(position, shares.minus(trackedShares));
+  removeUntracked(position, shares.minus(trackedShares));
   position.shares = position.shares.minus(trackedShares);
   position.principal = position.principal.minus(principalReleased);
   position.totalWithdrawn = position.totalWithdrawn.plus(assets);
@@ -152,14 +152,15 @@ export function _handlePositionTransfer(
   const principalMoved = principalFor(sender, trackedShares);
   const untrackedShares = shares.minus(trackedShares);
 
-  markUntracked(sender, untrackedShares);
+  removeUntracked(sender, untrackedShares);
   sender.shares = sender.shares.minus(trackedShares);
   sender.principal = sender.principal.minus(principalMoved);
   touch(sender, event.block);
 
-  // The receiver now holds shares whose basis is unknown too
-  markUntracked(receiver, untrackedShares);
-  receiver.shares = receiver.shares.plus(shares);
+  // Unknown-basis shares stay quarantined on the receiver: they never enter
+  // `shares`, so a later withdrawal cannot turn them into realized rewards.
+  addUntracked(receiver, untrackedShares);
+  receiver.shares = receiver.shares.plus(trackedShares);
   receiver.principal = receiver.principal.plus(principalMoved);
   touch(receiver, event.block);
 
@@ -185,19 +186,40 @@ export function _handlePositionTransfer(
   );
 }
 
-// Shares leaving a position beyond what we saw enter it exist only if the vault
-// was discovered after the account had already deposited. Their cost basis is
-// unknowable, so they release no principal and earn no realized rewards.
+// A position is two pools: `shares` with a known cost basis and
+// `untrackedShares` without one (received from an account whose own basis was
+// unknown, or — for shares we never saw enter at all — a vault discovered after
+// the account had deposited). Shares leaving take from both pools pro rata; only
+// the tracked part releases principal or earns realized rewards.
 function trackedPortion(position: StakingPosition, shares: BigInt): BigInt {
-  return shares.gt(position.shares) ? position.shares : shares;
+  const held = position.shares.plus(position.untrackedShares);
+  if (held.equals(BIGINT_ZERO)) {
+    return BIGINT_ZERO;
+  }
+  if (shares.ge(held)) {
+    return position.shares;
+  }
+  return shares.times(position.shares).div(held);
 }
 
-function markUntracked(position: StakingPosition, shares: BigInt): void {
+function addUntracked(position: StakingPosition, shares: BigInt): void {
   if (shares.equals(BIGINT_ZERO)) {
     return;
   }
   position.accountingComplete = false;
   position.untrackedShares = position.untrackedShares.plus(shares);
+}
+
+// Unknown-basis shares leaving: consume the quarantined pool first; anything
+// beyond it was never seen entering (late discovery) and just flags the position.
+function removeUntracked(position: StakingPosition, shares: BigInt): void {
+  if (shares.equals(BIGINT_ZERO)) {
+    return;
+  }
+  position.accountingComplete = false;
+  position.untrackedShares = shares.ge(position.untrackedShares)
+    ? BIGINT_ZERO
+    : position.untrackedShares.minus(shares);
 }
 
 // Principal carried by `trackedShares` out of the position, pro rata. Releasing
@@ -241,6 +263,7 @@ function touch(position: StakingPosition, block: ethereum.Block): void {
   snapshot.totalWithdrawn = position.totalWithdrawn;
   snapshot.realizedRewards = position.realizedRewards;
   snapshot.accountingComplete = position.accountingComplete;
+  snapshot.untrackedShares = position.untrackedShares;
   snapshot.blockNumber = block.number;
   snapshot.timestamp = block.timestamp;
   snapshot.save();

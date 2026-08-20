@@ -1358,10 +1358,10 @@ type StakingPosition @entity(immutable: false) {
 
   token: StakingToken!
 
-  " Vault shares currently held "
+  " Vault shares currently held with a known cost basis (add untrackedShares for the wallet balance) "
   shares: BigInt!
 
-  " Underlying principal still backing the held shares "
+  " Underlying principal backing `shares` "
   principal: BigInt!
 
   " Lifetime underlying deposited "
@@ -1373,10 +1373,10 @@ type StakingPosition @entity(immutable: false) {
   " Underlying received on withdrawals above the principal those shares carried "
   realizedRewards: BigInt!
 
-  " False once shares left this position that were never seen entering it (vault discovered after the account deposited). Cost basis is then unknowable — hide percentage returns "
+  " False once the position touched shares without a known cost basis (received from an unknown-basis holder, or never seen entering because the vault was discovered late). Hide percentage returns when false "
   accountingComplete: Boolean!
 
-  " Shares that left without a known cost basis (see accountingComplete) "
+  " Shares currently held without a known cost basis; they never earn realized rewards "
   untrackedShares: BigInt!
 
   depositCount: Int!
@@ -1443,6 +1443,7 @@ type StakingPositionDailySnapshot @entity(immutable: false) {
   totalWithdrawn: BigInt!
   realizedRewards: BigInt!
   accountingComplete: Boolean!
+  untrackedShares: BigInt!
 
   blockNumber: BigInt!
   timestamp: BigInt!

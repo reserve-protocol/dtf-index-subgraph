@@ -379,22 +379,55 @@ describe("StakingPosition — accounting rules", () => {
     assert.fieldEquals("StakingPosition", id, "shares", "0");
     assert.fieldEquals("StakingPosition", id, "principal", "0");
     assert.fieldEquals("StakingPosition", id, "totalWithdrawn", BigInt.fromI32(50).times(ONE).toString());
-    // 10 tracked shares got 50 * 10 / 40 = 12.5 RSR against 10 RSR principal → 2.5 realized; the other 30 shares are unknown
+    // 10 tracked shares got 50 * 10 / 40 = 12.5 RSR against 10 RSR principal → 2.5 realized; the other 30 were never seen
     assert.fieldEquals("StakingPosition", id, "realizedRewards", "2500000000000000000");
     assert.fieldEquals("StakingPosition", id, "accountingComplete", "false");
-    assert.fieldEquals("StakingPosition", id, "untrackedShares", BigInt.fromI32(30).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", id, "untrackedShares", "0");
     assert.fieldEquals("StakingPositionDailySnapshot", id + "-" + (1787100000 / 86400).toString(), "accountingComplete", "false");
   });
 
-  test("a transfer of untracked shares flags both sides incomplete", () => {
+  test("unknown-basis shares stay quarantined on the receiver and never become realized rewards", () => {
+    // Alice's 5 shares were never seen entering (late discovery)
     transfer(ALICE, BOB, BigInt.fromI32(5).times(ONE).toString(), 100, 1787000000, TX, 1);
 
     assert.fieldEquals("StakingPosition", positionId(ALICE), "shares", "0");
+    assert.fieldEquals("StakingPosition", positionId(ALICE), "untrackedShares", "0");
     assert.fieldEquals("StakingPosition", positionId(ALICE), "accountingComplete", "false");
-    assert.fieldEquals("StakingPosition", positionId(ALICE), "untrackedShares", BigInt.fromI32(5).times(ONE).toString());
-    assert.fieldEquals("StakingPosition", positionId(BOB), "shares", BigInt.fromI32(5).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", positionId(BOB), "shares", "0");
+    assert.fieldEquals("StakingPosition", positionId(BOB), "untrackedShares", BigInt.fromI32(5).times(ONE).toString());
     assert.fieldEquals("StakingPosition", positionId(BOB), "principal", "0");
     assert.fieldEquals("StakingPosition", positionId(BOB), "accountingComplete", "false");
+
+    // Bob unlocks them for 5 RSR: nothing known to compare against → zero rewards
+    withdraw(BOB, BigInt.fromI32(5).times(ONE).toString(), BigInt.fromI32(5).times(ONE).toString(), 200, 1787100000, TX, 2);
+    assert.fieldEquals("StakingPosition", positionId(BOB), "shares", "0");
+    assert.fieldEquals("StakingPosition", positionId(BOB), "untrackedShares", "0");
+    assert.fieldEquals("StakingPosition", positionId(BOB), "principal", "0");
+    assert.fieldEquals("StakingPosition", positionId(BOB), "realizedRewards", "0");
+    assert.fieldEquals("StakingPosition", positionId(BOB), "totalWithdrawn", BigInt.fromI32(5).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", positionId(BOB), "accountingComplete", "false");
+  });
+
+  test("a mixed position exits both pools pro rata and only the known part earns rewards", () => {
+    // Bob: 5 known shares (5 RSR) + 5 unknown shares from Alice
+    deposit(BOB, BigInt.fromI32(5).times(ONE).toString(), BigInt.fromI32(5).times(ONE).toString(), 100, 1787000000, TX, 1);
+    transfer(ALICE, BOB, BigInt.fromI32(5).times(ONE).toString(), 150, 1787050000, TX, 2);
+
+    // Withdraw 4 shares for 4.4 RSR → 2 known (2 RSR principal, 2.2 RSR out → 0.2 realized) + 2 unknown (nothing)
+    withdraw(BOB, "4400000000000000000", BigInt.fromI32(4).times(ONE).toString(), 200, 1787100000, TX, 3);
+    assert.fieldEquals("StakingPosition", positionId(BOB), "shares", BigInt.fromI32(3).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", positionId(BOB), "untrackedShares", BigInt.fromI32(3).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", positionId(BOB), "principal", BigInt.fromI32(3).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", positionId(BOB), "realizedRewards", "200000000000000000");
+    assert.fieldEquals("StakingPosition", positionId(BOB), "accountingComplete", "false");
+
+    // Passing unknown shares on keeps them unknown for the next holder
+    transfer(BOB, ALICE, BigInt.fromI32(6).times(ONE).toString(), 250, 1787150000, TX, 4);
+    assert.fieldEquals("StakingPosition", positionId(BOB), "shares", "0");
+    assert.fieldEquals("StakingPosition", positionId(BOB), "untrackedShares", "0");
+    assert.fieldEquals("StakingPosition", positionId(ALICE), "shares", BigInt.fromI32(3).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", positionId(ALICE), "principal", BigInt.fromI32(3).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", positionId(ALICE), "untrackedShares", BigInt.fromI32(3).times(ONE).toString());
   });
 
   test("zero-value transfers are ignored", () => {
