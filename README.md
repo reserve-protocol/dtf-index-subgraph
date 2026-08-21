@@ -32,7 +32,7 @@ The template parsing process:
 2. Loads network-specific addresses and block numbers from `networks.json`
 3. Handles multiple protocol versions (1.0.0, 2.0.0, 4.0.0, 5.0.0) with different deployer contracts, plus the standalone `ReserveOptimisticGovernorDeployer` (`OptimisticGovernorDeployer` in `networks.json`)
 4. Converts the 10-minute exchange-rate polling cadence into a per-network block count (`every: round(600 / secondsPerBlock)`)
-4. Generates `subgraph.yaml` with all network-specific values filled in
+5. Generates `subgraph.yaml` with all network-specific values filled in
 
 ### Building for Different Networks
 

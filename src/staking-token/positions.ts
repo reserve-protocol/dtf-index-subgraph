@@ -5,10 +5,15 @@ import {
   StakingPositionRecord,
   StakingToken,
 } from "../../generated/schema";
+import { StakingVault } from "../../generated/templates/StakingToken/StakingVault";
 import { getOrCreateAccount } from "../account/mappings";
 import { BIGINT_ZERO, SECONDS_PER_DAY } from "../utils/constants";
 import { getOrCreateStakingToken } from "../utils/getters";
-import { oneShare } from "../utils/staking-vault";
+import {
+  oneShare,
+  sampleExchangeRate,
+  subscribeUnstakingManager,
+} from "../utils/staking-vault";
 
 export namespace StakingPositionRecordType {
   export const DEPOSIT = "DEPOSIT";
@@ -24,7 +29,6 @@ export function getOrCreateStakingPosition(
   block: ethereum.Block
 ): StakingPosition {
   const account = getOrCreateAccount(accountAddress);
-  account.save();
 
   const id = account.id + "-" + stakingToken.id;
   let position = StakingPosition.load(id);
@@ -60,15 +64,26 @@ export function _handleVaultDeposit(
   shares: BigInt,
   event: ethereum.Event
 ): void {
-  const stakingToken = getOrCreateStakingToken(vault);
+  if (shares.equals(BIGINT_ZERO) && assets.equals(BIGINT_ZERO)) {
+    return;
+  }
+
+  const stakingToken = refreshVault(vault, event.block);
   const position = getOrCreateStakingPosition(owner, stakingToken, event.block);
 
   const manager = stakingToken.unstakingManager;
-  const isLockCancel = manager !== null && sender.toHexString() == manager!;
+  const isLockCancel =
+    manager !== null && sender.toHexString() == (manager as string);
 
   position.shares = position.shares.plus(shares);
   position.principal = position.principal.plus(assets);
-  if (!isLockCancel) {
+  if (isLockCancel) {
+    // The underlying came back from the lock: net it out of the gross flows so
+    // totalDeposited / totalWithdrawn stay a matched pair.
+    position.totalWithdrawn = assets.ge(position.totalWithdrawn)
+      ? BIGINT_ZERO
+      : position.totalWithdrawn.minus(assets);
+  } else {
     position.totalDeposited = position.totalDeposited.plus(assets);
     position.depositCount += 1;
   }
@@ -84,40 +99,85 @@ export function _handleVaultDeposit(
     assets,
     BIGINT_ZERO,
     impliedRate(stakingToken, assets, shares),
+    isLockCancel ? sender : null,
     event
   );
 }
 
 // ERC4626 Withdraw(sender, receiver, owner, assets, shares). Shares are burned
-// from `owner`; the assets go to an unstaking lock for `receiver`.
+// from `owner`; the underlying goes to an unstaking lock for `receiver`. The
+// underlying flows (totalWithdrawn, realizedRewards) follow the receiver, so a
+// withdraw to someone else reads as "owner handed over principal, receiver
+// cashed out" and a later lock cancel lands on the same account.
 export function _handleVaultWithdraw(
   vault: Address,
   owner: Address,
+  receiver: Address,
   assets: BigInt,
   shares: BigInt,
   event: ethereum.Event
 ): void {
-  const stakingToken = getOrCreateStakingToken(vault);
-  const position = getOrCreateStakingPosition(owner, stakingToken, event.block);
+  // ERC4626 lets anyone call withdraw(0): nothing moved, nothing to book.
+  if (shares.equals(BIGINT_ZERO) && assets.equals(BIGINT_ZERO)) {
+    return;
+  }
 
-  const principalReleased = principalFor(position, shares);
+  const stakingToken = refreshVault(vault, event.block);
+  const ownerPosition = getOrCreateStakingPosition(
+    owner,
+    stakingToken,
+    event.block
+  );
+
+  const principalReleased = principalFor(ownerPosition, shares);
   const realized = assets.minus(principalReleased);
+  const rate = impliedRate(stakingToken, assets, shares);
+  const toSelf = receiver.equals(owner);
 
-  position.shares = subtractShares(position.shares, shares);
-  position.principal = position.principal.minus(principalReleased);
-  position.totalWithdrawn = position.totalWithdrawn.plus(assets);
-  position.realizedRewards = position.realizedRewards.plus(realized);
-  position.withdrawCount += 1;
-  touch(position, event.block);
+  ownerPosition.shares = subtractShares(ownerPosition.shares, shares);
+  ownerPosition.principal = ownerPosition.principal.minus(principalReleased);
+  ownerPosition.withdrawCount += 1;
+  if (toSelf) {
+    ownerPosition.totalWithdrawn = ownerPosition.totalWithdrawn.plus(assets);
+    ownerPosition.realizedRewards = ownerPosition.realizedRewards.plus(realized);
+  }
+  touch(ownerPosition, event.block);
 
   saveRecord(
-    position,
+    ownerPosition,
     StakingPositionRecordType.WITHDRAW,
     shares,
     assets,
     BIGINT_ZERO.minus(principalReleased),
+    toSelf ? realized : BIGINT_ZERO,
+    rate,
+    toSelf ? null : receiver,
+    event
+  );
+
+  if (toSelf) {
+    return;
+  }
+
+  const receiverPosition = getOrCreateStakingPosition(
+    receiver,
+    stakingToken,
+    event.block
+  );
+  receiverPosition.totalWithdrawn = receiverPosition.totalWithdrawn.plus(assets);
+  receiverPosition.realizedRewards =
+    receiverPosition.realizedRewards.plus(realized);
+  touch(receiverPosition, event.block);
+
+  saveRecord(
+    receiverPosition,
+    StakingPositionRecordType.WITHDRAW,
+    BIGINT_ZERO,
+    assets,
+    BIGINT_ZERO,
     realized,
-    impliedRate(stakingToken, assets, shares),
+    rate,
+    owner,
     event
   );
 }
@@ -137,6 +197,11 @@ export function _handlePositionTransfer(
   }
 
   const stakingToken = getOrCreateStakingToken(vault);
+  // Plain vote tokens without a vault behind them have no deposits, so a
+  // position would be meaningless (see _handleExchangeRatePoll).
+  if (stakingToken.unstakingManager === null) {
+    return;
+  }
   const sender = getOrCreateStakingPosition(from, stakingToken, event.block);
   const receiver = getOrCreateStakingPosition(to, stakingToken, event.block);
 
@@ -158,6 +223,7 @@ export function _handlePositionTransfer(
     BIGINT_ZERO.minus(principalMoved),
     BIGINT_ZERO,
     stakingToken.exchangeRate,
+    to,
     event
   );
   saveRecord(
@@ -168,8 +234,22 @@ export function _handlePositionTransfer(
     principalMoved,
     BIGINT_ZERO,
     stakingToken.exchangeRate,
+    from,
     event
   );
+}
+
+// Deposit/Withdraw prove the token is a vault and are the cheapest moment to
+// keep every vault's live rate fresh: two eth_calls per event, so vaults outside
+// the polled TrackedVault list still carry the rate as of their last activity.
+// Also retries the UnstakingManager subscription if discovery skipped it.
+function refreshVault(vault: Address, block: ethereum.Block): StakingToken {
+  const stakingToken = getOrCreateStakingToken(vault);
+  const contract = StakingVault.bind(vault);
+  subscribeUnstakingManager(stakingToken, contract);
+  sampleExchangeRate(stakingToken, contract, block);
+  stakingToken.save();
+  return stakingToken;
 }
 
 // Principal carried by `shares` leaving the position, pro rata. Releasing
@@ -231,6 +311,7 @@ function saveRecord(
   principalDelta: BigInt,
   realizedRewards: BigInt,
   exchangeRate: BigInt,
+  counterparty: Address | null,
   event: ethereum.Event
 ): void {
   const record = new StakingPositionRecord(
@@ -249,6 +330,8 @@ function saveRecord(
   record.principalDelta = principalDelta;
   record.realizedRewards = realizedRewards;
   record.exchangeRate = exchangeRate;
+  record.counterparty =
+    counterparty === null ? null : getOrCreateAccount(counterparty).id;
   record.hash = event.transaction.hash.toHexString();
   record.logIndex = event.logIndex.toI32();
   record.blockNumber = event.block.number;

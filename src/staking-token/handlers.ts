@@ -3,7 +3,6 @@ import {
   AccountBalance,
   Lock,
   RewardClaim,
-  StakingToken,
   StakingTokenRewards,
   UnstakingManager,
 } from "../../generated/schema";
@@ -114,11 +113,9 @@ export function _handleRewardsClaimed(
     "-" +
     event.logIndex.toString();
 
-  let account = getOrCreateAccount(userAddress);
-  account.save();
   let claim = new RewardClaim(id);
   claim.token = getOrCreateStakingToken(stakingTokenAddress).id;
-  claim.account = account.id;
+  claim.account = getOrCreateAccount(userAddress).id;
   claim.rewardToken = getOrCreateToken(rewardTokenAddress, TokenType.ASSET).id;
   claim.amount = amount;
   claim.blockNumber = event.block.number;
@@ -255,14 +252,10 @@ export function _handleLockCreated(
   event: ethereum.Event
 ): void {
   let token = getTokenFromManager(manager);
-  // The receiver of a withdraw may never have held the vault token, so the
-  // Account entity can be new here — save it or Lock.account dangles.
-  let account = getOrCreateAccount(user);
-  account.save();
   let lock = new Lock(manager.toHexString() + "-" + lockId.toString());
   lock.lockId = lockId;
   lock.token = token;
-  lock.account = account.id;
+  lock.account = getOrCreateAccount(user).id;
   lock.amount = amount;
   lock.unlockTime = unlockTime;
   lock.createdBlock = event.block.number;
@@ -308,7 +301,7 @@ export function _handleOwnershipTransferred(
 ): void {
   let stakingToken = getOrCreateStakingToken(event.address);
 
-  if (oldOwner.toHexString() !== GENESIS_ADDRESS) {
+  if (oldOwner.toHexString() != GENESIS_ADDRESS) {
     let timelock = getGovernanceTimelock(oldOwner);
     let gov =
       timelock !== null && timelock.governance !== null

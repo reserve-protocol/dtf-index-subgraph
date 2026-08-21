@@ -1225,13 +1225,13 @@ type StakingToken @entity(immutable: false) {
   " Seconds between withdraw and claim (StakingVault.unstakingDelay) "
   unstakingDelay: BigInt
 
-  " D18 reward ratio per second (StakingVault.rewardRatio); null until the first RewardRatioSet is seen "
+  " D18 reward ratio per second (StakingVault.rewardRatio), read at discovery and on RewardRatioSet; null for tokens without one "
   rewardRatio: BigInt
 
   " Reward half-life in seconds, from RewardRatioSet "
   rewardHalfLife: BigInt
 
-  " Underlying asset units (raw, asset decimals) received for one whole share: convertToAssets(10^decimals). 1:1 vaults return 10^assetDecimals "
+  " Underlying asset units (raw, asset decimals) received for one whole share: convertToAssets(10^shareDecimals). Defaults to 10^shareDecimals (1:1) for tokens that are not vaults "
   exchangeRate: BigInt!
 
   " Vault totalAssets() at the last sample "
@@ -1364,13 +1364,13 @@ type StakingPosition @entity(immutable: false) {
   " Underlying principal still backing the held shares "
   principal: BigInt!
 
-  " Lifetime underlying deposited "
+  " Lifetime underlying deposited (lock cancellations are not deposits) "
   totalDeposited: BigInt!
 
-  " Lifetime underlying withdrawn (sent to unstaking locks) "
+  " Lifetime underlying withdrawn to this account's unstaking locks, net of cancelled locks. Withdrawals to another receiver count on the receiver "
   totalWithdrawn: BigInt!
 
-  " Underlying received on withdrawals above the principal those shares carried "
+  " Underlying received on withdrawals above the principal those shares carried; follows the withdraw receiver "
   realizedRewards: BigInt!
 
   depositCount: Int!
@@ -1414,6 +1414,9 @@ type StakingPositionRecord @entity(immutable: true) {
 
   " Underlying per whole share at the time of the record (implied by the event for deposits / withdrawals, last sample for transfers) "
   exchangeRate: BigInt!
+
+  " Other account involved: transfer sender/receiver, withdraw receiver/owner when they differ, the unstaking manager for LOCK_CANCEL "
+  counterparty: Account
 
   hash: String!
   logIndex: Int!
@@ -1462,7 +1465,7 @@ type StakingTokenExchangeRateSnapshot @entity(immutable: true) {
 }
 
 type Lock @entity(immutable: false) {
-  " { StakingToken Address }-{ Lock ID } "
+  " { UnstakingManager Address }-{ Lock ID } "
   id: ID!
 
   " Lock id "

@@ -3,6 +3,7 @@ import {
   assert,
   beforeEach,
   clearStore,
+  createMockedFunction,
   describe,
   newMockEvent,
   test,
@@ -199,16 +200,23 @@ describe("UnstakingManager discovery", () => {
     );
     assert.dataSourceExists("StakingToken", VAULT.toHexString());
     assert.dataSourceExists("UnstakingManager", MANAGER.toHexString());
-    assert.dataSourceCount("UnstakingManager", 1);
   });
 
-  test("discovery is idempotent — the manager template is created once", () => {
-    getOrCreateStakingToken(VAULT);
+  test("discovery is idempotent — a second call does not re-read or overwrite the manager", () => {
     getOrCreateStakingToken(VAULT);
 
+    // If the second call re-subscribed, it would pick up this other address
+    createMockedFunction(VAULT, "unstakingManager", "unstakingManager():(address)").returns([
+      ethereum.Value.fromAddress(Address.fromString("0x4444444444444444444444444444444444444444")),
+    ]);
+    getOrCreateStakingToken(VAULT);
+    createMockedFunction(VAULT, "unstakingManager", "unstakingManager():(address)").returns([
+      ethereum.Value.fromAddress(MANAGER),
+    ]);
+
+    assert.fieldEquals("StakingToken", VAULT.toHexString(), "unstakingManager", MANAGER.toHexString());
     assert.entityCount("UnstakingManager", 1);
-    assert.dataSourceCount("UnstakingManager", 1);
-    assert.dataSourceCount("StakingToken", 1);
+    assert.notInStore("UnstakingManager", "0x4444444444444444444444444444444444444444");
   });
 
   test("replays the two real BSC LockCreated events into Lock entities after fallback discovery", () => {

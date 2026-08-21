@@ -1,4 +1,4 @@
-import { Address, BigInt, ethereum } from "@graphprotocol/graph-ts";
+import { Address, BigInt, ethereum, log } from "@graphprotocol/graph-ts";
 import {
   StakingToken,
   StakingTokenExchangeRateDailySnapshot,
@@ -12,7 +12,9 @@ import { BIGINT_ZERO, DEFAULT_DECIMALS, SECONDS_PER_DAY } from "./constants";
 
 // Every StakingVault version (legacy Ownable and the optimistic AccessControl one)
 // exposes unstakingManager(). Vote tokens that are not vaults revert and are skipped.
-// Idempotent: safe to call from any discovery path. Does NOT save the staking token.
+// Idempotent: safe to call from any discovery path, and called again from the
+// vault's own Deposit/Withdraw handlers while the field is still null, so a
+// skipped subscription heals itself. Does NOT save the staking token.
 export function subscribeUnstakingManager(
   stakingToken: StakingToken,
   vault: StakingVault
@@ -23,6 +25,10 @@ export function subscribeUnstakingManager(
 
   const result = vault.try_unstakingManager();
   if (result.reverted || result.value.equals(Address.zero())) {
+    log.warning(
+      "StakingToken {} has no unstakingManager() — locks will not be indexed for it",
+      [stakingToken.id]
+    );
     return;
   }
 
@@ -97,9 +103,14 @@ export function sampleExchangeRate(
     return;
   }
 
-  const snapshot = new StakingTokenExchangeRateSnapshot(
-    stakingToken.id + "-" + block.number.toString()
-  );
+  // Deposit/Withdraw handlers and the poll can sample the same block; the
+  // snapshot is immutable, so write it once per block.
+  const snapshotId = stakingToken.id + "-" + block.number.toString();
+  if (StakingTokenExchangeRateSnapshot.load(snapshotId)) {
+    return;
+  }
+
+  const snapshot = new StakingTokenExchangeRateSnapshot(snapshotId);
   snapshot.token = stakingToken.id;
   snapshot.exchangeRate = rate.value;
   snapshot.totalAssets = totalAssets.value;

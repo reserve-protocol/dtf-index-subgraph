@@ -55,11 +55,14 @@ Goal: "locked 100 RSR, got 96 vlRSR; 3 months later still 96 vlRSR but worth 120
 | Event | shares | principal | other |
 |---|---|---|---|
 | `Deposit(assets, shares)` | `+shares` | `+assets` | `totalDeposited += assets`, record `DEPOSIT` |
-| `Deposit` with `sender == unstakingManager` (`cancelLock`) | `+shares` | `+assets` | record `LOCK_CANCEL`; lifetime totals untouched — the rewards were already booked as realized on the withdraw, so `(realized + unrealized) / totalDeposited` still reads 20 / 100 after a cancel |
-| `Withdraw(assets, shares)` | `−shares` | `−released`, `released = principal × shares / shares_before` | `totalWithdrawn += assets`, `realizedRewards += assets − released` |
+| `Deposit` with `sender == unstakingManager` (`cancelLock`) | `+shares` | `+assets` | record `LOCK_CANCEL`; not a deposit, and `totalWithdrawn −= assets` so the gross flows stay matched — the rewards were already booked as realized on the withdraw, so `(realized + unrealized) / totalDeposited` still reads 20 / 100 after a cancel |
+| `Withdraw(assets, shares)` (receiver = owner) | `−shares` | `−released`, `released = principal × shares / shares_before` | `totalWithdrawn += assets`, `realizedRewards += assets − released` |
+| `Withdraw` with `receiver ≠ owner` | owner `−shares` | owner `−released` | receiver: `totalWithdrawn += assets`, `realizedRewards += assets − released`; both records carry the other party as `counterparty` |
 | wallet `Transfer(from, to, shares)` | moves | `moved = principal_from × shares / shares_from` follows the shares | records `TRANSFER_OUT` / `TRANSFER_IN` |
 
-Mints/burns are skipped by the transfer path (ERC4626 always pairs them with `Deposit`/`Withdraw`).
+Mints/burns are skipped by the transfer path (ERC4626 always pairs them with `Deposit`/`Withdraw`), and vote tokens without a vault (`unstakingManager == null`) get no positions at all.
+
+`Deposit` / `Withdraw` also refresh the vault: they re-sample the exchange rate (so non-polled vaults carry the rate as of their last activity) and retry the `UnstakingManager` subscription if discovery skipped it.
 
 
 Derived in the UI / API:

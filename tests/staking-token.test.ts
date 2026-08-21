@@ -9,6 +9,10 @@ import {
 import {
   getOrCreateStakingToken,
 } from "../src/utils/getters";
+import { _handleOwnershipTransferred } from "../src/staking-token/handlers";
+import { createMockedFunction } from "matchstick-as/assembly/index";
+import { newMockEvent } from "matchstick-as/assembly/index";
+import { ethereum } from "@graphprotocol/graph-ts";
 import { mockERC20 } from "./helpers/mock-erc20";
 import { mockStakingVault, mockVaultTokenJar } from "./helpers/mock-staking-vault";
 
@@ -52,6 +56,37 @@ mockStakingVault(
   null
 );
 mockVaultTokenJar(ST_TOKEN_WITH_JAR, JAR_ADDR);
+
+const DEPLOYER = Address.fromString("0x7777777777777777777777777777777777777777");
+const OWNER_TIMELOCK = Address.fromString("0x8888888888888888888888888888888888888888");
+// Neither is a timelock: createGovernanceTimelock bails out on getMinDelay()
+createMockedFunction(DEPLOYER, "getMinDelay", "getMinDelay():(uint256)").reverts();
+createMockedFunction(OWNER_TIMELOCK, "getMinDelay", "getMinDelay():(uint256)").reverts();
+
+function ownershipEvent(vault: Address): ethereum.Event {
+  let event = newMockEvent();
+  event.address = vault;
+  return event;
+}
+
+describe("_handleOwnershipTransferred", () => {
+  beforeEach(() => {
+    clearStore();
+  });
+
+  test("the constructor's 0x0 → deployer transfer adds no legacy governance entry", () => {
+    _handleOwnershipTransferred(Address.zero(), DEPLOYER, ownershipEvent(ST_TOKEN));
+    assert.fieldEquals("StakingToken", ST_TOKEN.toHexString(), "legacyGovernance", "[]");
+
+    _handleOwnershipTransferred(DEPLOYER, OWNER_TIMELOCK, ownershipEvent(ST_TOKEN));
+    assert.fieldEquals(
+      "StakingToken",
+      ST_TOKEN.toHexString(),
+      "legacyGovernance",
+      "[" + DEPLOYER.toHexString() + "]"
+    );
+  });
+});
 
 describe("getOrCreateStakingToken", () => {
   beforeEach(() => {

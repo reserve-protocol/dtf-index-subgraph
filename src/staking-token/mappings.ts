@@ -172,6 +172,7 @@ export function handleWithdraw(event: Withdraw): void {
   _handleVaultWithdraw(
     event.address,
     event.params.owner,
+    event.params.receiver,
     event.params.assets,
     event.params.shares,
     event

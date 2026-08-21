@@ -254,6 +254,9 @@ describe("exchange rate tracking", () => {
     );
   });
 
+  // Note: matchstick cannot observe that the poll skipped its eth_calls; the
+  // unstakingManager === null guard in _handleExchangeRatePoll is a cost
+  // optimisation, the assertions below hold with or without it.
   test("a vote token that is not a vault defaults to 1:1 and polls are a no-op", () => {
     getOrCreateStakingToken(NOT_A_VAULT);
     _handleExchangeRatePoll(NOT_A_VAULT, mockBlock(LEGACY_BLOCK, SAMPLE_TIMESTAMP));

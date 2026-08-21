@@ -17,15 +17,17 @@ import {
   handleTransfer,
   handleWithdraw,
 } from "../src/staking-token/mappings";
+import { StakingToken } from "../generated/schema";
 import { getOrCreateStakingToken } from "../src/utils/getters";
 import { mockERC20 } from "./helpers/mock-erc20";
 import {
   mockStakingVault,
   mockVaultExchangeRate,
 } from "./helpers/mock-staking-vault";
+import { createMockedFunction } from "matchstick-as/assembly/index";
 
 // Full real history of the BSC vlRSR locker 0xb0bd…6e18 on vault 0xE744… —
-// 11 deposits (1:1 at first, then at an appreciating rate), one 1 vlRSR transfer
+// 11 deposits at an appreciating rate (1.007 → 1.043 RSR per vlRSR), one 1 vlRSR transfer
 // out, and the two withdrawals that created locks #0 and #1. Event data pulled
 // from the chain on 2026-08-20; the expected numbers below come from an
 // independent plain-BigInt reimplementation of the average-cost accounting, and
@@ -40,6 +42,9 @@ const RECIPIENT = "0xf2ca2778665b1d712c1addee7f701ffbb1450b13";
 const ONE = BigInt.fromI32(10).pow(18);
 
 mockERC20(RSR, "RSR", "Reserve Rights", 18);
+// Vault reads are the 2026-08-20 chain state; only the event-implied rates below
+// are historical. TRANSFER records stamp this mocked "last sample", not the
+// rate of their own block.
 mockStakingVault(
   VAULT,
   "vlRSR",
@@ -53,14 +58,47 @@ mockStakingVault(
   BigInt.fromString("460466698346365758086336928")
 );
 
+const NOT_A_VAULT = Address.fromString(
+  "0x3333333333333333333333333333333333333333"
+);
+mockStakingVault(NOT_A_VAULT, "VOTE", "Plain Votes", 18, BigInt.fromI32(5), null, null, null, null, null);
+
+const RETRY_VAULT = Address.fromString(
+  "0x5555555555555555555555555555555555555555"
+);
+const RETRY_MANAGER = Address.fromString(
+  "0x6666666666666666666666666666666666666666"
+);
+mockStakingVault(RETRY_VAULT, "vlRETRY", "Retry Vault", 18, BigInt.fromI32(0), RSR, null, BigInt.fromI32(604800), ONE, BigInt.fromI32(0));
+
+const ZERO_MANAGER_VAULT = Address.fromString(
+  "0x7777777777777777777777777777777777777777"
+);
+mockStakingVault(ZERO_MANAGER_VAULT, "vlZERO", "Zero Manager", 18, BigInt.fromI32(0), RSR, Address.zero(), null, ONE, BigInt.fromI32(0));
+
+// Has a manager but convertToAssets/totalAssets revert
+const NO_RATE_VAULT = Address.fromString(
+  "0x9999999999999999999999999999999999999999"
+);
+mockStakingVault(NO_RATE_VAULT, "vlNORATE", "No Rate", 18, BigInt.fromI32(0), RSR, Address.fromString("0x9999999999999999999999999999999999999998"), BigInt.fromI32(1), null, null);
+
+function mockRetryVaultManager(manager: Address | null): void {
+  if (manager !== null) {
+    createMockedFunction(RETRY_VAULT, "unstakingManager", "unstakingManager():(address)").returns([ethereum.Value.fromAddress(manager)]);
+  } else {
+    createMockedFunction(RETRY_VAULT, "unstakingManager", "unstakingManager():(address)").reverts();
+  }
+}
+
 function baseEvent(
   block: i64,
   timestamp: i64,
   tx: string,
-  logIndex: i32
+  logIndex: i32,
+  vault: Address
 ): ethereum.Event {
   let event = newMockEvent();
-  event.address = VAULT;
+  event.address = vault;
   event.block.number = BigInt.fromI64(block);
   event.block.timestamp = BigInt.fromI64(timestamp);
   event.transaction.hash = Bytes.fromHexString(tx);
@@ -75,9 +113,10 @@ function deposit(
   block: i64,
   timestamp: i64,
   tx: string,
-  logIndex: i32
+  logIndex: i32,
+  vault: Address = VAULT
 ): void {
-  depositFrom(owner, owner, assets, shares, block, timestamp, tx, logIndex);
+  depositFrom(owner, owner, assets, shares, block, timestamp, tx, logIndex, vault);
 }
 
 function depositFrom(
@@ -88,9 +127,10 @@ function depositFrom(
   block: i64,
   timestamp: i64,
   tx: string,
-  logIndex: i32
+  logIndex: i32,
+  vault: Address = VAULT
 ): void {
-  let event = changetype<Deposit>(baseEvent(block, timestamp, tx, logIndex));
+  let event = changetype<Deposit>(baseEvent(block, timestamp, tx, logIndex, vault));
   event.parameters = [
     new ethereum.EventParam(
       "sender",
@@ -119,9 +159,24 @@ function withdraw(
   block: i64,
   timestamp: i64,
   tx: string,
-  logIndex: i32
+  logIndex: i32,
+  vault: Address = VAULT
 ): void {
-  let event = changetype<Withdraw>(baseEvent(block, timestamp, tx, logIndex));
+  withdrawTo(owner, owner, assets, shares, block, timestamp, tx, logIndex, vault);
+}
+
+function withdrawTo(
+  owner: string,
+  receiver: string,
+  assets: string,
+  shares: string,
+  block: i64,
+  timestamp: i64,
+  tx: string,
+  logIndex: i32,
+  vault: Address = VAULT
+): void {
+  let event = changetype<Withdraw>(baseEvent(block, timestamp, tx, logIndex, vault));
   event.parameters = [
     new ethereum.EventParam(
       "sender",
@@ -129,7 +184,7 @@ function withdraw(
     ),
     new ethereum.EventParam(
       "receiver",
-      ethereum.Value.fromAddress(Address.fromString(owner))
+      ethereum.Value.fromAddress(Address.fromString(receiver))
     ),
     new ethereum.EventParam(
       "owner",
@@ -154,9 +209,10 @@ function transfer(
   block: i64,
   timestamp: i64,
   tx: string,
-  logIndex: i32
+  logIndex: i32,
+  vault: Address = VAULT
 ): void {
-  let event = changetype<Transfer>(baseEvent(block, timestamp, tx, logIndex));
+  let event = changetype<Transfer>(baseEvent(block, timestamp, tx, logIndex, vault));
   event.parameters = [
     new ethereum.EventParam(
       "from",
@@ -254,7 +310,7 @@ describe("StakingPosition — real BSC vlRSR history", () => {
     assert.fieldEquals("StakingPositionDailySnapshot", recipient + "-" + transferDay, "shares", "1000000000000000000");
   });
 
-  test("first deposit was 1:1, later deposits record the appreciated rate", () => {
+  test("deposit records carry the rate implied by the event (1.007 on the first, 1.043 on the last)", () => {
     replayRealHistory();
     assert.fieldEquals(
       "StakingPositionRecord",
@@ -361,10 +417,145 @@ describe("StakingPosition — accounting rules", () => {
     assert.fieldEquals("StakingPosition", positionId(ALICE), "shares", BigInt.fromI32(100).times(ONE).toString());
     assert.fieldEquals("StakingPosition", positionId(ALICE), "principal", BigInt.fromI32(120).times(ONE).toString());
     assert.fieldEquals("StakingPosition", positionId(ALICE), "realizedRewards", BigInt.fromI32(20).times(ONE).toString());
-    // Not new capital: lifetime deposit stays 100 so the return is still 20 / 100
+    // Not new capital: lifetime deposit stays 100 and the cancelled withdrawal is netted out
     assert.fieldEquals("StakingPosition", positionId(ALICE), "totalDeposited", BigInt.fromI32(100).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", positionId(ALICE), "totalWithdrawn", "0");
     assert.fieldEquals("StakingPosition", positionId(ALICE), "depositCount", "1");
     assert.fieldEquals("StakingPositionRecord", positionId(ALICE) + "-" + TX + "-3", "type", "LOCK_CANCEL");
+    assert.fieldEquals("StakingPositionRecord", positionId(ALICE) + "-" + TX + "-3", "counterparty", MANAGER.toHexString());
+
+    // Withdraw again at the same rate: gross flows stay a matched pair (100 in, 120 out, 20 realized)
+    withdraw(ALICE, BigInt.fromI32(120).times(ONE).toString(), BigInt.fromI32(100).times(ONE).toString(), 400, 1787300000, TX, 4);
+    assert.fieldEquals("StakingPosition", positionId(ALICE), "totalWithdrawn", BigInt.fromI32(120).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", positionId(ALICE), "realizedRewards", BigInt.fromI32(20).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", positionId(ALICE), "principal", "0");
+  });
+
+  test("withdrawing to another receiver: owner releases principal, receiver books the underlying and the rewards", () => {
+    deposit(ALICE, BigInt.fromI32(100).times(ONE).toString(), BigInt.fromI32(100).times(ONE).toString(), 100, 1787000000, TX, 1);
+    // Alice burns 50 shares, the 60 RSR lock goes to Bob (rate 1.2)
+    withdrawTo(ALICE, BOB, BigInt.fromI32(60).times(ONE).toString(), BigInt.fromI32(50).times(ONE).toString(), 200, 1787100000, TX, 2);
+
+    assert.fieldEquals("StakingPosition", positionId(ALICE), "shares", BigInt.fromI32(50).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", positionId(ALICE), "principal", BigInt.fromI32(50).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", positionId(ALICE), "totalWithdrawn", "0");
+    assert.fieldEquals("StakingPosition", positionId(ALICE), "realizedRewards", "0");
+    assert.fieldEquals("StakingPosition", positionId(ALICE), "withdrawCount", "1");
+    assert.fieldEquals("StakingPosition", positionId(BOB), "shares", "0");
+    assert.fieldEquals("StakingPosition", positionId(BOB), "totalWithdrawn", BigInt.fromI32(60).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", positionId(BOB), "realizedRewards", BigInt.fromI32(10).times(ONE).toString());
+
+    const aliceRecord = positionId(ALICE) + "-" + TX + "-2";
+    assert.fieldEquals("StakingPositionRecord", aliceRecord, "type", "WITHDRAW");
+    assert.fieldEquals("StakingPositionRecord", aliceRecord, "principalDelta", "-" + BigInt.fromI32(50).times(ONE).toString());
+    assert.fieldEquals("StakingPositionRecord", aliceRecord, "realizedRewards", "0");
+    assert.fieldEquals("StakingPositionRecord", aliceRecord, "counterparty", BOB);
+    const bobRecord = positionId(BOB) + "-" + TX + "-2";
+    assert.fieldEquals("StakingPositionRecord", bobRecord, "type", "WITHDRAW");
+    assert.fieldEquals("StakingPositionRecord", bobRecord, "shares", "0");
+    assert.fieldEquals("StakingPositionRecord", bobRecord, "assets", BigInt.fromI32(60).times(ONE).toString());
+    assert.fieldEquals("StakingPositionRecord", bobRecord, "realizedRewards", BigInt.fromI32(10).times(ONE).toString());
+    assert.fieldEquals("StakingPositionRecord", bobRecord, "counterparty", ALICE);
+
+    // Bob cancels the lock: the 60 RSR re-enter as his principal and his withdrawn flow nets to 0
+    depositFrom(MANAGER.toHexString(), BOB, BigInt.fromI32(60).times(ONE).toString(), BigInt.fromI32(50).times(ONE).toString(), 300, 1787200000, TX, 3);
+    assert.fieldEquals("StakingPosition", positionId(BOB), "shares", BigInt.fromI32(50).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", positionId(BOB), "principal", BigInt.fromI32(60).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", positionId(BOB), "totalWithdrawn", "0");
+    assert.fieldEquals("StakingPosition", positionId(BOB), "realizedRewards", BigInt.fromI32(10).times(ONE).toString());
+  });
+
+  test("transfer records name the counterparty", () => {
+    deposit(ALICE, BigInt.fromI32(100).times(ONE).toString(), BigInt.fromI32(100).times(ONE).toString(), 100, 1787000000, TX, 1);
+    transfer(ALICE, BOB, BigInt.fromI32(10).times(ONE).toString(), 150, 1787050000, TX, 2);
+    assert.fieldEquals("StakingPositionRecord", positionId(ALICE) + "-" + TX + "-2", "counterparty", BOB);
+    assert.fieldEquals("StakingPositionRecord", positionId(BOB) + "-" + TX + "-2", "counterparty", ALICE);
+    assert.fieldEquals("Account", BOB, "id", BOB);
+  });
+
+  test("deposits refresh the vault's live exchange rate and subscribe a manager that discovery missed", () => {
+    // Discovery while unstakingManager() reverts → no manager, no position tracking yet
+    mockRetryVaultManager(null);
+    getOrCreateStakingToken(RETRY_VAULT);
+    assert.fieldEquals("StakingToken", RETRY_VAULT.toHexString(), "id", RETRY_VAULT.toHexString());
+    assert.notInStore("UnstakingManager", RETRY_MANAGER.toHexString());
+
+    // The vault now answers; the next Deposit heals the subscription and samples the rate
+    mockRetryVaultManager(RETRY_MANAGER);
+    deposit(ALICE, BigInt.fromI32(10).times(ONE).toString(), BigInt.fromI32(10).times(ONE).toString(), 777, 1787000000, TX, 1, RETRY_VAULT);
+    mockRetryVaultManager(null);
+
+    assert.fieldEquals("StakingToken", RETRY_VAULT.toHexString(), "unstakingManager", RETRY_MANAGER.toHexString());
+    assert.fieldEquals("UnstakingManager", RETRY_MANAGER.toHexString(), "token", RETRY_VAULT.toHexString());
+    assert.dataSourceExists("UnstakingManager", RETRY_MANAGER.toHexString());
+    assert.fieldEquals("StakingToken", RETRY_VAULT.toHexString(), "exchangeRateBlock", "777");
+    assert.fieldEquals("StakingTokenExchangeRateSnapshot", RETRY_VAULT.toHexString() + "-777", "exchangeRate", ONE.toString());
+    assert.fieldEquals("StakingPosition", ALICE + "-" + RETRY_VAULT.toHexString(), "shares", BigInt.fromI32(10).times(ONE).toString());
+  });
+
+  test("transfers of a vote token that is not a vault create no positions", () => {
+    transfer(ALICE, BOB, BigInt.fromI32(5).times(ONE).toString(), 100, 1787000000, TX, 1, NOT_A_VAULT);
+    assert.entityCount("StakingPosition", 0);
+    assert.entityCount("StakingPositionRecord", 0);
+  });
+
+  test("a vault whose unstakingManager() is the zero address is treated as no vault", () => {
+    getOrCreateStakingToken(ZERO_MANAGER_VAULT);
+    assert.assertTrue(StakingToken.load(ZERO_MANAGER_VAULT.toHexString())!.unstakingManager === null);
+    assert.notInStore("UnstakingManager", Address.zero().toHexString());
+
+    transfer(ALICE, BOB, BigInt.fromI32(5).times(ONE).toString(), 100, 1787000000, TX, 1, ZERO_MANAGER_VAULT);
+    assert.entityCount("StakingPosition", 0);
+  });
+
+  test("cancelling one of several locks nets only that lock out of totalWithdrawn; a cancel larger than tracked clamps at zero", () => {
+    deposit(ALICE, BigInt.fromI32(100).times(ONE).toString(), BigInt.fromI32(100).times(ONE).toString(), 100, 1787000000, TX, 1);
+    withdraw(ALICE, BigInt.fromI32(60).times(ONE).toString(), BigInt.fromI32(50).times(ONE).toString(), 200, 1787100000, TX, 2);
+    withdraw(ALICE, BigInt.fromI32(60).times(ONE).toString(), BigInt.fromI32(50).times(ONE).toString(), 300, 1787200000, TX, 3);
+    const id = positionId(ALICE);
+    assert.fieldEquals("StakingPosition", id, "totalWithdrawn", BigInt.fromI32(120).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", id, "realizedRewards", BigInt.fromI32(20).times(ONE).toString());
+
+    // cancel lock #2 → only its 60 RSR come back
+    depositFrom(MANAGER.toHexString(), ALICE, BigInt.fromI32(60).times(ONE).toString(), BigInt.fromI32(50).times(ONE).toString(), 400, 1787300000, TX, 4);
+    assert.fieldEquals("StakingPosition", id, "shares", BigInt.fromI32(50).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", id, "principal", BigInt.fromI32(60).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", id, "totalWithdrawn", BigInt.fromI32(60).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", id, "totalDeposited", BigInt.fromI32(100).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", id, "realizedRewards", BigInt.fromI32(20).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", id, "depositCount", "1");
+    assert.fieldEquals("StakingPosition", id, "withdrawCount", "2");
+    const record = id + "-" + TX + "-4";
+    assert.fieldEquals("StakingPositionRecord", record, "type", "LOCK_CANCEL");
+    assert.fieldEquals("StakingPositionRecord", record, "principalDelta", BigInt.fromI32(60).times(ONE).toString());
+    assert.fieldEquals("StakingPositionRecord", record, "exchangeRate", "1200000000000000000");
+
+    // a cancel bigger than what is tracked (lock predating indexing) clamps instead of going negative
+    depositFrom(MANAGER.toHexString(), ALICE, BigInt.fromI32(100).times(ONE).toString(), BigInt.fromI32(80).times(ONE).toString(), 500, 1787400000, TX, 5);
+    assert.fieldEquals("StakingPosition", id, "totalWithdrawn", "0");
+    assert.fieldEquals("StakingPosition", id, "principal", BigInt.fromI32(160).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", id, "shares", BigInt.fromI32(130).times(ONE).toString());
+  });
+
+  test("withdraw(0) is ignored and burning more shares than tracked clamps at zero", () => {
+    deposit(ALICE, BigInt.fromI32(100).times(ONE).toString(), BigInt.fromI32(100).times(ONE).toString(), 100, 1787000000, TX, 1);
+    withdraw(ALICE, "0", "0", 200, 1787100000, TX, 2);
+    const id = positionId(ALICE);
+    assert.fieldEquals("StakingPosition", id, "withdrawCount", "0");
+    assert.entityCount("StakingPositionRecord", 1);
+
+    withdraw(ALICE, BigInt.fromI32(130).times(ONE).toString(), BigInt.fromI32(110).times(ONE).toString(), 300, 1787200000, TX, 3);
+    assert.fieldEquals("StakingPosition", id, "shares", "0");
+    assert.fieldEquals("StakingPosition", id, "principal", "0");
+    assert.fieldEquals("StakingPosition", id, "realizedRewards", BigInt.fromI32(30).times(ONE).toString());
+    assert.fieldEquals("StakingPosition", id, "totalWithdrawn", BigInt.fromI32(130).times(ONE).toString());
+  });
+
+  test("a vault whose convertToAssets reverts still tracks positions, just without a rate sample", () => {
+    deposit(ALICE, BigInt.fromI32(10).times(ONE).toString(), BigInt.fromI32(10).times(ONE).toString(), 100, 1787000000, TX, 1, NO_RATE_VAULT);
+    assert.fieldEquals("StakingPosition", ALICE + "-" + NO_RATE_VAULT.toHexString(), "shares", BigInt.fromI32(10).times(ONE).toString());
+    assert.assertTrue(StakingToken.load(NO_RATE_VAULT.toHexString())!.exchangeRateBlock === null);
+    assert.notInStore("StakingTokenExchangeRateSnapshot", NO_RATE_VAULT.toHexString() + "-100");
   });
 
 

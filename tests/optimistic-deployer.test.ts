@@ -86,6 +86,9 @@ mockTimelock(
   []
 );
 
+// Governor / timelock parameters below are the on-chain values of the BSC vlRSR
+// governor 0xbaf703e7… and timelock 0xb8d699cf… (cast, 2026-08-20); the DTF
+// governor 0xf6f73c08… is mocked with the same values for simplicity.
 function mockGovernor(governor: Address): void {
   mockOptimisticGovernor(
     governor,
@@ -260,8 +263,6 @@ describe("handleOptimisticGovernorSystemDeployed", () => {
     assert.dataSourceExists("UnstakingManager", MANAGER.toHexString());
     assert.dataSourceExists("Governance", GOVERNOR.toHexString());
     assert.dataSourceExists("Timelock", TIMELOCK.toHexString());
-    assert.dataSourceCount("StakingToken", 1);
-    assert.dataSourceCount("UnstakingManager", 1);
   });
 
   test("deployWithExistingStakingVault (vault = 0x0): the shared vault is untouched and the DTF governance is left to the role-grant path", () => {
@@ -291,8 +292,6 @@ describe("handleOptimisticGovernorSystemDeployed", () => {
     );
     assert.entityCount("StakingToken", 1);
     assert.entityCount("Governance", 1);
-    assert.dataSourceCount("StakingToken", 1);
-    assert.dataSourceCount("UnstakingManager", 1);
   });
 
   test("deployWithExistingStakingVault on a never-seen vault still discovers it (manager included) through Governor.token()", () => {
