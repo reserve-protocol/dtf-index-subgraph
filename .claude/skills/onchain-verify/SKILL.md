@@ -193,3 +193,10 @@ Or leave the script in `scripts/` if it's useful as a recurring diagnostic — b
 - Tracked event signatures live in `subgraph.yaml.mustache`
 - If a chain contract emits a topic0 that matches neither known deployer nor known event sig, that's a clue you have an **untracked deployer** — flag it for the user
 - Graft block lives in `networks.json` under `<network>.grafting.block`; use it as the BEFORE/after divider
+
+## BSC specifics (learned 2026-08-20)
+
+- `bsc-rpc.publicnode.com` refuses `eth_getLogs` / historical `eth_getCode` without a token ("Archive requests require a personal token"); `bsc-mainnet.public.blastapi.io` serves archive but rate-limits fast. The Alchemy BNB endpoint in `~/projects/reserve-api/.env` (`RPC_URL_BSC`) handles both, including address-filtered `eth_getLogs` over the full range in one call.
+- `cast` beats a viem script for quick checks: `cast call`, `cast logs --address X --from-block N --to-block latest --json`, `cast receipt TX --json`, `cast block N --field timestamp`. `cast logs` wants `--json`, not `-j`.
+- BSC block time is ~0.45 s (measured over 20k blocks); mainnet ~12 s, base 2 s. Binary-searching a deploy block needs an archive RPC or the "deployed at" result is garbage.
+- The `ReserveOptimisticGovernorDeployer` topic0 `0x92f46afc…` = `ReserveOptimisticGovernorSystemDeployed(address,address,address,address)` (reserve-governor repo), now tracked via `networks.json` → `OptimisticGovernorDeployer`.

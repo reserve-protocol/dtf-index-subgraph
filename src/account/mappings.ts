@@ -36,7 +36,10 @@ export function getOrCreateAccount(accountAddress: Bytes): Account {
     return existingAccount as Account;
   }
 
+  // Saved on creation so callers can reference it (Lock, RewardClaim, Proposal
+  // actors, positions) without each remembering to save it.
   let newAccount = new Account(accountId);
+  newAccount.save();
 
   return newAccount;
 }

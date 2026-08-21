@@ -1,12 +1,15 @@
 import { Address, BigInt } from "@graphprotocol/graph-ts";
-import { DTF, UnstakingManager } from "../../generated/schema";
+import { DTF } from "../../generated/schema";
+import { DTF as DTFTemplate } from "../../generated/templates";
+import { Governor } from "../../generated/templates/Governance/Governor";
 import {
-  DTF as DTFTemplate,
-  UnstakingManager as UnstakingManagerTemplate,
-} from "../../generated/templates";
-import { StakingVault } from "../../generated/templates/StakingToken/StakingVault";
-import { BIGINT_ZERO, GENESIS_ADDRESS, TokenType } from "../utils/constants";
+  BIGINT_ZERO,
+  GENESIS_ADDRESS,
+  GovernanceType,
+  TokenType,
+} from "../utils/constants";
 import {
+  createGovernanceTimelock,
   getOrCreateGovernance,
   getOrCreateStakingToken,
   getOrCreateToken,
@@ -88,21 +91,48 @@ export function _handleDeployedGovernedStakingToken(
   governor: Address,
   timelock: Address
 ): void {
-  // Template subscription is now handled inside getOrCreateStakingToken so it works
-  // for both fresh deploys and grafted entities.
+  // StakingToken + UnstakingManager template subscriptions happen inside
+  // getOrCreateStakingToken so every discovery path gets both.
   let stakingToken = getOrCreateStakingToken(stTokenAddress, underlyingAddress);
 
   stakingToken.governance = getOrCreateGovernance(governor, timelock).id;
   stakingToken.save();
+}
 
-  // Track unstaking manager events
-  let contract = StakingVault.bind(stTokenAddress);
-  let unstakingManagerAddress = contract.unstakingManager();
-  let unstakingManager = new UnstakingManager(
-    unstakingManagerAddress.toHexString()
+// ReserveOptimisticGovernorDeployer (reserve-governor repo). Two flavours share one event:
+// - deployWithNewStakingVault: stakingVault is the freshly deployed vault, governor/timelock
+//   govern it. The vault uses AccessControl (no OwnershipTransferred), so the timelock entity
+//   must be created here instead of relying on the legacy ownership hook.
+// - deployWithExistingStakingVault: stakingVault is address(0); governor/timelock are a DTF
+//   governance reusing a shared vault (e.g. BSC vlRSR). Only the vault is discovered here
+//   (Governor.token()). The Governance entity itself is created when the DTF grants the
+//   timelock a role — same as the FolioDeployer path — because getOrCreateGovernance reads
+//   optimisticProposers from the timelock entity, which does not exist yet at this point.
+export function _handleOptimisticGovernorSystemDeployed(
+  stakingVault: Address,
+  governor: Address,
+  timelock: Address
+): void {
+  if (stakingVault.toHexString() == GENESIS_ADDRESS) {
+    const token = Governor.bind(governor).try_token();
+    if (!token.reverted) {
+      getOrCreateStakingToken(token.value);
+    }
+    return;
+  }
+
+  getOrCreateStakingToken(stakingVault);
+
+  // Creates the timelock entity + template, finds the governor through PROPOSER_ROLE
+  // and links stakingToken.governance via refreshGovernanceLinks.
+  createGovernanceTimelock(
+    timelock,
+    stakingVault.toHexString(),
+    GovernanceType.VOTE_LOCKING
   );
-  unstakingManager.token = stakingToken.id;
-  unstakingManager.save();
 
-  UnstakingManagerTemplate.create(unstakingManagerAddress);
+  // Reload: createGovernanceTimelock may have saved the staking token.
+  let stakingToken = getOrCreateStakingToken(stakingVault);
+  stakingToken.governance = getOrCreateGovernance(governor, timelock).id;
+  stakingToken.save();
 }

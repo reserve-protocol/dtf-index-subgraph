@@ -838,6 +838,8 @@ type Account @entity(immutable: false) {
   " Locks "
   locks: [Lock!]! @derivedFrom(field: "account")
 
+  stakingPositions: [StakingPosition!]! @derivedFrom(field: "account")
+
   " Reward claims "
   rewardClaims: [RewardClaim!]! @derivedFrom(field: "account")
 
@@ -1217,6 +1219,38 @@ type StakingToken @entity(immutable: false) {
   " Reward jar that converts governance-share fees into the underlying token (new StakingVault); null if the vault has none "
   tokenJar: String
 
+  " Unstaking manager that holds withdrawal locks for this vault; null for tokens that are not StakingVaults "
+  unstakingManager: UnstakingManager
+
+  " Seconds between withdraw and claim (StakingVault.unstakingDelay) "
+  unstakingDelay: BigInt
+
+  " D18 reward ratio per second (StakingVault.rewardRatio), read at discovery and on RewardRatioSet; null for tokens without one "
+  rewardRatio: BigInt
+
+  " Reward half-life in seconds, from RewardRatioSet "
+  rewardHalfLife: BigInt
+
+  " Underlying asset units (raw, asset decimals) received for one whole share: convertToAssets(10^shareDecimals). Defaults to 10^shareDecimals (1:1) for tokens that are not vaults "
+  exchangeRate: BigInt!
+
+  " Vault totalAssets() at the last sample "
+  totalAssets: BigInt!
+
+  " Block of the last exchange rate sample; null when only seeded at discovery "
+  exchangeRateBlock: BigInt
+
+  " Timestamp of the last exchange rate sample; null when only seeded at discovery "
+  exchangeRateTimestamp: BigInt
+
+  " Exchange rate history, one row per sample where the rate moved "
+  exchangeRateSnapshots: [StakingTokenExchangeRateSnapshot!]! @derivedFrom(field: "token")
+
+  " Exchange rate history, last sample per day "
+  exchangeRateDailySnapshots: [StakingTokenExchangeRateDailySnapshot!]! @derivedFrom(field: "token")
+
+  positions: [StakingPosition!]! @derivedFrom(field: "token")
+
   " Governance "
   governance: Governance
 
@@ -1281,8 +1315,157 @@ type UnstakingManager @entity(immutable: true) {
   token: StakingToken!
 }
 
+type StakingTokenExchangeRateDailySnapshot @entity(immutable: false) {
+  " { StakingToken Address }-{ Day ID } — last sample of the day "
+  id: ID!
+
+  " Staking token "
+  token: StakingToken!
+
+  " Underlying asset units (raw) per one whole share: convertToAssets(10^decimals) "
+  exchangeRate: BigInt!
+
+  " Vault totalAssets() "
+  totalAssets: BigInt!
+
+  " Vault share supply at sample time "
+  totalSupply: BigInt!
+
+  blockNumber: BigInt!
+  timestamp: BigInt!
+}
+
+enum StakingPositionRecordType {
+  DEPOSIT
+  " UnstakingManager.cancelLock re-depositing a pending unlock (Deposit.sender == unstakingManager); not new capital "
+  LOCK_CANCEL
+  WITHDRAW
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+"""
+Per-account accounting for a vault. principal is an average cost basis in the
+underlying: deposits add the underlying paid, withdrawals release principal pro
+rata to the shares burned, transfers move principal pro rata between accounts.
+Unrealized rewards = shares * StakingToken.exchangeRate / 10^decimals - principal.
+"""
+type StakingPosition @entity(immutable: false) {
+  " { Account }-{ StakingToken Address } "
+  id: ID!
+
+  account: Account!
+
+  token: StakingToken!
+
+  " Vault shares currently held "
+  shares: BigInt!
+
+  " Underlying principal still backing the held shares "
+  principal: BigInt!
+
+  " Lifetime underlying deposited (lock cancellations are not deposits) "
+  totalDeposited: BigInt!
+
+  " Lifetime underlying withdrawn to this account's unstaking locks, net of cancelled locks. Withdrawals to another receiver count on the receiver "
+  totalWithdrawn: BigInt!
+
+  " Underlying received on withdrawals above the principal those shares carried; follows the withdraw receiver "
+  realizedRewards: BigInt!
+
+  depositCount: Int!
+
+  withdrawCount: Int!
+
+  " Last change "
+  blockNumber: BigInt!
+
+  " Last change "
+  timestamp: BigInt!
+
+  records: [StakingPositionRecord!]! @derivedFrom(field: "position")
+
+  dailySnapshots: [StakingPositionDailySnapshot!]! @derivedFrom(field: "position")
+}
+
+type StakingPositionRecord @entity(immutable: true) {
+  " { Position ID }-{ Transaction Hash }-{ Log Index } "
+  id: ID!
+
+  position: StakingPosition!
+
+  account: Account!
+
+  token: StakingToken!
+
+  type: StakingPositionRecordType!
+
+  " Shares minted / burned / moved "
+  shares: BigInt!
+
+  " DEPOSIT / WITHDRAW: underlying moved. TRANSFER_*: principal moved with the shares "
+  assets: BigInt!
+
+  " Change applied to StakingPosition.principal (negative on withdraw / transfer out) "
+  principalDelta: BigInt!
+
+  " WITHDRAW only: underlying received above the released principal "
+  realizedRewards: BigInt!
+
+  " Underlying per whole share at the time of the record (implied by the event for deposits / withdrawals, last sample for transfers) "
+  exchangeRate: BigInt!
+
+  " Other account involved: transfer sender/receiver, withdraw receiver/owner when they differ, the unstaking manager for LOCK_CANCEL "
+  counterparty: Account
+
+  hash: String!
+  logIndex: Int!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+}
+
+type StakingPositionDailySnapshot @entity(immutable: false) {
+  " { Position ID }-{ Day ID } — position state at the end of a day it changed "
+  id: ID!
+
+  position: StakingPosition!
+
+  account: Account!
+
+  token: StakingToken!
+
+  shares: BigInt!
+  principal: BigInt!
+  totalDeposited: BigInt!
+  totalWithdrawn: BigInt!
+  realizedRewards: BigInt!
+
+  blockNumber: BigInt!
+  timestamp: BigInt!
+}
+
+type StakingTokenExchangeRateSnapshot @entity(immutable: true) {
+  " { StakingToken Address }-{ Block Number } "
+  id: ID!
+
+  " Staking token "
+  token: StakingToken!
+
+  " Underlying asset units (raw) per one whole share: convertToAssets(10^decimals) "
+  exchangeRate: BigInt!
+
+  " Vault totalAssets() "
+  totalAssets: BigInt!
+
+  " Vault share supply at sample time "
+  totalSupply: BigInt!
+
+  blockNumber: BigInt!
+  timestamp: BigInt!
+}
+
 type Lock @entity(immutable: false) {
-  " { StakingToken Address }-{ Lock ID } "
+  " { UnstakingManager Address }-{ Lock ID } "
   id: ID!
 
   " Lock id "

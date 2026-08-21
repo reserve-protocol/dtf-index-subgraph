@@ -5,6 +5,40 @@ All notable changes to the DTF Index Subgraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.1] - 2026-08-21
+
+Review follow-ups on 1.10.0 (which was deployed but never tagged `prod`). Clean reindex, no graft.
+
+### Fixed
+- **Legacy vaults no longer get a bogus `0x0` entry as their first `legacyGovernance` element.** `_handleOwnershipTransferred` compared the previous owner with `!==`, which is reference identity on AssemblyScript strings, so the constructor's `OwnershipTransferred(0x0 → deployer)` always passed the guard. Visible on every legacy vault in prod today.
+- **Withdrawals to another receiver** (`Withdraw.receiver != owner`) now book `totalWithdrawn` / `realizedRewards` on the receiver (who gets the lock) while the owner only releases principal; a later lock cancel lands on the same account. Records carry a `counterparty`.
+- **Lock cancellations net out of `totalWithdrawn`**, so `totalDeposited` / `totalWithdrawn` stay a matched pair and `realizedRewards == totalWithdrawn − totalDeposited + principal` holds across cancel round-trips.
+- `StakingPosition` rows are no longer created for vote tokens that are not vaults (guarded on `unstakingManager`).
+- `getOrCreateAccount` saves on create, fixing dangling `Account` references from proposal actors (`cancellationAccount`, `executionAccount`, `queueAccount`) as well as locks, claims and positions.
+
+### Changed
+- Every vault's `Deposit` / `Withdraw` now samples the exchange rate (two eth_calls per event) and retries the `UnstakingManager` subscription if discovery skipped it (with a `log.warning` on the skip), so vaults outside the polled `TrackedVault` list still carry an accurate rate as of their last activity and a missed subscription heals itself.
+- `StakingPositionRecord.counterparty` (transfer sender/receiver, withdraw receiver/owner, the unstaking manager for `LOCK_CANCEL`).
+
+## [1.10.0] - 2026-08-20
+
+Requires a clean reindex (no graft): the UnstakingManager subscription and the exchange-rate / position entities are created at staking-token discovery and from historical Deposit/Withdraw events.
+
+### Fixed
+- **Vaults discovered outside a tracked deployer event never had their `UnstakingManager` subscribed, so their locks were never indexed.** Concretely the shared BSC vlRSR `0xE744C8157c346B2931807F42552c8CBc0BB6D34f` (deployed by the untracked `ReserveOptimisticGovernorDeployer` at block 102317233) had `unstakingManager: null` and `locks: []` on Goldsky while two `LockCreated` events (blocks 116930184 / 116931302) sat on chain. The subscription now lives in `getOrCreateStakingToken` (`subscribeUnstakingManager`), i.e. on every discovery path — deployer events, `Governor.token()`, timelock role grants. Verified by replaying the two real events in `tests/unstaking-manager-fallback.test.ts`.
+- `Lock.account` / `RewardClaim.account` referenced an `Account` that was never saved when the address had not held the vault token before (e.g. a withdraw to a different receiver).
+
+### Added
+- **`OptimisticGovernorDeployer` data source** (networks.json; mainnet `0x2acc45e1…` from block 25245938, base `0x604d70d1…` from 46904843, bsc `0x1c10e68b…` from 102317103 — the mainnet/base vlRSR vaults `0xABbDD9AC…` / `0x2F0D6538…` had the same missing-manager bug) handling `ReserveOptimisticGovernorSystemDeployed`. `deployWithNewStakingVault` indexes the vault, its manager, governance and timelock (the AccessControl vault emits no `OwnershipTransferred`, so the timelock entity is created here); `deployWithExistingStakingVault` (`stakingVault = 0x0`) only discovers the vault through `Governor.token()`; the DTF governance keeps being created by the DTF role grant, where its timelock and `optimisticProposers` are known.
+- **Vault exchange-rate tracking.** The new StakingVault streams native RSR rewards into `totalAssets()`, so the share → asset rate drifts every block. A hardcoded `TrackedVault` data source per chain (networks.json: the vlRSR vault — mainnet `0xABbDD9AC…`, base `0x2F0D6538…`, bsc `0xE744C815…`) runs a polling block handler (`handleExchangeRatePoll`) that samples `convertToAssets(10^decimals)` + `totalAssets()` roughly every 10 minutes — `every` is derived per network from `networks.json.secondsPerBlock` (mainnet 12s → 50 blocks, base 2s → 300, bsc 0.45s → 1333). New fields `StakingToken.exchangeRate / totalAssets / exchangeRateBlock / exchangeRateTimestamp`, `StakingTokenExchangeRateDailySnapshot` (last sample per day, upsert) and `StakingTokenExchangeRateSnapshot` (immutable, written on the first poll and whenever the rate moves — legacy 1:1 vaults get a single baseline row). Only the tracked vault is polled (two eth_calls per poll); the cadence is one constant in `scripts/parse-template.js`, adding a vault is one `TrackedVault` entry.
+- **Per-account staking accounting** for the "locked 100 RSR → 96 vlRSR, now worth 120 RSR" view: `StakingPosition` (shares, average-cost `principal`, `totalDeposited`, `totalWithdrawn`, `realizedRewards`), `StakingPositionRecord` per `Deposit` / `Withdraw` / wallet `Transfer` (with the implied exchange rate), `StakingPositionDailySnapshot`. Withdrawals release principal pro rata and book the excess as realized rewards; wallet transfers move principal pro rata; a cancelled lock re-enters as a `LOCK_CANCEL` record (principal at today's rate; see 1.10.1 for how it nets against `totalWithdrawn`). Validated against the full real history of the BSC locker `0xb0bd…6e18` with an independent BigInt oracle (`tests/staking-position.test.ts`). See `docs/staking-vaults.md` for the query recipe.
+- `StakingToken.unstakingManager`, `unstakingDelay`, `rewardRatio`, `rewardHalfLife` (from `UnstakingDelaySet` / `RewardRatioSet` and resolved at discovery).
+
+### Changed
+- `abis/staking-vault.json` gains `versionRegistry()`, `rewardTokenRegistry()`, `VersionRegistrySet`, `RewardTokenRegistrySet`; new `abis/optimistic-governor-deployer.json`.
+- `scripts/parse-template.js` requires `secondsPerBlock` per network and renders `OptimisticGovernorDeployer` and `TrackedVault` data sources.
+- Test helpers: `tests/helpers/mock-staking-vault.ts` mocks every vault / governor / timelock read the discovery path performs.
+
 ## [1.9.8] - 2026-06-23
 
 ### Fixed
