@@ -44,6 +44,13 @@ export function _handleTransfer(
     return;
   }
 
+  // WHY: a self-transfer is a no-op on-chain, but the holder-count math below
+  // saw the sender "leave" (balance == amount) without the receiver "joining"
+  // (balance already > 0), driving currentHolderCount negative (MAG7 on Base).
+  if (from == to) {
+    return;
+  }
+
   let isBurn = to.toHex() == GENESIS_ADDRESS;
   let isMint = from.toHex() == GENESIS_ADDRESS;
   let isTransfer = !isBurn && !isMint;
