@@ -77,8 +77,32 @@ type RSRBurnMonthlySnapshot @entity(immutable: false) {
 #############################
 ####### DTF FOLIO      ######
 #############################
+" A Folio release registered on the chain's FolioVersionRegistry "
+type FolioVersion @entity(immutable: false) {
+  " keccak256(version string) "
+  id: ID!
+
+  " Semantic version string read from the deployer "
+  version: String!
+
+  " FolioDeployer for this release "
+  deployer: Bytes!
+
+  " Registration block "
+  blockNumber: BigInt!
+
+  " Registration timestamp "
+  timestamp: BigInt!
+
+  " Whether the registry deprecated this release "
+  deprecated: Boolean!
+}
+
 type DTF @entity(immutable: false) {
   id: ID!
+
+  " Folio implementation version hydrated from version() "
+  version: String
 
   " Folio ERC20 token address "
   token: Token!
@@ -112,6 +136,9 @@ type DTF @entity(immutable: false) {
 
   " Auction length "
   auctionLength: BigInt!
+
+  " Maximum auction length (v6.0+); auctionLength remains populated for compatibility "
+  maxAuctionLength: BigInt
 
   " Bids enabled (v5.0+) "
   bidsEnabled: Boolean
@@ -175,6 +202,18 @@ type DTF @entity(immutable: false) {
 
   " Fee recipients "
   feeRecipients: String!
+
+  " Immutable fee recipients (v6.0+) "
+  immutableFeeRecipients: String
+
+  " Fraction of non-DAO fees retained for Folio holders (v6.0+) "
+  folioFeeForSelf: BigInt
+
+  " Whether rebalance token allowlisting is enabled (v6.0+) "
+  tradeAllowlistEnabled: Boolean
+
+  " Rebalance token allowlist (v6.0+); empty before 6.0 "
+  tradeTokenAllowlist: [String!]!
 
   " Rebalances "
   rebalances: [Rebalance!]! @derivedFrom(field: "dtf")

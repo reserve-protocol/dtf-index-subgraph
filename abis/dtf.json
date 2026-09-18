@@ -113,6 +113,13 @@
   },
   {
     "type": "function",
+    "name": "bidsEnabled",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "auctions",
     "inputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
     "outputs": [
@@ -249,6 +256,20 @@
   },
   {
     "type": "function",
+    "name": "folioFeeForSelf",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "folioPendingMintFeeShares",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "folio",
     "inputs": [],
     "outputs": [
@@ -321,6 +342,15 @@
     "inputs": [
       { "name": "role", "type": "bytes32", "internalType": "bytes32" }
     ],
+    "outputs": [
+      { "name": "", "type": "address[]", "internalType": "address[]" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getTokenAllowlist",
+    "inputs": [],
     "outputs": [
       { "name": "", "type": "address[]", "internalType": "address[]" }
     ],
@@ -440,6 +470,13 @@
   },
   {
     "type": "function",
+    "name": "lastFolioFeePoke",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "lot",
     "inputs": [
       { "name": "auctionId", "type": "uint256", "internalType": "uint256" },
@@ -455,6 +492,64 @@
     "name": "mandate",
     "inputs": [],
     "outputs": [{ "name": "", "type": "string", "internalType": "string" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "maxAuctionLength",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "immutableFeeRecipients",
+    "inputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "outputs": [
+      { "name": "recipient", "type": "address", "internalType": "address" },
+      { "name": "portion", "type": "uint96", "internalType": "uint96" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "rebalanceControl",
+    "inputs": [],
+    "outputs": [
+      { "name": "weightControl", "type": "bool", "internalType": "bool" },
+      {
+        "name": "priceControl",
+        "type": "uint8",
+        "internalType": "enum IFolio.PriceControl"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "tradeAllowlistEnabled",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "trustedFillerEnabled",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "trustedFillerRegistry",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract ITrustedFillerRegistry"
+      }
+    ],
     "stateMutability": "view"
   },
   {
@@ -1066,6 +1161,19 @@
   },
   {
     "type": "event",
+    "name": "MaxAuctionLengthSet",
+    "inputs": [
+      {
+        "name": "newMaxAuctionLength",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "AuctionOpened",
     "inputs": [
       {
@@ -1311,6 +1419,23 @@
   },
   {
     "type": "event",
+    "name": "ImmutableFeeRecipientsSet",
+    "inputs": [
+      {
+        "name": "recipients",
+        "type": "tuple[]",
+        "indexed": false,
+        "internalType": "struct IFolio.FeeRecipient[]",
+        "components": [
+          { "name": "recipient", "type": "address", "internalType": "address" },
+          { "name": "portion", "type": "uint96", "internalType": "uint96" }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "FolioFeePaid",
     "inputs": [
       {
@@ -1321,6 +1446,19 @@
       },
       {
         "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "FolioFeeSet",
+    "inputs": [
+      {
+        "name": "newFolioFee",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1508,6 +1646,19 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Upgraded",
+    "inputs": [
+      {
+        "name": "implementation",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       }
     ],
     "anonymous": false
@@ -1979,6 +2130,45 @@
       }
     ],
     "name": "TrustedFillerRegistrySet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "enabled",
+        "type": "bool"
+      }
+    ],
+    "name": "TradeAllowlistEnabled",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "TradeAllowlistTokenAdded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "TradeAllowlistTokenRemoved",
     "type": "event"
   },
   { "type": "error", "name": "AccessControlBadConfirmation", "inputs": [] },

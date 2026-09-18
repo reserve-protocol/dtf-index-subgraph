@@ -14,16 +14,19 @@ import {
   getOrCreateStakingToken,
   getOrCreateToken,
 } from "../utils/getters";
+import { hydrateDTFDeployState } from "../dtf/hydration";
 
 export function _handleDTFDeployed(
   dtfAddress: Address,
   proxyAdmin: Address,
   deployer: Address,
+  ownerAddress: Address,
   blockNumber: BigInt,
   timestamp: BigInt
 ): void {
   let dtf = new DTF(dtfAddress.toHexString());
-  dtf.token = getOrCreateToken(dtfAddress, TokenType.DTF).id;
+  const token = getOrCreateToken(dtfAddress, TokenType.DTF);
+  dtf.token = token.id;
   dtf.deployer = deployer;
   dtf.proxyAdmin = proxyAdmin;
   dtf.blockNumber = blockNumber;
@@ -44,13 +47,16 @@ export function _handleDTFDeployed(
   dtf.weightControl = true;
   dtf.priceControl = 1;
 
-  dtf.ownerAddress = deployer;
+  dtf.ownerAddress = ownerAddress;
   dtf.auctionApprovers = [];
   dtf.legacyAuctionApprovers = [];
   dtf.auctionLaunchers = [];
   dtf.brandManagers = [];
   dtf.admins = [];
   dtf.legacyAdmins = [];
+  dtf.tradeTokenAllowlist = [];
+
+  hydrateDTFDeployState(dtf, dtfAddress);
   dtf.save();
 
   // Track transfer and trade events

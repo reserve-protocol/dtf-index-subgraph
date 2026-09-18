@@ -1,3 +1,4 @@
+import { log } from "@graphprotocol/graph-ts";
 import {
   AuctionApproved,
   AuctionApproved1,
@@ -12,8 +13,11 @@ import {
   AuctionTrustedFillCreated,
   BidsEnabledSet,
   FeeRecipientsSet,
+  FolioFeeSet,
   FolioFeePaid,
+  ImmutableFeeRecipientsSet,
   MandateSet,
+  MaxAuctionLengthSet,
   MintFeeSet,
   NameSet,
   ProtocolFeePaid,
@@ -24,10 +28,17 @@ import {
   RoleGranted,
   RoleRevoked,
   Transfer,
+  TradeAllowlistEnabled,
+  TradeAllowlistTokenAdded,
+  TradeAllowlistTokenRemoved,
   TrustedFillerRegistrySet,
   TVLFeeSet,
+  Upgraded,
+  DTF as DTFContract,
 } from "../../generated/templates/DTF/DTF";
+import { DTF as DTFEntity } from "../../generated/schema";
 import { _handleTransfer } from "../token/mappings";
+import { rehydrateDTF } from "./hydration";
 import {
   BIGINT_ONE,
   BIGINT_ZERO,
@@ -40,9 +51,12 @@ import {
   _handleBid,
   _handleBidsEnabledSet,
   _handleFeeRecipientsSet,
+  _handleFolioFeeSet,
+  _handleImmutableFeeRecipientsSet,
   _handleFolioFeePaid,
   _handleMandateSet,
   _handleMintFeeSet,
+  _handleMaxAuctionLengthSet,
   _handleNameSet,
   _handleProtocolFeePaid,
   _handleRebalanceControlSet,
@@ -57,6 +71,9 @@ import {
   _handleTradeApproved,
   _handleTradeApproved1,
   _handleTradeKilled,
+  _handleTradeAllowlistEnabled,
+  _handleTradeAllowlistTokenAdded,
+  _handleTradeAllowlistTokenRemoved,
   _handleTradeLaunched,
   _handleTradeLaunched1,
   _handleTrustedFillerRegistrySet,
@@ -226,12 +243,61 @@ export function handleAuctionLengthSet(event: AuctionLengthSet): void {
   _handleAuctionLengthSet(event.address, event.params.newAuctionLength);
 }
 
+export function handleMaxAuctionLengthSet(event: MaxAuctionLengthSet): void {
+  _handleMaxAuctionLengthSet(event.address, event.params.newMaxAuctionLength);
+}
+
+export function handleFolioFeeSet(event: FolioFeeSet): void {
+  _handleFolioFeeSet(event.address, event.params.newFolioFee);
+}
+
 export function handleMandateSet(event: MandateSet): void {
   _handleMandateSet(event.address, event.params.newMandate);
 }
 
 export function handleFeeRecipientsSet(event: FeeRecipientsSet): void {
   _handleFeeRecipientsSet(event.address, event.params.recipients);
+}
+
+export function handleImmutableFeeRecipientsSet(
+  event: ImmutableFeeRecipientsSet,
+): void {
+  _handleImmutableFeeRecipientsSet(event.address, event.params.recipients);
+}
+
+export function handleTradeAllowlistEnabled(
+  event: TradeAllowlistEnabled,
+): void {
+  _handleTradeAllowlistEnabled(event.address, event.params.enabled);
+}
+
+export function handleTradeAllowlistTokenAdded(
+  event: TradeAllowlistTokenAdded,
+): void {
+  _handleTradeAllowlistTokenAdded(event.address, event.params.token);
+}
+
+export function handleTradeAllowlistTokenRemoved(
+  event: TradeAllowlistTokenRemoved,
+): void {
+  _handleTradeAllowlistTokenRemoved(event.address, event.params.token);
+}
+
+export function handleUpgraded(event: Upgraded): void {
+  const dtf = DTFEntity.load(event.address.toHexString());
+  if (!dtf) return;
+  // TransparentUpgradeableProxy emits Upgraded during construction, and the
+  // dynamic template replays creation-block logs; rehydrating then would count
+  // event-backed state twice. Only an implementation that reports a different
+  // version() is a protocol upgrade worth rehydrating, whatever block it lands
+  // in; a re-upgrade to the same registered version is not rehydrated.
+  const version = DTFContract.bind(event.address).try_version();
+  if (version.reverted) {
+    log.warning("Upgraded on {} but version() reverted; not rehydrated", [event.address.toHexString()]);
+    return;
+  }
+  if (version.value == dtf.version) return;
+  rehydrateDTF(event.address);
 }
 
 // @deprecated - v1.0 handler

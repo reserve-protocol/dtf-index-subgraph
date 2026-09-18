@@ -50,6 +50,8 @@ dataSources:
       abis:
         - name: FolioDeployer
           file: ./abis/folio-deployer.json
+        - name: DTF
+          file: ./abis/dtf.json
         - name: ERC20
           file: ./abis/erc20.json
         - name: Governor
@@ -66,6 +68,32 @@ dataSources:
           handler: handleGovernedDTFDeployed
       file: ./src/deploy/mappings.ts
 {{/FolioDeployer}}
+{{#FolioVersionRegistry}}
+  - kind: ethereum
+    name: FolioVersionRegistry
+    network: {{network}}
+    source:
+      abi: FolioVersionRegistry
+      address: "{{address}}"
+      startBlock: {{startBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - FolioVersion
+      abis:
+        - name: FolioVersionRegistry
+          file: ./abis/version-registry.json
+        - name: FolioDeployer
+          file: ./abis/folio-deployer.json
+      eventHandlers:
+        - event: VersionRegistered(bytes32,address)
+          handler: handleVersionRegistered
+        - event: VersionDeprecated(bytes32)
+          handler: handleVersionDeprecated
+      file: ./src/registry/mappings.ts
+{{/FolioVersionRegistry}}
 {{#GovernanceDeployer}}
   - kind: ethereum
     name: GovernanceDeployer{{postfix}}
@@ -200,6 +228,42 @@ dataSources:
       file: ./src/bridged-dtf/mappings.ts
 {{/BridgedDTF}}
 templates:
+  - name: FolioDeployerFromRegistry
+    kind: ethereum/contract
+    network: {{network}}
+    source:
+      abi: FolioDeployer
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - DTF
+        - Token
+        - Governance
+        - GovernanceTimelock
+        - StakingToken
+        - UnstakingManager
+      abis:
+        - name: FolioDeployer
+          file: ./abis/folio-deployer.json
+        - name: DTF
+          file: ./abis/dtf.json
+        - name: ERC20
+          file: ./abis/erc20.json
+        - name: Governor
+          file: ./abis/governor.json
+        - name: Timelock
+          file: ./abis/timelock.json
+        - name: StakingVault
+          file: ./abis/staking-vault.json
+      eventHandlers:
+        - event: FolioDeployed(indexed address,indexed address,address)
+          handler: handleDTFDeployed
+        - event: GovernedFolioDeployed(indexed address,indexed
+            address,address,address,address,address)
+          handler: handleGovernedDTFDeployed
+      file: ./src/deploy/mappings.ts
   - name: DTF
     kind: ethereum/contract
     network: {{network}}
@@ -271,10 +335,24 @@ templates:
           handler: handleAuctionDelaySet
         - event: AuctionLengthSet(uint256)
           handler: handleAuctionLengthSet
+        - event: MaxAuctionLengthSet(uint256)
+          handler: handleMaxAuctionLengthSet
         - event: MandateSet(string)
           handler: handleMandateSet
         - event: FeeRecipientsSet((address,uint96)[])
           handler: handleFeeRecipientsSet
+        - event: ImmutableFeeRecipientsSet((address,uint96)[])
+          handler: handleImmutableFeeRecipientsSet
+        - event: FolioFeeSet(uint256)
+          handler: handleFolioFeeSet
+        - event: TradeAllowlistEnabled(bool)
+          handler: handleTradeAllowlistEnabled
+        - event: TradeAllowlistTokenAdded(indexed address)
+          handler: handleTradeAllowlistTokenAdded
+        - event: TradeAllowlistTokenRemoved(indexed address)
+          handler: handleTradeAllowlistTokenRemoved
+        - event: Upgraded(indexed address)
+          handler: handleUpgraded
         ### Deprecated events
         # v1.0 / v2.0 event
         - event: AuctionApproved(indexed uint256,indexed address,indexed

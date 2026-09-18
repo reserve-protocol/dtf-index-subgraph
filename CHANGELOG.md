@@ -5,6 +5,40 @@ All notable changes to the DTF Index Subgraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - Unreleased
+
+Folio 6.0.0 support. Clean reindex: `DTF.ownerAddress` now records the deployment's `folioOwner`
+(previously the deploy transaction sender) for every version, `DTF.version` is a new field hydrated
+from `version()`, and the version registry is a new data source. No graft.
+
+### Added
+
+- `DTF.version`, hydrated from `version()` at deployment and refreshed when the proxy reports a different
+  version after an `Upgraded` log (constructor `Upgraded` logs are ignored by comparing versions, not blocks).
+- Folio 6.0 fields on `DTF`: `maxAuctionLength` (mirrored into `auctionLength` for existing clients),
+  `immutableFeeRecipients`, `folioFeeForSelf`, `tradeAllowlistEnabled`, `tradeTokenAllowlist`, with handlers for `MaxAuctionLengthSet`, `FolioFeeSet`,
+  `ImmutableFeeRecipientsSet`, `TradeAllowlistEnabled`, `TradeAllowlistTokenAdded`, `TradeAllowlistTokenRemoved`.
+- `FolioVersion` entity and a `FolioVersionRegistry` data source per chain (mainnet and Base
+  `0xA665b273997F70b647B66fa7Ed021287544849dB`, BSC `0x79A4E963378AE34fC6c796a24c764322fC6c9390`, each starting at
+  the chain's earliest static deployer block so every registration is recorded). A `FolioDeployerFromRegistry`
+  template is spawned for releases past the static 1.0.0–5.0.0 sources (`STATIC_DEPLOYER_VERSIONS`, checked
+  against `networks.json` at template time), so a 6.0.0 deployer is indexed from its registration onward without
+  a manifest change. A deployment made through a new deployer before it is registered is not covered; add a static
+  entry at the deployer's creation block for that case.
+- Dockerized mainnet-fork profile (`docs/local-mainnet-fork.md`) with an RPC-versus-GraphQL parity gate
+  (`pnpm test:fork:parity`) driven by the protocol sandbox fixture.
+
+### Changed
+
+- `DTF.ownerAddress` is the deployment's `folioOwner`.
+- `DTF.tradeTokenAllowlist` is non-null (empty before 6.0) and a fresh 6.0 Folio's allowlist state is read at
+  deployment, since `initialize` emits no allowlist event.
+- `DTF.ownerAddress` changes meaning for existing consumers (deployment owner, not the transaction sender).
+
+## [1.10.2] - 2026-09-14
+
+- Version bump only; no schema or mapping change.
+
 ## [1.10.1] - 2026-08-21
 
 Review follow-ups on 1.10.0 (which was deployed but never tagged `prod`). Clean reindex, no graft.

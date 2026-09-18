@@ -45,6 +45,7 @@ import {
   AuctionApproved1DetailsStruct,
   AuctionOpened1AuctionStruct,
   FeeRecipientsSetRecipientsStruct,
+  ImmutableFeeRecipientsSetRecipientsStruct,
 } from "./../../generated/templates/DTF/DTF";
 import {
   getOrCreateTokenDailySnapshot,
@@ -633,6 +634,26 @@ export function _handleAuctionLengthSet(
   dtf.save();
 }
 
+export function _handleMaxAuctionLengthSet(
+  dtfAddress: Address,
+  length: BigInt,
+): void {
+  let dtf = getDTF(dtfAddress);
+  dtf.maxAuctionLength = length;
+  // Preserve the legacy field until all clients consume maxAuctionLength.
+  dtf.auctionLength = length;
+  dtf.save();
+}
+
+export function _handleFolioFeeSet(
+  dtfAddress: Address,
+  fee: BigInt,
+): void {
+  let dtf = getDTF(dtfAddress);
+  dtf.folioFeeForSelf = fee;
+  dtf.save();
+}
+
 export function _handleMandateSet(dtfAddress: Address, mandate: string): void {
   let dtf = getDTF(dtfAddress);
   dtf.mandate = mandate;
@@ -652,6 +673,55 @@ export function _handleFeeRecipientsSet(
     );
   }
   dtf.feeRecipients = recipientStrings.join(",");
+  dtf.save();
+}
+
+export function _handleImmutableFeeRecipientsSet(
+  dtfAddress: Address,
+  recipients: ImmutableFeeRecipientsSetRecipientsStruct[],
+): void {
+  let dtf = getDTF(dtfAddress);
+  let recipientStrings: string[] = [];
+  for (let i = 0; i < recipients.length; i++) {
+    let recipient = recipients[i];
+    recipientStrings.push(
+      `${recipient.recipient.toHexString()}:${recipient.portion.toString()}`,
+    );
+  }
+  dtf.immutableFeeRecipients = recipientStrings.join(",");
+  dtf.save();
+}
+
+export function _handleTradeAllowlistEnabled(
+  dtfAddress: Address,
+  enabled: bool,
+): void {
+  let dtf = getDTF(dtfAddress);
+  dtf.tradeAllowlistEnabled = enabled;
+  dtf.save();
+}
+
+export function _handleTradeAllowlistTokenAdded(
+  dtfAddress: Address,
+  token: Address,
+): void {
+  let dtf = getDTF(dtfAddress);
+  let allowlist = dtf.tradeTokenAllowlist;
+  const tokenId = token.toHexString();
+  if (allowlist.indexOf(tokenId) === -1) allowlist.push(tokenId);
+  dtf.tradeTokenAllowlist = allowlist;
+  dtf.save();
+}
+
+export function _handleTradeAllowlistTokenRemoved(
+  dtfAddress: Address,
+  token: Address,
+): void {
+  let dtf = getDTF(dtfAddress);
+  let allowlist = dtf.tradeTokenAllowlist;
+  const index = allowlist.indexOf(token.toHexString());
+  if (index !== -1) allowlist = removeFromArrayAtIndex(allowlist, index);
+  dtf.tradeTokenAllowlist = allowlist;
   dtf.save();
 }
 

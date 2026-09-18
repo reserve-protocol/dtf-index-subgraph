@@ -73,3 +73,7 @@ export namespace Role {
   export const AUCTION_APPROVER =
     "0x2be23b023f3eee571adc019cdcf3f0bcf041151e6ff405a4bf0c4bfc6faea8c9";
 }
+
+// Folio releases whose deployers are static data sources; the version registry only
+// spawns a deployer template for releases registered after these.
+export const STATIC_DEPLOYER_VERSIONS: string[] = ["1.0.0", "2.0.0", "4.0.0", "4.0.1", "5.0.0"];

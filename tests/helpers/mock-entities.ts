@@ -38,6 +38,7 @@ export function createTestDTF(dtfAddress: Address): DTF {
   dtf.brandManagers = [];
   dtf.admins = [];
   dtf.legacyAdmins = [];
+  dtf.tradeTokenAllowlist = [];
   dtf.save();
   return dtf;
 }

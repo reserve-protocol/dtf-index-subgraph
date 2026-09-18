@@ -66,6 +66,10 @@
     "RSR": {
       "address": "0x320623b8e4ff03373931769a31fc52a4e78b5d70",
       "startBlock": 22380000
+    },
+    "FolioVersionRegistry": {
+      "address": "0xA665b273997F70b647B66fa7Ed021287544849dB",
+      "startBlock": 21818973
     }
   },
   "base": {
@@ -142,7 +146,11 @@
         "startBlock": 38479225,
         "_name": "CMC20"
       }
-    ]
+    ],
+    "FolioVersionRegistry": {
+      "address": "0xA665b273997F70b647B66fa7Ed021287544849dB",
+      "startBlock": 25703976
+    }
   },
   "bsc": {
     "grafting": {
@@ -200,6 +208,10 @@
     ],
     "RSR": {
       "address": "0x23f72a3db61d6cb8abe5d9af1ac4b6c99327bfee",
+      "startBlock": 53679824
+    },
+    "FolioVersionRegistry": {
+      "address": "0x79A4E963378AE34fC6c796a24c764322fC6c9390",
       "startBlock": 53679824
     }
   }

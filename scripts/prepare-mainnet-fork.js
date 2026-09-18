@@ -1,0 +1,108 @@
+const fs = require("fs");
+const path = require("path");
+
+const MAINNET = {
+  v5FolioDeployer: "0x4D201a6e5BF975E2CEE9e5cbDfc803C0Ff122073",
+  versionRegistry: "0xA665b273997F70b647B66fa7Ed021287544849dB",
+  v5GovernanceDeployer: "0x72f87239981159ed23673012EE3806Ca6114AB2A",
+  optimisticGovernorDeployer: "0x2acc45e12776579f40ae3419764eef7022763735",
+  rsr: "0x320623b8e4ff03373931769a31fc52a4e78b5d70",
+};
+
+const args = process.argv.slice(2);
+const forkBlock = getArgument("--fork-block") || process.env.FORK_BLOCK;
+// The v6 deployer is discovered through the fork's version registry, exactly as on mainnet.
+const versionRegistry = optionalAddress(
+  "--version-registry",
+  "VERSION_REGISTRY_ADDRESS",
+  MAINNET.versionRegistry
+);
+const outputPath =
+  getArgument("--output") || process.env.FORK_NETWORK_CONFIG || ".fork/networks.json";
+
+if (!forkBlock || !/^\d+$/.test(forkBlock)) {
+  fail("--fork-block (or FORK_BLOCK) must be a non-negative integer");
+}
+const v5FolioDeployer = optionalAddress(
+  "--v5-folio-deployer",
+  "V5_FOLIO_DEPLOYER_ADDRESS",
+  MAINNET.v5FolioDeployer
+);
+const v5GovernanceDeployer = optionalAddress(
+  "--v5-governance-deployer",
+  "V5_GOVERNANCE_DEPLOYER_ADDRESS",
+  MAINNET.v5GovernanceDeployer
+);
+const optimisticGovernorDeployer = optionalAddress(
+  "--optimistic-governor-deployer",
+  "OPTIMISTIC_GOVERNOR_DEPLOYER_ADDRESS",
+  MAINNET.optimisticGovernorDeployer
+);
+
+const startBlock = Number(forkBlock);
+if (!Number.isSafeInteger(startBlock)) {
+  fail("fork block exceeds JavaScript's safe integer range");
+}
+
+const config = {
+  mainnet: {
+    grafting: { base: "", block: 0 },
+    secondsPerBlock: 12,
+    FolioDeployer: [
+      {
+        address: v5FolioDeployer,
+        startBlock,
+        _version: "5.0.0-fork",
+      },
+    ],
+    GovernanceDeployer: [
+      {
+        address: v5GovernanceDeployer,
+        startBlock,
+        _version: "5.0.0-fork",
+      },
+    ],
+    OptimisticGovernorDeployer: [
+      {
+        address: optimisticGovernorDeployer,
+        startBlock,
+        _version: "reserve-governor-fork",
+      },
+    ],
+    TrackedVault: [],
+    FolioVersionRegistry: { address: versionRegistry, startBlock },
+    RSR: {
+      address: MAINNET.rsr,
+      startBlock,
+    },
+  },
+};
+
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+fs.writeFileSync(outputPath, `${JSON.stringify(config, null, 2)}\n`);
+console.log(`Wrote ${outputPath}`);
+
+function getArgument(name) {
+  const index = args.indexOf(name);
+  if (index === -1 || index === args.length - 1) {
+    return undefined;
+  }
+  return args[index + 1];
+}
+
+function optionalAddress(argument, environment, fallback) {
+  const value = getArgument(argument) || process.env[environment] || fallback;
+  if (!isAddress(value)) {
+    fail(`${argument} (or ${environment}) must be an Ethereum address`);
+  }
+  return value;
+}
+
+function isAddress(value) {
+  return typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value);
+}
+
+function fail(message) {
+  console.error(`Error: ${message}`);
+  process.exit(1);
+}

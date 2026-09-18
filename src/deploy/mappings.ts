@@ -16,6 +16,7 @@ export function handleDTFDeployed(event: FolioDeployed): void {
     event.params.folio,
     event.params.folioAdmin,
     event.transaction.from,
+    event.params.folioOwner,
     event.block.number,
     event.block.timestamp
   );
