@@ -50,10 +50,12 @@ export function _handleDTFDeployed(
   dtf.ownerAddress = ownerAddress;
   dtf.auctionApprovers = [];
   dtf.legacyAuctionApprovers = [];
+  dtf.legacyTradingGovernances = [];
   dtf.auctionLaunchers = [];
   dtf.brandManagers = [];
   dtf.admins = [];
   dtf.legacyAdmins = [];
+  dtf.legacyAdminGovernances = [];
   dtf.tradeTokenAllowlist = [];
 
   hydrateDTFDeployState(dtf, dtfAddress);

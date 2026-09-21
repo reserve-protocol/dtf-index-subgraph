@@ -167,6 +167,9 @@ type DTF @entity(immutable: false) {
   " Legacy auction approvers "
   legacyAuctionApprovers: [String!]!
 
+  " Former rebalance authorities that were indexed governances (raw history stays in legacyAuctionApprovers) "
+  legacyTradingGovernances: [Governance!]!
+
   " Auction launchers "
   auctionLaunchers: [String!]!
 
@@ -178,6 +181,9 @@ type DTF @entity(immutable: false) {
 
   " Legacy admins "
   legacyAdmins: [String!]!
+
+  " Former admins that were indexed governances (raw history stays in legacyAdmins) "
+  legacyAdminGovernances: [Governance!]!
 
   " stDAO "
   stToken: StakingToken

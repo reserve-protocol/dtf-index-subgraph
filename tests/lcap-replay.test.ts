@@ -90,6 +90,10 @@ describe("LCAP replay: 4.0.0 deployment and the 5.0.0 spell upgrade", () => {
       "feeRecipients",
       `${ST_TOKEN.toHexString()}:74626865671641900,${LAUNCHER_A.toHexString()}:746268656716417800,${PLATFORM.toHexString()}:179104477611940300`,
     );
+    // The deployer and the spell held admin only inside their own transactions: raw history keeps
+    // them, the governance view does not.
+    assert.fieldEquals("DTF", LCAP.toHexString(), "legacyAdmins", `[${SPELL_5_0_0.toHexString()}]`);
+    assert.fieldEquals("DTF", LCAP.toHexString(), "legacyAdminGovernances", "[]");
     // Nothing 6.0-shaped leaks into a 5.0.0 folio.
     const dtf = DTF.load(LCAP.toHexString())!;
     assert.assertTrue(dtf.maxAuctionLength === null);

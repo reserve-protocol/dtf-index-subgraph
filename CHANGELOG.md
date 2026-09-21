@@ -34,6 +34,9 @@ from `version()`, and the version registry is a new data source. No graft.
 - `DTF.tradeTokenAllowlist` is non-null (empty before 6.0) and a fresh 6.0 Folio's allowlist state is read at
   deployment, since `initialize` emits no allowlist event.
 - `DTF.ownerAddress` changes meaning for existing consumers (deployment owner, not the transaction sender).
+- `DTF.legacyAdminGovernances` and `DTF.legacyTradingGovernances`: the subset of `legacyAdmins` /
+  `legacyAuctionApprovers` that resolved to an indexed governance when the role was revoked. The raw lists are
+  unchanged and still record every former holder, including deployers, upgrade spells and EOAs.
 
 ## [1.10.2] - 2026-09-14
 

@@ -34,10 +34,12 @@ export function createTestDTF(dtfAddress: Address): DTF {
   dtf.ownerAddress = dtfAddress;
   dtf.auctionApprovers = [];
   dtf.legacyAuctionApprovers = [];
+  dtf.legacyTradingGovernances = [];
   dtf.auctionLaunchers = [];
   dtf.brandManagers = [];
   dtf.admins = [];
   dtf.legacyAdmins = [];
+  dtf.legacyAdminGovernances = [];
   dtf.tradeTokenAllowlist = [];
   dtf.save();
   return dtf;

@@ -561,6 +561,13 @@ export function _handleRoleRevoked(
       legacy.push(gov!);
     }
     dtf.legacyAuctionApprovers = legacy;
+    // Only a revoked timelock with an indexed governor counts as a former governance;
+    // deployers, spells and EOAs stay in the raw list alone.
+    if (timelock !== null && timelock.governance !== null) {
+      let governances = dtf.legacyTradingGovernances;
+      if (governances.indexOf(gov!) == -1) governances.push(gov!);
+      dtf.legacyTradingGovernances = governances;
+    }
   } else if (role.equals(Bytes.fromHexString(Role.AUCTION_LAUNCHER))) {
     let current = dtf.auctionLaunchers;
     let index = current.indexOf(account.toHexString());
@@ -594,6 +601,11 @@ export function _handleRoleRevoked(
       legacy.push(gov!);
     }
     dtf.legacyAdmins = legacy;
+    if (timelock !== null && timelock.governance !== null) {
+      let governances = dtf.legacyAdminGovernances;
+      if (governances.indexOf(gov!) == -1) governances.push(gov!);
+      dtf.legacyAdminGovernances = governances;
+    }
   }
 
   dtf.save();
