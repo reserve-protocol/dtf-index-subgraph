@@ -16,6 +16,7 @@
     "remove-local:fork": "graph remove --node ${FORK_GRAPH_NODE_ADMIN_URL:-http://localhost:18020/} dtf-index-subgraph-fork",
     "deploy-local:fork": "graph deploy --node ${FORK_GRAPH_NODE_ADMIN_URL:-http://localhost:18020/} --ipfs ${FORK_IPFS_URL:-http://localhost:15001} --version-label fork dtf-index-subgraph-fork subgraph.fork.yaml",
     "test:fork:parity": "node scripts/check-fork-parity.js",
+    "test:fork:parity:offline": "node --test scripts/check-fork-parity.test.js",
     "test": "graph test",
     "parse:mainnet": "node scripts/parse-template.js --network mainnet",
     "parse:base": "node scripts/parse-template.js --network base",

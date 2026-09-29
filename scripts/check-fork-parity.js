@@ -50,21 +50,46 @@ const ROLE = {
   auctionLauncher:
     "0x13ff1b2625181b311f257c723b5e6d366eb318b212d9dd694c48fcf227659df5",
 };
+// Every case the protocol sandbox can produce, and the evidence it must carry.
+// The full profile requires all of them; a subset must be named in FORK_PARITY_SCENARIOS.
+const CASE_EVIDENCE = {
+  v5Control: "execution",
+  v5OptimisticUpgrade: "upgrade",
+  v5LegacyUpgrade: "upgrade",
+  v6Native: "execution",
+};
 let rpcRequestId = 0;
 
-if (!fixturePath) {
-  fail("pass the canonical fixture path or set INDEX_DTF_FORK_MANIFEST");
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+module.exports = {
+  CASE_EVIDENCE,
+  selectProfile,
+  planParity,
+  summarizeResults,
+  expectedGovernanceLinks,
+};
 
 async function main() {
-  const fixture = normalizeFixture(
+  if (!fixturePath) {
+    fail("pass the canonical fixture path or set INDEX_DTF_FORK_MANIFEST");
+  }
+  // Profile and required-case validation is pure and runs before any network check.
+  const profile = selectProfile(process.env.FORK_PARITY_SCENARIOS);
+  const fixture = planParity(
     JSON.parse(fs.readFileSync(fixturePath, "utf8")),
+    profile,
   );
+  console.log(
+    `Fork parity ${profile.name} profile: checking ${fixture.cases.map((parityCase) => parityCase.name).join(", ")}` +
+      (fixture.skipped.length > 0 ? `; skipping ${fixture.skipped.join(", ")}` : ""),
+  );
+
   const meta = await query(
     `query { _meta { block { number } hasIndexingErrors deployment } }`,
   );
@@ -80,75 +105,88 @@ async function main() {
     fixture.minimumIndexedBlock,
   );
 
-  for (const folio of fixture.folios || []) {
-    const data = await query(
-      `query Folio($id: ID!, $block: Int!) {
-        dtf(id: $id, block: { number: $block }) {
-          id version proxyAdmin ownerAddress stTokenAddress
-          mintingFee tvlFee auctionLength maxAuctionLength
-          feeRecipients immutableFeeRecipients folioFeeForSelf
-          tradeAllowlistEnabled tradeTokenAllowlist
-          admins auctionApprovers auctionLaunchers brandManagers
-          ownerGovernance { id }
-          tradingGovernance { id }
-          token {
-            totalSupply totalMinted totalBurned mintCount burnCount transferCount
-            currentHolderCount
-            holdersBalance(first: 1000) { account { id } amount }
-          }
-        }
-      }`,
-      { id: folio.address.toLowerCase(), block: fixture.minimumIndexedBlock },
-    );
-    if (!data.dtf) fail(`${folio.label || folio.address}: DTF not indexed`);
-    compareExpected(data.dtf, folio.expected || {}, folio.label || folio.address);
-    if (fixture.rpcUrl) {
-      await assertRpcParity(fixture, folio, data.dtf);
-    }
-  }
-
-  for (const expectedProposal of fixture.proposals || []) {
-    const data = await query(
-      `query Proposal($id: ID!, $block: Int!) {
-        proposal(id: $id, block: { number: $block }) {
-          id state isOptimistic targets values calldatas
-        }
-      }`,
-      { id: expectedProposal.id, block: fixture.minimumIndexedBlock },
-    );
-    if (!data.proposal) fail(`${expectedProposal.id}: proposal not indexed`);
-    compareExpected(
-      data.proposal,
-      expectedProposal.expected || {},
-      expectedProposal.id,
-    );
-    if (expectedProposal.calldataSelectors) {
-      const selectors = data.proposal.calldatas.map((calldata) =>
-        calldata.slice(0, 10).toLowerCase(),
-      );
-      assertDeepEqual(
-        selectors,
-        expectedProposal.calldataSelectors.map((value) => value.toLowerCase()),
-        `${expectedProposal.id}.calldataSelectors`,
-      );
-    }
-  }
-
-  for (const execution of fixture.executions || []) {
-    await assertExecutionParity(fixture, execution);
-  }
-
+  const results = [];
   let defeatedSetupProposals = 0;
-  if (fixture.nativeExecution) {
-    defeatedSetupProposals = await assertNativeExecutionGovernance(
-      fixture,
-      fixture.nativeExecution,
-    );
+  for (const parityCase of fixture.cases) {
+    try {
+      defeatedSetupProposals += await checkCase(fixture, parityCase);
+      results.push({ name: parityCase.name, passed: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[${parityCase.name}] ${message}`);
+      results.push({ name: parityCase.name, passed: false, message });
+    }
   }
 
+  const summary = summarizeResults(fixture, results);
+  if (!summary.passed) fail(summary.message);
   console.log(
-    `Fork parity passed at block ${meta._meta.block.number}: ${(fixture.folios || []).length} Folios, ${(fixture.proposals || []).length} upgrade proposals, ${(fixture.executions || []).length} execution flows, ${defeatedSetupProposals} harmless defeated setup proposal(s); active deployment ${meta._meta.deployment} is healthy (${deploymentStatus.historical} historical deployment(s) ignored); block-pinned event accounting, execution receipts, roles, fees, and RPC post-state match`,
+    `${summary.message} at block ${meta._meta.block.number}: ${defeatedSetupProposals} harmless defeated setup proposal(s); active deployment ${meta._meta.deployment} is healthy (${deploymentStatus.historical} historical deployment(s) ignored); block-pinned event accounting, execution receipts, roles, governance links, fees, and RPC post-state match`,
   );
+}
+
+// Runs one case's checks; returns how many harmless defeated setup proposals it saw.
+async function checkCase(fixture, parityCase) {
+  await checkFolio(fixture, parityCase.folio);
+  if (parityCase.proposal) await checkProposal(fixture, parityCase.proposal);
+  if (!parityCase.execution) return 0;
+  await assertExecutionParity(fixture, parityCase.execution);
+  if (parityCase.name !== "v6Native") return 0;
+  return assertNativeExecutionGovernance(fixture, parityCase.execution);
+}
+
+async function checkFolio(fixture, folio) {
+  const data = await query(
+    `query Folio($id: ID!, $block: Int!) {
+      dtf(id: $id, block: { number: $block }) {
+        id version proxyAdmin ownerAddress stTokenAddress
+        mintingFee tvlFee auctionLength maxAuctionLength
+        feeRecipients immutableFeeRecipients folioFeeForSelf
+        tradeAllowlistEnabled tradeTokenAllowlist
+        admins auctionApprovers auctionLaunchers brandManagers
+        ownerGovernance { id }
+        tradingGovernance { id }
+        token {
+          totalSupply totalMinted totalBurned mintCount burnCount transferCount
+          currentHolderCount
+          holdersBalance(first: 1000) { account { id } amount }
+        }
+      }
+    }`,
+    { id: folio.address.toLowerCase(), block: fixture.minimumIndexedBlock },
+  );
+  if (!data.dtf) fail(`${folio.label || folio.address}: DTF not indexed`);
+  compareExpected(data.dtf, folio.expected || {}, folio.label || folio.address);
+  if (fixture.rpcUrl) {
+    await assertRpcParity(fixture, folio, data.dtf);
+  }
+}
+
+async function checkProposal(fixture, expectedProposal) {
+  const data = await query(
+    `query Proposal($id: ID!, $block: Int!) {
+      proposal(id: $id, block: { number: $block }) {
+        id state isOptimistic targets values calldatas
+      }
+    }`,
+    { id: expectedProposal.id, block: fixture.minimumIndexedBlock },
+  );
+  if (!data.proposal) fail(`${expectedProposal.id}: proposal not indexed`);
+  compareExpected(
+    data.proposal,
+    expectedProposal.expected || {},
+    expectedProposal.id,
+  );
+  if (expectedProposal.calldataSelectors) {
+    const selectors = data.proposal.calldatas.map((calldata) =>
+      calldata.slice(0, 10).toLowerCase(),
+    );
+    assertDeepEqual(
+      selectors,
+      expectedProposal.calldataSelectors.map((value) => value.toLowerCase()),
+      `${expectedProposal.id}.calldataSelectors`,
+    );
+  }
 }
 
 async function query(document, variables = {}) {
@@ -788,11 +826,11 @@ async function assertRpcParity(fixture, folio, graph) {
     `${label}.token.currentHolderCount (RPC)`,
   );
 
-  await assertRoleParity(fixture.rpcUrl, address, block, graph, label);
+  await assertRoleParity(fixture.rpcUrl, address, block, graph, label, folio.governance);
   await assertFeeParity(fixture.rpcUrl, address, block, graph, version, label);
 }
 
-async function assertRoleParity(rpcUrl, address, block, graph, label) {
+async function assertRoleParity(rpcUrl, address, block, graph, label, governance) {
   const admins = await readRoleMembers(rpcUrl, address, ROLE.defaultAdmin, block);
   const rebalanceManagers = await readRoleMembers(
     rpcUrl,
@@ -827,6 +865,22 @@ async function assertRoleParity(rpcUrl, address, block, graph, label) {
   );
   assertAddressSet(graph.auctionLaunchers, launchers, `${label}.auctionLaunchers (RPC)`);
   assertAddressSet(graph.brandManagers, brandManagers, `${label}.brandManagers (RPC)`);
+
+  const links = expectedGovernanceLinks(governance, admins, [...rebalanceManagers, ...legacyApprovers]);
+  assertEqual(graph.ownerGovernance?.id ?? null, links.ownerGovernance, `${label}.ownerGovernance (RPC)`);
+  assertEqual(graph.tradingGovernance?.id ?? null, links.tradingGovernance, `${label}.tradingGovernance (RPC)`);
+}
+
+// The manifest pairs a scenario's governor with its timelock; RPC says which Folio roles that
+// timelock holds at the state block. Owner = timelock is admin, trading = timelock manages rebalances.
+function expectedGovernanceLinks(governance, admins, rebalanceManagers) {
+  if (!governance) return { ownerGovernance: null, tradingGovernance: null };
+  const timelock = governance.timelock.toLowerCase();
+  const governor = governance.governor.toLowerCase();
+  return {
+    ownerGovernance: admins.includes(timelock) ? governor : null,
+    tradingGovernance: rebalanceManagers.includes(timelock) ? governor : null,
+  };
 }
 
 async function assertFeeParity(rpcUrl, address, block, graph, version, label) {
@@ -911,16 +965,28 @@ function normalize(value) {
   return typeof value === "string" ? value.toLowerCase() : String(value);
 }
 
-function normalizeFixture(raw) {
-  if (raw.schemaVersion === 1) return normalizeSchemaV1(raw);
-
-  // Kept temporarily for standalone fixtures created before the shared
-  // protocol/SDK manifest. New tests should always use schema v1.
-  if (Array.isArray(raw.folios)) return raw;
-  fail(`unsupported fixture schemaVersion ${JSON.stringify(raw.schemaVersion)}`);
+// Full profile unless FORK_PARITY_SCENARIOS names an explicit subset.
+function selectProfile(scenarioList) {
+  if (scenarioList === undefined || scenarioList.trim() === "") {
+    return { name: "full", cases: Object.keys(CASE_EVIDENCE) };
+  }
+  const cases = scenarioList.split(",").map((name) => name.trim()).filter(Boolean);
+  if (cases.length === 0) fail("FORK_PARITY_SCENARIOS names no scenarios");
+  for (const name of cases) {
+    if (!CASE_EVIDENCE[name]) {
+      fail(`unknown parity scenario ${name}; known: ${Object.keys(CASE_EVIDENCE).join(", ")}`);
+    }
+  }
+  if (unique(cases).length !== cases.length) fail("FORK_PARITY_SCENARIOS repeats a scenario");
+  return { name: "subset", cases };
 }
 
-function normalizeSchemaV1(raw) {
+// Pure: validates the schema-v1 manifest against the profile and returns the cases to check.
+// Every selected case must be present, bootstrapped (non-zero Folio) and carry its evidence.
+function planParity(raw, profile) {
+  if (raw.schemaVersion !== 1) {
+    fail(`unsupported fixture schemaVersion ${JSON.stringify(raw.schemaVersion)}`);
+  }
   if (!Number.isSafeInteger(raw.stateBlock) || raw.stateBlock < 0) {
     fail("schema v1 fixture requires a non-negative integer stateBlock");
   }
@@ -935,52 +1001,111 @@ function normalizeSchemaV1(raw) {
     fail("schema v1 fixture rpcUrl must be a loopback HTTP endpoint");
   }
 
-  const folios = [];
-  const proposals = [];
-  const executions = [];
-  let nativeExecution = null;
-  for (const [name, scenario] of Object.entries(raw.scenarios)) {
-    if (!scenario || isZeroAddress(scenario.folio)) continue;
-    requireAddress(scenario.folio, `${name}.folio`);
-    requireAddress(scenario.proxyAdmin, `${name}.proxyAdmin`);
-    if (typeof scenario.expectedVersion !== "string") {
-      fail(`schema v1 scenario ${name} requires expectedVersion`);
+  for (const name of Object.keys(raw.scenarios)) {
+    if (!CASE_EVIDENCE[name]) {
+      fail(`fixture scenario ${name} is not a known parity case; add it to CASE_EVIDENCE`);
     }
-    if (
-      !Number.isSafeInteger(scenario.creationBlock) ||
-      scenario.creationBlock < raw.forkBlock ||
-      scenario.creationBlock > raw.stateBlock
-    ) {
-      fail(`schema v1 scenario ${name} has an invalid creationBlock`);
-    }
+  }
+  const missing = profile.cases.filter((name) => {
+    const scenario = raw.scenarios[name];
+    return !scenario || isZeroAddress(scenario.folio);
+  });
+  if (missing.length > 0) {
+    fail(
+      `${profile.name} profile requires ${profile.cases.join(", ")}; missing or not bootstrapped: ${missing.join(", ")}`,
+    );
+  }
 
-    folios.push({
+  const cases = profile.cases.map((name) => planCase(name, raw.scenarios[name], raw));
+  return {
+    profile: profile.name,
+    rpcUrl: raw.rpcUrl,
+    minimumIndexedBlock: raw.stateBlock,
+    cases,
+    skipped: Object.keys(raw.scenarios).filter((name) => !profile.cases.includes(name)),
+  };
+}
+
+function planCase(name, scenario, raw) {
+  requireAddress(scenario.folio, `${name}.folio`);
+  requireAddress(scenario.proxyAdmin, `${name}.proxyAdmin`);
+  if (typeof scenario.expectedVersion !== "string") {
+    fail(`schema v1 scenario ${name} requires expectedVersion`);
+  }
+  if (
+    !Number.isSafeInteger(scenario.creationBlock) ||
+    scenario.creationBlock < raw.forkBlock ||
+    scenario.creationBlock > raw.stateBlock
+  ) {
+    fail(`schema v1 scenario ${name} has an invalid creationBlock`);
+  }
+
+  const evidence = CASE_EVIDENCE[name];
+  const hasUpgrade = Number(scenario.upgradeBlock || 0) > 0;
+  if (evidence === "upgrade" && !hasUpgrade) {
+    fail(`schema v1 scenario ${name} requires upgrade evidence (upgradeBlock and proposal)`);
+  }
+  if (evidence === "execution" && !scenario.execution) {
+    fail(`schema v1 scenario ${name} requires execution evidence`);
+  }
+
+  return {
+    name,
+    folio: {
       label: name,
       address: scenario.folio,
       creationBlock: scenario.creationBlock,
+      governance: planGovernance(name, scenario),
       expected: {
         version: scenario.expectedVersion,
         proxyAdmin: scenario.proxyAdmin,
       },
-    });
+    },
+    proposal: hasUpgrade ? normalizeScenarioProposal(name, scenario) : null,
+    execution: scenario.execution ? normalizeExecutionScenario(name, scenario, raw) : null,
+  };
+}
 
-    if (Number(scenario.upgradeBlock || 0) > 0) {
-      proposals.push(normalizeScenarioProposal(name, scenario));
-    }
-    if (scenario.execution) {
-      const execution = normalizeExecutionScenario(name, scenario, raw);
-      executions.push(execution);
-      if (name === "v6Native") nativeExecution = execution;
-    }
+function planGovernance(name, scenario) {
+  if (scenario.governance === undefined || isZeroAddress(scenario.governance)) return null;
+  const addresses = scenario.governanceAddresses || {};
+  requireAddress(addresses.governor, `${name}.governanceAddresses.governor`);
+  requireAddress(addresses.timelock, `${name}.governanceAddresses.timelock`);
+  if (addresses.governor.toLowerCase() !== scenario.governance.toLowerCase()) {
+    fail(`schema v1 scenario ${name} governance does not match governanceAddresses.governor`);
   }
+  return { governor: addresses.governor, timelock: addresses.timelock };
+}
 
+// Reconciles selected/passed/failed/skipped. Only a clean full run reports a full-suite pass.
+function summarizeResults(plan, results) {
+  const selected = plan.cases.map((parityCase) => parityCase.name);
+  const passed = results.filter((result) => result.passed).map((result) => result.name);
+  const failed = results.filter((result) => !result.passed).map((result) => result.name);
+  const reported = [...passed, ...failed].sort();
+  const counts = `${selected.length} selected, ${passed.length} passed, ${failed.length} failed, ${plan.skipped.length} skipped`;
+
+  if (JSON.stringify(reported) !== JSON.stringify([...selected].sort())) {
+    return {
+      passed: false,
+      message: `case accounting mismatch (${counts}): ran ${reported.join(", ") || "nothing"}, selected ${selected.join(", ")}`,
+    };
+  }
+  if (selected.length === 0 || failed.length > 0) {
+    return {
+      passed: false,
+      message: `${plan.profile} profile failed (${counts}): ${failed.join(", ") || "no cases"}`,
+    };
+  }
+  const upgrades = plan.cases.filter((parityCase) => parityCase.proposal).length;
+  const executions = plan.cases.filter((parityCase) => parityCase.execution).length;
+  const coverage = `${selected.length} Folios, ${upgrades} upgrade proposals, ${executions} execution flows (${counts})`;
+  if (plan.profile === "full") {
+    return { passed: true, message: `Fork parity FULL profile passed: ${coverage}` };
+  }
   return {
-    rpcUrl: raw.rpcUrl,
-    minimumIndexedBlock: raw.stateBlock,
-    folios,
-    proposals,
-    executions,
-    nativeExecution,
+    passed: true,
+    message: `Fork parity SUBSET passed for ${selected.join(", ")} only: ${coverage}; this does not certify the full suite`,
   };
 }
 

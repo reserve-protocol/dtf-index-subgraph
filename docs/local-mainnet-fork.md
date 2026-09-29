@@ -196,6 +196,23 @@ when these fields have not yet been emitted. It asserts those exact calls and
 their ordered selectors, including standard-proposal semantics for both the
 optimistic four-call topology and legacy two-call topology.
 
+The checker runs the **full** profile by default: `v5Control` and `v6Native`
+must carry execution evidence, `v5OptimisticUpgrade` and `v5LegacyUpgrade`
+upgrade evidence (`CASE_EVIDENCE` in the script). A missing, zero-Folio or
+unknown scenario fails before any network call, so an empty or partial manifest
+can never pass. To check a sandbox subset, name it explicitly; the result is
+reported as a subset and never as a full-suite pass:
+
+```bash
+FORK_PARITY_SCENARIOS=v5Control,v6Native pnpm test:fork:parity .fork/fixture.json
+```
+
+Each selected case runs independently and the summary reconciles selected,
+passed, failed and skipped counts. Owner and trading governance links are
+compared with the scenario governor whenever its timelock holds the admin or
+rebalance-manager role at `stateBlock`. The profile and manifest validation has
+offline tests that need no running stack: `pnpm test:fork:parity:offline`.
+
 ## Important boundary
 
 Existing Folios deployed before `FORK_BLOCK` are not discovered by this fast

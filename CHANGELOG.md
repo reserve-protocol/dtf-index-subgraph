@@ -26,7 +26,9 @@ from `version()`, and the version registry is a new data source. No graft.
   a manifest change. A deployment made through a new deployer before it is registered is not covered; add a static
   entry at the deployer's creation block for that case.
 - Dockerized mainnet-fork profile (`docs/local-mainnet-fork.md`) with an RPC-versus-GraphQL parity gate
-  (`pnpm test:fork:parity`) driven by the protocol sandbox fixture.
+  (`pnpm test:fork:parity`) driven by the protocol sandbox fixture. The gate requires every sandbox case and its
+  upgrade/execution evidence unless `FORK_PARITY_SCENARIOS` names an explicit subset, and has offline tests
+  (`pnpm test:fork:parity:offline`).
 
 ### Changed
 

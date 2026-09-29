@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 1,
+  "rpcUrl": "http://127.0.0.1:8545",
+  "chainId": 1,
+  "forkBlock": 25834864,
+  "stateBlock": 25834903,
+  "stateTimestamp": 1787693625,
+  "writePaths": {
+    "deadline": 1787696860,
+    "auctionLength": 300
+  },
+  "protocol": {
+    "v5Deployer": "0x4D201a6e5BF975E2CEE9e5cbDfc803C0Ff122073",
+    "v6Deployer": "0x388dB009b7984E673938AC20480194D4481bEF11",
+    "v6Implementation": "0x10E8ADc336e9D3d18E52567ecd0B151A54ac8E3D",
+    "versionRegistry": "0xA665b273997F70b647B66fa7Ed021287544849dB",
+    "upgradeSpell": "0x6f0921A2F9c7da5F579f0Fc83873E52f6352B994",
+    "upgradeSpellSourceCommit": "33c315690a71c826b5bcd01b69110f478ccd865d",
+    "startRebalanceSelectors": {
+      "v5": "0x207c8eed",
+      "v6": "0xc1e54b89"
+    }
+  },
+  "scenarios": {
+    "v5Control": {
+      "folio": "0x8F0F8F03D04C60fc677360ca7f45C229cb96E46d",
+      "proxyAdmin": "0x719a31656F71605819173437082212c98b169E9e",
+      "governance": "0x0000000000000000000000000000000000000000",
+      "governanceKind": "standard",
+      "creationBlock": 25834873,
+      "expectedVersion": "5.0.0",
+      "execution": {
+        "actor": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "roleAuthority": "direct-admin",
+        "tokens": [
+          "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+          "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+        ],
+        "rebalanceNonce": 1,
+        "rebalanceTxHash": "0xc9e849d4a16b10ff90329e2f35895a92ecc2b7cd4a92ea98402268d48f8e8da9",
+        "rebalanceBlock": 25834897,
+        "auctionId": 0,
+        "auctionTxHash": "0x49e5abc594d4d59f4ad2e26f755c05189d7ab0431e070251cdf1ac2b18900f4f",
+        "auctionBlock": 25834898,
+        "auctionLength": 300
+      }
+    },
+    "v5OptimisticUpgrade": {
+      "folio": "0x512A93643Ae35F895Ec02BEE94670aF77c9021BE",
+      "proxyAdmin": "0xD67a34848dB699670052B8a81220C6c71d371150",
+      "governance": "0xBf39A799ef57E712b88419CC254e002dd167a94C",
+      "governanceKind": "optimistic",
+      "governanceAddresses": {
+        "governor": "0xBf39A799ef57E712b88419CC254e002dd167a94C",
+        "timelock": "0xF35B864552c26D4581Ab3973207556FdC43EdDfb",
+        "stakingVault": "0x6Ca2Ff7D61674181e1F3F2575a2e56f11fe70aFf",
+        "selectorRegistry": "0x48eE1c75E733147b115f30f7e71d5f40aA44b1ed"
+      },
+      "creationBlock": 25834874,
+      "upgradeBlock": 25834895,
+      "proposalCallCount": 4,
+      "expectedVersion": "6.0.0",
+      "proposal": {
+        "proposalId": "49651669486396712934988820509275523492729743469185371636286576677573978320841",
+        "entityId": "0xbf39a799ef57e712b88419cc254e002dd167a94c-49651669486396712934988820509275523492729743469185371636286576677573978320841",
+        "kind": "standard",
+        "optimistic": false,
+        "state": "executed",
+        "proposalBlock": 25834886,
+        "executeBlock": 25834895,
+        "targets": [
+          "0x48eE1c75E733147b115f30f7e71d5f40aA44b1ed",
+          "0x48eE1c75E733147b115f30f7e71d5f40aA44b1ed",
+          "0xD67a34848dB699670052B8a81220C6c71d371150",
+          "0x6f0921A2F9c7da5F579f0Fc83873E52f6352B994"
+        ],
+        "values": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "calldatas": [
+          "0x39535e96000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000512a93643ae35f895ec02bee94670af77c9021be00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000001c1e54b8900000000000000000000000000000000000000000000000000000000",
+          "0x3bb9e672000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000512a93643ae35f895ec02bee94670af77c9021be00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000001207c8eed00000000000000000000000000000000000000000000000000000000",
+          "0xf2fde38b0000000000000000000000006f0921a2f9c7da5f579f0fc83873e52f6352b994",
+          "0x2aa6b211000000000000000000000000512a93643ae35f895ec02bee94670af77c9021be000000000000000000000000d67a34848db699670052b8a81220c6c71d37115000000000000000000000000048ee1c75e733147b115f30f7e71d5f40aa44b1ed"
+        ],
+        "selectors": [
+          "0x39535e96",
+          "0x3bb9e672",
+          "0xf2fde38b",
+          "0x2aa6b211"
+        ]
+      }
+    },
+    "v5LegacyUpgrade": {
+      "folio": "0x6a473eB2FfAf3EFD14E136C72Ee94C2c6a7c3087",
+      "proxyAdmin": "0x22FaE17D5832f661A6d6d4bdA7222B7A1b55aCF6",
+      "governance": "0xbb8B7766FF7eFE1884DfBDe25E1827356fA0bd16",
+      "governanceKind": "standard",
+      "governanceAddresses": {
+        "governor": "0xbb8B7766FF7eFE1884DfBDe25E1827356fA0bd16",
+        "timelock": "0xBeAe7c88e4b9d6e8770CD1218aE55E59d2871737",
+        "stakingVault": "0x0E35e233DD2373C50e8649a2505C7e1D7CF83AC6",
+        "selectorRegistry": "0x0000000000000000000000000000000000000000"
+      },
+      "creationBlock": 25834882,
+      "upgradeBlock": 25834896,
+      "proposalCallCount": 2,
+      "expectedVersion": "6.0.0",
+      "proposal": {
+        "proposalId": "65074364691890431347318934547956912406241027446101044707023779785867599899039",
+        "entityId": "0xbb8b7766ff7efe1884dfbde25e1827356fa0bd16-65074364691890431347318934547956912406241027446101044707023779785867599899039",
+        "kind": "standard",
+        "optimistic": false,
+        "state": "executed",
+        "proposalBlock": 25834887,
+        "executeBlock": 25834896,
+        "targets": [
+          "0x22FaE17D5832f661A6d6d4bdA7222B7A1b55aCF6",
+          "0x6f0921A2F9c7da5F579f0Fc83873E52f6352B994"
+        ],
+        "values": [
+          0,
+          0
+        ],
+        "calldatas": [
+          "0xf2fde38b0000000000000000000000006f0921a2f9c7da5f579f0fc83873e52f6352b994",
+          "0x2aa6b2110000000000000000000000006a473eb2ffaf3efd14e136c72ee94c2c6a7c308700000000000000000000000022fae17d5832f661a6d6d4bda7222b7a1b55acf60000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        "selectors": [
+          "0xf2fde38b",
+          "0x2aa6b211"
+        ]
+      }
+    },
+    "v6Native": {
+      "folio": "0x996DFBa757799B60A2657b0DBB9938B8c8654CA0",
+      "proxyAdmin": "0xC2383b66B359000a59b923adE43dB138f0185519",
+      "governance": "0x7D20182FD2BAD414c982a14B85e8646C4A56FC20",
+      "governanceKind": "optimistic",
+      "governanceAddresses": {
+        "governor": "0x7D20182FD2BAD414c982a14B85e8646C4A56FC20",
+        "timelock": "0x694CfF1Dfc73f670d4542db78d6C2543E43C275D",
+        "stakingVault": "0x6Ca2Ff7D61674181e1F3F2575a2e56f11fe70aFf",
+        "selectorRegistry": "0xEc1342215bf499ddf461b6Ad926CC2D62152192C"
+      },
+      "creationBlock": 25834885,
+      "expectedVersion": "6.0.0",
+      "execution": {
+        "actor": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "roleAuthority": "optimistic-governance",
+        "governanceMechanism": "optimistic",
+        "authority": {
+          "kind": "standard",
+          "optimistic": false,
+          "state": "executed",
+          "description": "",
+          "proposalId": "0",
+          "proposalTxHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "proposalBlock": 0,
+          "executeTxHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "executeBlock": 0
+        },
+        "rebalanceProposal": {
+          "kind": "optimistic",
+          "optimistic": true,
+          "state": "executed",
+          "description": "Sandbox native-v6 optimistic rebalance at 1787693260",
+          "proposalId": "15479507344912150184482317935283442196836952947971475934343575195881998114815",
+          "proposalTxHash": "0x1e75d2513d259fe3e53e35e4676ef5a2bc926d4f6ecc7b6467a13dea32e298c9",
+          "proposalBlock": 25834899,
+          "executeTxHash": "0x3e891fff594aa2e33c74ab7d637e29d903444c0f3ca96fb3825ebc257f429e4b",
+          "executeBlock": 25834902,
+          "deadline": 1787696860
+        },
+        "tokens": [
+          "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+          "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+        ],
+        "rebalanceNonce": 1,
+        "deadline": 1787696860,
+        "rebalanceTxHash": "0x3e891fff594aa2e33c74ab7d637e29d903444c0f3ca96fb3825ebc257f429e4b",
+        "rebalanceBlock": 25834902,
+        "auctionId": 0,
+        "auctionTxHash": "0x82c2046d82dcd2c7b68c88ab620f07e780792d378bdb38b1620bea4b37e001c9",
+        "auctionBlock": 25834903,
+        "auctionLength": 300
+      }
+    }
+  }
+}
