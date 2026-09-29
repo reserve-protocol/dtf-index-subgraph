@@ -24,6 +24,7 @@ import {
   _handleMaxAuctionLengthSet,
   _handleMintFeeSet,
   _handleRoleGranted,
+  _handleRoleRevoked,
   _handleTradeAllowlistEnabled,
   _handleTradeAllowlistTokenAdded,
   _handleTradeAllowlistTokenRemoved,
@@ -42,6 +43,9 @@ const OWNER = Address.fromString("0x4000000000000000000000000000000000000004");
 const RECIPIENT = Address.fromString("0x5000000000000000000000000000000000000005");
 const IMMUTABLE_RECIPIENT = Address.fromString("0x6000000000000000000000000000000000000006");
 const ALLOWED_TOKEN = Address.fromString("0x7000000000000000000000000000000000000007");
+const NEW_MANAGER = Address.fromString("0x9000000000000000000000000000000000000009");
+const TRADING_TIMELOCK = Address.fromString("0xa00000000000000000000000000000000000000a");
+const SPELL = Address.fromString("0xb00000000000000000000000000000000000000b");
 
 describe("Folio deployment replay and v6 state", () => {
   beforeEach(() => {
@@ -240,6 +244,104 @@ describe("Folio deployment replay and v6 state", () => {
     assert.fieldEquals("DTF", FOLIO.toHexString(), "maxAuctionLength", "1200");
   });
 
+});
+
+// An eth_call made from a handler reads the state at the END of the event's block, so the
+// Upgraded handler sees role grants and revokes that land later in the same transaction.
+// The role mocks below are that block-final state; the indexed arrays must match it exactly.
+describe("upgrade rehydration composes with same-block role events", () => {
+  beforeEach(() => {
+    clearStore();
+    createMockedFunction(OWNER, "getMinDelay", "getMinDelay():(uint256)").reverts();
+    createMockedFunction(NEW_MANAGER, "getMinDelay", "getMinDelay():(uint256)").reverts();
+    createMockedFunction(TRADING_TIMELOCK, "getMinDelay", "getMinDelay():(uint256)").reverts();
+    createMockedFunction(SPELL, "getMinDelay", "getMinDelay():(uint256)").reverts();
+  });
+
+  test("roles granted after the upgrade in the same block are indexed once and fully revoked later", () => {
+    const dtf = createTestDTF(FOLIO);
+    dtf.version = "5.0.0";
+    dtf.admins = [OWNER.toHexString()];
+    dtf.auctionApprovers = [OWNER.toHexString()];
+    dtf.save();
+
+    // Upgrade tx: Upgraded, then grantRole(REBALANCE_MANAGER, NEW_MANAGER) and
+    // grantRole(AUCTION_LAUNCHER, CREATOR). Getters at this block already include both grants.
+    mockCommonState("6.0.0", false);
+    mockV6State();
+    mockRole(Role.REBALANCE_MANAGER, [OWNER, NEW_MANAGER]);
+    mockRole(Role.AUCTION_LAUNCHER, [CREATOR]);
+
+    const upgrade = changetype<Upgraded>(newMockEvent());
+    upgrade.address = FOLIO;
+    upgrade.block.number = BigInt.fromI32(101);
+    handleUpgraded(upgrade);
+    _handleRoleGranted(FOLIO, Bytes.fromHexString(Role.REBALANCE_MANAGER), NEW_MANAGER);
+    _handleRoleGranted(FOLIO, Bytes.fromHexString(Role.AUCTION_LAUNCHER), CREATOR);
+
+    assert.fieldEquals("DTF", FOLIO.toHexString(), "version", "6.0.0");
+    assert.fieldEquals(
+      "DTF",
+      FOLIO.toHexString(),
+      "auctionApprovers",
+      `[${OWNER.toHexString()}, ${NEW_MANAGER.toHexString()}]`,
+    );
+    assert.fieldEquals("DTF", FOLIO.toHexString(), "auctionLaunchers", `[${CREATOR.toHexString()}]`);
+    assert.fieldEquals("DTF", FOLIO.toHexString(), "admins", `[${OWNER.toHexString()}]`);
+    assert.fieldEquals("DTF", FOLIO.toHexString(), "brandManagers", "[]");
+
+    // A later block revokes both. No phantom authority may stay indexed.
+    _handleRoleRevoked(FOLIO, Bytes.fromHexString(Role.REBALANCE_MANAGER), NEW_MANAGER);
+    _handleRoleRevoked(FOLIO, Bytes.fromHexString(Role.AUCTION_LAUNCHER), CREATOR);
+
+    assert.fieldEquals("DTF", FOLIO.toHexString(), "auctionApprovers", `[${OWNER.toHexString()}]`);
+    assert.fieldEquals("DTF", FOLIO.toHexString(), "auctionLaunchers", "[]");
+    assert.fieldEquals("DTF", FOLIO.toHexString(), "admins", `[${OWNER.toHexString()}]`);
+    assert.fieldEquals(
+      "DTF",
+      FOLIO.toHexString(),
+      "legacyAuctionApprovers",
+      `[${NEW_MANAGER.toHexString()}]`,
+    );
+  });
+
+  test("the 4.0.0 spell's AUCTION_APPROVER -> REBALANCE_MANAGER migration keeps the trading timelock", () => {
+    // auctionApprovers merges both roles, so one account can briefly hold two entries.
+    // Deduping on grant would drop the trading timelock at the AUCTION_APPROVER revoke.
+    const dtf = createTestDTF(FOLIO);
+    dtf.version = "2.0.0";
+    dtf.admins = [OWNER.toHexString()];
+    dtf.auctionApprovers = [TRADING_TIMELOCK.toHexString()];
+    dtf.save();
+
+    mockCommonState("4.0.0", true);
+    mockRole(Role.DEFAULT_ADMIN, [OWNER]);
+    mockRole(Role.REBALANCE_MANAGER, [TRADING_TIMELOCK]);
+    mockRole(Role.AUCTION_APPROVER, []);
+    mockRole(Role.AUCTION_LAUNCHER, []);
+
+    // Spell proposal tx: grant the spell admin, then inside cast(): Upgraded,
+    // grant REBALANCE_MANAGER, revoke AUCTION_APPROVER, renounce the spell's admin.
+    _handleRoleGranted(FOLIO, Bytes.fromHexString(Role.DEFAULT_ADMIN), SPELL);
+    const upgrade = changetype<Upgraded>(newMockEvent());
+    upgrade.address = FOLIO;
+    upgrade.block.number = BigInt.fromI32(200);
+    handleUpgraded(upgrade);
+    _handleRoleGranted(FOLIO, Bytes.fromHexString(Role.REBALANCE_MANAGER), TRADING_TIMELOCK);
+    _handleRoleRevoked(FOLIO, Bytes.fromHexString(Role.AUCTION_APPROVER), TRADING_TIMELOCK);
+    _handleRoleRevoked(FOLIO, Bytes.fromHexString(Role.DEFAULT_ADMIN), SPELL);
+
+    assert.fieldEquals("DTF", FOLIO.toHexString(), "version", "4.0.0");
+    assert.fieldEquals(
+      "DTF",
+      FOLIO.toHexString(),
+      "auctionApprovers",
+      `[${TRADING_TIMELOCK.toHexString()}]`,
+    );
+    assert.fieldEquals("DTF", FOLIO.toHexString(), "admins", `[${OWNER.toHexString()}]`);
+    assert.fieldEquals("DTF", FOLIO.toHexString(), "auctionLaunchers", "[]");
+    assert.fieldEquals("DTF", FOLIO.toHexString(), "legacyAdmins", `[${SPELL.toHexString()}]`);
+  });
 });
 
 function mockCommonState(version: string, hasLegacyAuctionFields: bool): void {

@@ -1,7 +1,6 @@
-import { Address, BigInt, Bytes } from "@graphprotocol/graph-ts";
+import { Address, BigInt } from "@graphprotocol/graph-ts";
 import { DTF } from "../../generated/schema";
 import { DTF as DTFContract } from "../../generated/templates/DTF/DTF";
-import { Role } from "../utils/constants";
 
 const MAX_FEE_RECIPIENTS = 64;
 
@@ -42,17 +41,11 @@ export function hydrateDTFState(dtf: DTF, dtfAddress: Address): void {
   }
 
   dtf.feeRecipients = readFeeRecipients(contract, false);
-  const rebalanceManagers = readRoleMembers(contract, Role.REBALANCE_MANAGER);
-  const auctionApprovers = readRoleMembers(contract, Role.AUCTION_APPROVER);
-  if (rebalanceManagers !== null && auctionApprovers !== null) {
-    dtf.auctionApprovers = mergeUnique(rebalanceManagers, auctionApprovers);
-  }
-  const auctionLaunchers = readRoleMembers(contract, Role.AUCTION_LAUNCHER);
-  if (auctionLaunchers !== null) dtf.auctionLaunchers = auctionLaunchers;
-  const brandManagers = readRoleMembers(contract, Role.BRAND_MANAGER);
-  if (brandManagers !== null) dtf.brandManagers = brandManagers;
-  const admins = readRoleMembers(contract, Role.DEFAULT_ADMIN);
-  if (admins !== null) dtf.admins = admins;
+
+  // WHY no role reads: getters here return the block's FINAL state, so they already include
+  // grants later in the upgrade tx, and those RoleGranted handlers would append them again.
+  // Roles are event-sourced from the creation block (AccessControl emits once per real change,
+  // upgrades never touch role storage), so the role arrays are left to the Role* handlers.
 
   // Folio 6.0 getters revert on older implementations; the try_ reads decide, not a version prefix.
   hydrateV6DTFState(dtf, contract);
@@ -133,23 +126,10 @@ function readFeeRecipients(contract: DTFContract, immutable: bool): string {
   return recipients.join(",");
 }
 
-function readRoleMembers(contract: DTFContract, role: string): string[] | null {
-  const result = contract.try_getRoleMembers(Bytes.fromHexString(role));
-  return result.reverted ? null : addressesToStrings(result.value);
-}
-
 function addressesToStrings(addresses: Address[]): string[] {
   const result: string[] = [];
   for (let i = 0; i < addresses.length; i++) {
     result.push(addresses[i].toHexString());
-  }
-  return result;
-}
-
-function mergeUnique(first: string[], second: string[]): string[] {
-  const result = first.slice(0);
-  for (let i = 0; i < second.length; i++) {
-    if (result.indexOf(second[i]) === -1) result.push(second[i]);
   }
   return result;
 }

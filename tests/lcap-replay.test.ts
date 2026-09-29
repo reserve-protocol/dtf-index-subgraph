@@ -10,9 +10,11 @@ import { mockERC20 } from "./helpers/mock-erc20";
 
 // LCAP on Base (0x4dA9…), replayed from chain: deployed by the 4.0.0 FolioDeployer at block 33506544 and
 // upgraded to 5.0.0 by proposal 88719…8040, executed in tx 0x6cf51c8e… at block 45297277.
+// Every RoleGranted/RoleRevoked log up to the upgrade is replayed in chain order (logIndex in comments).
 const LCAP = Address.fromString("0x4dA9A0f397dB1397902070f93a4D6ddBC0E0E6e8");
 const PROXY_ADMIN = Address.fromString("0xf6Db82f6b5F343d74A1D88af9e58fA1d2D89562e");
 const DEPLOYER_TX_FROM = Address.fromString("0x5e6EF4cFd64e29981fB3a8703a584DDE407032d2");
+const FOLIO_DEPLOYER_4_0_0 = Address.fromString("0xA203AA351723cf943f91684e9F5eFcA7175Ae7EA");
 const OWNER_TIMELOCK = Address.fromString("0x98E702320f055c1073F9CEE2B93f46c9715Bc32d");
 const TRADING_TIMELOCK = Address.fromString("0xB785A1daC3724ea73A1368d6E0085B6A930e2CCD");
 const SPELL_5_0_0 = Address.fromString("0x04B3eD311C68dfB0649D9faf695115F23DcbB540");
@@ -32,8 +34,11 @@ describe("LCAP replay: 4.0.0 deployment and the 5.0.0 spell upgrade", () => {
   test("tracks the version across the real deployment and upgrade logs", () => {
     clearStore();
     mockERC20(LCAP, "LCAP", "CF Large Cap Index DTF", 18);
+    // The role handler probes every new admin / rebalance manager for a timelock; none of these
+    // resolve to an indexed governance here.
     createMockedFunction(OWNER_TIMELOCK, "getMinDelay", "getMinDelay():(uint256)").reverts();
-    // The role handler probes a new admin for a timelock; the spell is a plain contract.
+    createMockedFunction(TRADING_TIMELOCK, "getMinDelay", "getMinDelay():(uint256)").reverts();
+    createMockedFunction(FOLIO_DEPLOYER_4_0_0, "getMinDelay", "getMinDelay():(uint256)").reverts();
     createMockedFunction(SPELL_5_0_0, "getMinDelay", "getMinDelay():(uint256)").reverts();
     mockLiveState("4.0.0");
 
@@ -45,27 +50,40 @@ describe("LCAP replay: 4.0.0 deployment and the 5.0.0 spell upgrade", () => {
       BigInt.fromI32(CREATION_BLOCK),
       BigInt.fromString("1753802435"),
     );
-    // Replayed initialization events set the 4.0.0 settings; the constructor Upgraded log must not rehydrate.
-    _handleAuctionLengthSet(LCAP, BigInt.fromI32(900));
-    _handleRoleGranted(LCAP, Bytes.fromHexString(Role.DEFAULT_ADMIN), OWNER_TIMELOCK);
+    // Replayed creation-block logs: the constructor Upgraded log must not rehydrate.
     handleUpgraded(upgraded(IMPL_4_0_0, CREATION_BLOCK, 1753802435, 380));
+    _handleAuctionLengthSet(LCAP, BigInt.fromI32(900));
+    grant(Role.DEFAULT_ADMIN, FOLIO_DEPLOYER_4_0_0); // 410
+    grant(Role.DEFAULT_ADMIN, OWNER_TIMELOCK); // 412
+    grant(Role.REBALANCE_MANAGER, TRADING_TIMELOCK); // 413
+    grant(Role.AUCTION_LAUNCHER, LAUNCHER_A); // 414
+    grant(Role.AUCTION_LAUNCHER, DEPLOYER_TX_FROM); // 415
+    grant(Role.AUCTION_LAUNCHER, LAUNCHER_B); // 416
+    grant(Role.BRAND_MANAGER, LAUNCHER_A); // 417
+    grant(Role.BRAND_MANAGER, DEPLOYER_TX_FROM); // 418
+    grant(Role.BRAND_MANAGER, LAUNCHER_B); // 419
+    revoke(Role.DEFAULT_ADMIN, FOLIO_DEPLOYER_4_0_0); // 420
 
     assert.fieldEquals("DTF", LCAP.toHexString(), "version", "4.0.0");
     assert.fieldEquals("DTF", LCAP.toHexString(), "auctionLength", "900");
     assert.fieldEquals("DTF", LCAP.toHexString(), "admins", `[${OWNER_TIMELOCK.toHexString()}]`);
 
+    // Block 44045822: the deploy tx sender gives up its launcher and brand roles.
+    revoke(Role.BRAND_MANAGER, DEPLOYER_TX_FROM); // 559
+    revoke(Role.AUCTION_LAUNCHER, DEPLOYER_TX_FROM); // 561
+
     // The spell's execution tx, log by log: grantRole(admin, spell), Upgraded, revokeRole(admin, spell).
     mockLiveState("5.0.0");
-    _handleRoleGranted(LCAP, Bytes.fromHexString(Role.DEFAULT_ADMIN), SPELL_5_0_0);
-    handleUpgraded(upgraded(IMPL_5_0_0, UPGRADE_BLOCK, 1777383901, 3));
-    // getRoleMembers at the Upgraded log still lists the spell; the RoleRevoked log that follows removes it.
+    grant(Role.DEFAULT_ADMIN, SPELL_5_0_0); // 463
+    handleUpgraded(upgraded(IMPL_5_0_0, UPGRADE_BLOCK, 1777383901, 467));
+    // Roles are event-sourced: the spell's grant stays indexed until the RoleRevoked log that follows.
     assert.fieldEquals(
       "DTF",
       LCAP.toHexString(),
       "admins",
       `[${OWNER_TIMELOCK.toHexString()}, ${SPELL_5_0_0.toHexString()}]`,
     );
-    _handleRoleRevoked(LCAP, Bytes.fromHexString(Role.DEFAULT_ADMIN), SPELL_5_0_0);
+    revoke(Role.DEFAULT_ADMIN, SPELL_5_0_0); // 469
 
     assert.entityCount("DTF", 1);
     assert.fieldEquals("DTF", LCAP.toHexString(), "version", "5.0.0");
@@ -75,6 +93,12 @@ describe("LCAP replay: 4.0.0 deployment and the 5.0.0 spell upgrade", () => {
       "DTF",
       LCAP.toHexString(),
       "auctionLaunchers",
+      `[${LAUNCHER_A.toHexString()}, ${LAUNCHER_B.toHexString()}]`,
+    );
+    assert.fieldEquals(
+      "DTF",
+      LCAP.toHexString(),
+      "brandManagers",
       `[${LAUNCHER_A.toHexString()}, ${LAUNCHER_B.toHexString()}]`,
     );
     assert.fieldEquals("DTF", LCAP.toHexString(), "mintingFee", "3000000000000000");
@@ -92,7 +116,12 @@ describe("LCAP replay: 4.0.0 deployment and the 5.0.0 spell upgrade", () => {
     );
     // The deployer and the spell held admin only inside their own transactions: raw history keeps
     // them, the governance view does not.
-    assert.fieldEquals("DTF", LCAP.toHexString(), "legacyAdmins", `[${SPELL_5_0_0.toHexString()}]`);
+    assert.fieldEquals(
+      "DTF",
+      LCAP.toHexString(),
+      "legacyAdmins",
+      `[${FOLIO_DEPLOYER_4_0_0.toHexString()}, ${SPELL_5_0_0.toHexString()}]`,
+    );
     assert.fieldEquals("DTF", LCAP.toHexString(), "legacyAdminGovernances", "[]");
     // Nothing 6.0-shaped leaks into a 5.0.0 folio.
     const dtf = DTF.load(LCAP.toHexString())!;
@@ -101,6 +130,14 @@ describe("LCAP replay: 4.0.0 deployment and the 5.0.0 spell upgrade", () => {
     assert.fieldEquals("DTF", LCAP.toHexString(), "tradeTokenAllowlist", "[]");
   });
 });
+
+function grant(role: string, account: Address): void {
+  _handleRoleGranted(LCAP, Bytes.fromHexString(role), account);
+}
+
+function revoke(role: string, account: Address): void {
+  _handleRoleRevoked(LCAP, Bytes.fromHexString(role), account);
+}
 
 function upgraded(implementation: Address, block: i32, timestamp: i32, logIndex: i32): Upgraded {
   const event = changetype<Upgraded>(newMockEvent());
@@ -146,9 +183,9 @@ function mockLiveState(version: string): void {
   createMockedFunction(LCAP, "folioFeeForSelf", "folioFeeForSelf():(uint256)").reverts();
   createMockedFunction(LCAP, "tradeAllowlistEnabled", "tradeAllowlistEnabled():(bool)").reverts();
   createMockedFunction(LCAP, "getTokenAllowlist", "getTokenAllowlist():(address[])").reverts();
-  // Role members as the chain reports them at the Upgraded log of the spell tx (the spell holds admin).
-  const admins: Address[] = version == "4.0.0" ? [OWNER_TIMELOCK] : [OWNER_TIMELOCK, SPELL_5_0_0];
-  mockRole(Role.DEFAULT_ADMIN, admins);
+  // Role members as an eth_call at the spell tx's block reports them: block-final, so the spell's
+  // admin (revoked later in the same tx) is already gone. Upgrade hydration must not read these.
+  mockRole(Role.DEFAULT_ADMIN, [OWNER_TIMELOCK]);
   mockRole(Role.REBALANCE_MANAGER, [TRADING_TIMELOCK]);
   mockRole(Role.AUCTION_APPROVER, []);
   mockRole(Role.AUCTION_LAUNCHER, [LAUNCHER_A, LAUNCHER_B]);

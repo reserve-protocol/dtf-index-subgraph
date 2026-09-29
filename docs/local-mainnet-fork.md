@@ -211,8 +211,10 @@ the matching creation-block logs after the deployer handler creates the dynamic
 DTF template. The deployer mapping therefore hydrates only `version()`, which
 has no initialization event; hydrating event-backed supply, balances, roles, or
 settings there would double-count them. The proxy's later `Upgraded` event does
-trigger full getter rehydration, preserving one DTF ID across the 5.0 to 6.0
-flow while populating newly available v6 state.
+trigger getter rehydration of settings, preserving one DTF ID across the 5.0 to 6.0
+flow while populating newly available v6 state. Role arrays are never rehydrated:
+getters return the block's final state, which already includes grants later in the
+upgrade transaction, so their `RoleGranted` handlers would add them twice.
 
 The v6 mappings cover max auction length, self Folio fee and pending fee shares,
 immutable fee recipients, and trade-allowlist settings. `auctionLength` is kept
