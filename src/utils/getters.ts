@@ -158,6 +158,12 @@ export function createGovernanceTimelock(
   );
   if (existingTimelock) {
     refreshGovernanceLinks(existingTimelock);
+    // The timelock keeps the entity it was first indexed for (e.g. the vault of an optimistic
+    // system deployed with a new vault, or another DTF), but a DTF granting it a role now must be
+    // linked too — refreshGovernanceLinks only knows the first entity.
+    if (entityType != GovernanceType.VOTE_LOCKING && entity != existingTimelock.entity) {
+      linkDTFToGovernance(entity, existingTimelock);
+    }
     return;
   }
 
@@ -243,30 +249,39 @@ function refreshGovernanceLinks(timelock: GovernanceTimelock): void {
     stakingToken.governance = governance.id;
     stakingToken.save();
   } else {
-    const dtf = DTF.load(timelock.entity);
-    if (dtf) {
-      // A single timelock can hold multiple DTF roles (e.g. DEFAULT_ADMIN +
-      // REBALANCE_MANAGER). Use the DTF's own role membership rather than
-      // timelock.type — which only records whichever role was granted first.
-      const timelockId = timelock.id;
-      if (dtf.admins.indexOf(timelockId) != -1) {
-        dtf.ownerGovernance = governance.id;
-        dtf.stToken = governance.token;
-        dtf.stTokenAddress = Address.fromString(governance.token);
-      }
-      if (
-        dtf.auctionApprovers.indexOf(timelockId) != -1
-      ) {
-        dtf.tradingGovernance = governance.id;
-      }
-      // Backfill DTF → stToken link if it wasn't set by GovernedFolioDeployed.
-      if (!dtf.stToken) {
-        dtf.stToken = governance.token;
-        dtf.stTokenAddress = Address.fromString(governance.token);
-      }
-      dtf.save();
-    }
+    linkDTFToGovernance(timelock.entity, timelock);
   }
+}
+
+function linkDTFToGovernance(dtfId: string, timelock: GovernanceTimelock): void {
+  if (timelock.governance === null) {
+    return;
+  }
+
+  const governance = Governance.load(timelock.governance!);
+  const dtf = DTF.load(dtfId);
+  if (!governance || !dtf) {
+    return;
+  }
+
+  // A single timelock can hold multiple DTF roles (e.g. DEFAULT_ADMIN +
+  // REBALANCE_MANAGER). Use the DTF's own role membership rather than
+  // timelock.type — which only records whichever role was granted first.
+  const timelockId = timelock.id;
+  if (dtf.admins.indexOf(timelockId) != -1) {
+    dtf.ownerGovernance = governance.id;
+    dtf.stToken = governance.token;
+    dtf.stTokenAddress = Address.fromString(governance.token);
+  }
+  if (dtf.auctionApprovers.indexOf(timelockId) != -1) {
+    dtf.tradingGovernance = governance.id;
+  }
+  // Backfill DTF → stToken link if it wasn't set by GovernedFolioDeployed.
+  if (!dtf.stToken) {
+    dtf.stToken = governance.token;
+    dtf.stTokenAddress = Address.fromString(governance.token);
+  }
+  dtf.save();
 }
 
 export function getOrCreateGovernance(

@@ -8,7 +8,12 @@ import {
   test,
 } from "matchstick-as/assembly/index";
 import { ReserveOptimisticGovernorSystemDeployed } from "../generated/OptimisticGovernorDeployer/OptimisticGovernorDeployer";
+import { DTF } from "../generated/schema";
+import { RoleGranted } from "../generated/templates/DTF/DTF";
 import { handleOptimisticGovernorSystemDeployed } from "../src/deploy/mappings";
+import { handleRoleGranted } from "../src/dtf/mappings";
+import { Role } from "../src/utils/constants";
+import { createTestDTF } from "./helpers/mock-entities";
 import { mockERC20 } from "./helpers/mock-erc20";
 import {
   mockOptimisticGovernor,
@@ -313,5 +318,81 @@ describe("handleOptimisticGovernorSystemDeployed", () => {
     assert.dataSourceExists("StakingToken", VAULT.toHexString());
     assert.dataSourceExists("UnstakingManager", MANAGER.toHexString());
     assert.notInStore("Governance", DTF_GOVERNOR.toHexString());
+  });
+});
+
+// A timelock the OGD indexed for a new vault (VOTE_LOCKING) that a DTF then makes its admin and
+// rebalance manager: the v5 → optimistic upgrade topology (fork parity v5OptimisticUpgrade) and any
+// deployment that points a Folio at an existing optimistic system.
+const FOLIO = Address.fromString("0x512a93643ae35f895ec02bee94670af77c9021be");
+const OTHER_FOLIO = Address.fromString("0x1000000000000000000000000000000000000001");
+
+function createRoleGrantedEvent(
+  dtf: Address,
+  role: string,
+  account: Address,
+  logIndex: i32
+): RoleGranted {
+  let event = changetype<RoleGranted>(newMockEvent());
+  event.address = dtf;
+  event.logIndex = BigInt.fromI32(logIndex);
+  event.parameters = [
+    new ethereum.EventParam(
+      "role",
+      ethereum.Value.fromFixedBytes(Bytes.fromHexString(role))
+    ),
+    new ethereum.EventParam("account", ethereum.Value.fromAddress(account)),
+    new ethereum.EventParam("sender", ethereum.Value.fromAddress(DEPLOYER)),
+  ];
+  return event;
+}
+
+describe("a DTF granting roles to a new-vault optimistic system's timelock", () => {
+  beforeEach(() => {
+    clearStore();
+    handleOptimisticGovernorSystemDeployed(
+      createSystemDeployedEvent(VAULT, GOVERNOR, TIMELOCK, 102317233)
+    );
+  });
+
+  test("DEFAULT_ADMIN + REBALANCE_MANAGER link the DTF and keep the vault linked", () => {
+    createTestDTF(FOLIO);
+    handleRoleGranted(createRoleGrantedEvent(FOLIO, Role.DEFAULT_ADMIN, TIMELOCK, 1));
+    handleRoleGranted(createRoleGrantedEvent(FOLIO, Role.REBALANCE_MANAGER, TIMELOCK, 2));
+
+    const folio = FOLIO.toHexString();
+    assert.fieldEquals("DTF", folio, "ownerGovernance", GOVERNOR.toHexString());
+    assert.fieldEquals("DTF", folio, "tradingGovernance", GOVERNOR.toHexString());
+    assert.fieldEquals("DTF", folio, "stToken", VAULT.toHexString());
+    assert.fieldEquals("DTF", folio, "stTokenAddress", VAULT.toHexString());
+
+    // The vault keeps its governance and the timelock keeps its first registration.
+    assert.fieldEquals("StakingToken", VAULT.toHexString(), "governance", GOVERNOR.toHexString());
+    assert.fieldEquals("GovernanceTimelock", TIMELOCK.toHexString(), "entity", VAULT.toHexString());
+    assert.fieldEquals("GovernanceTimelock", TIMELOCK.toHexString(), "type", "VOTE_LOCKING");
+    assert.fieldEquals("GovernanceTimelock", TIMELOCK.toHexString(), "governance", GOVERNOR.toHexString());
+    assert.entityCount("GovernanceTimelock", 1);
+    assert.entityCount("Governance", 1);
+  });
+
+  test("REBALANCE_MANAGER alone links only tradingGovernance (and backfills stToken)", () => {
+    createTestDTF(FOLIO);
+    handleRoleGranted(createRoleGrantedEvent(FOLIO, Role.REBALANCE_MANAGER, TIMELOCK, 1));
+
+    const folio = FOLIO.toHexString();
+    assert.fieldEquals("DTF", folio, "tradingGovernance", GOVERNOR.toHexString());
+    assert.assertNull(DTF.load(folio)!.ownerGovernance);
+    assert.fieldEquals("DTF", folio, "stToken", VAULT.toHexString());
+  });
+
+  test("a second DTF on the same timelock is linked without unlinking the first", () => {
+    createTestDTF(FOLIO);
+    createTestDTF(OTHER_FOLIO);
+    handleRoleGranted(createRoleGrantedEvent(FOLIO, Role.DEFAULT_ADMIN, TIMELOCK, 1));
+    handleRoleGranted(createRoleGrantedEvent(OTHER_FOLIO, Role.DEFAULT_ADMIN, TIMELOCK, 2));
+
+    assert.fieldEquals("DTF", FOLIO.toHexString(), "ownerGovernance", GOVERNOR.toHexString());
+    assert.fieldEquals("DTF", OTHER_FOLIO.toHexString(), "ownerGovernance", GOVERNOR.toHexString());
+    assert.fieldEquals("StakingToken", VAULT.toHexString(), "governance", GOVERNOR.toHexString());
   });
 });
