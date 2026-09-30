@@ -14,8 +14,8 @@ const MAINNET = {
 
 const args = process.argv.slice(2);
 const forkBlock = getArgument("--fork-block") || process.env.FORK_BLOCK;
-// The real 6.0.0 deployer is a static source like on mainnet (harmless on a fork older than it);
-// a sandbox-built v6 deployer is discovered through the fork's version registry.
+// The real 6.0.0 deployer is a static source like on mainnet (harmless on a fork older than it) and is
+// not overridable: a sandbox-built v6 deployer is discovered through the fork's version registry.
 const versionRegistry = optionalAddress(
   "--version-registry",
   "VERSION_REGISTRY_ADDRESS",
@@ -36,16 +36,6 @@ const v5GovernanceDeployer = optionalAddress(
   "--v5-governance-deployer",
   "V5_GOVERNANCE_DEPLOYER_ADDRESS",
   MAINNET.v5GovernanceDeployer
-);
-const v6FolioDeployer = optionalAddress(
-  "--v6-folio-deployer",
-  "V6_FOLIO_DEPLOYER_ADDRESS",
-  MAINNET.v6FolioDeployer
-);
-const optimisticGovernorDeployerV11 = optionalAddress(
-  "--optimistic-governor-deployer-v11",
-  "OPTIMISTIC_GOVERNOR_DEPLOYER_V11_ADDRESS",
-  MAINNET.optimisticGovernorDeployerV11
 );
 const optimisticGovernorDeployer = optionalAddress(
   "--optimistic-governor-deployer",
@@ -69,7 +59,7 @@ const config = {
         _version: "5.0.0-fork",
       },
       {
-        address: v6FolioDeployer,
+        address: MAINNET.v6FolioDeployer,
         startBlock,
         _version: "6.0.0-fork",
       },
@@ -88,7 +78,7 @@ const config = {
         _version: "reserve-governor-fork",
       },
       {
-        address: optimisticGovernorDeployerV11,
+        address: MAINNET.optimisticGovernorDeployerV11,
         startBlock,
         _version: "reserve-governor-1.1.0-fork",
       },
