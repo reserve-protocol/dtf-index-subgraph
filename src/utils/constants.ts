@@ -74,6 +74,25 @@ export namespace Role {
     "0x2be23b023f3eee571adc019cdcf3f0bcf041151e6ff405a4bf0c4bfc6faea8c9";
 }
 
-// Folio releases whose deployers are static data sources; the version registry only
-// spawns a deployer template for releases registered after these.
-export const STATIC_DEPLOYER_VERSIONS: string[] = ["1.0.0", "2.0.0", "4.0.0", "4.0.1", "5.0.0"];
+// FolioDeployers that are static data sources in networks.json, every chain, lowercase. The version
+// registry spawns a deployer template only for addresses outside this list (a second source on the
+// same deployer would index every deployment twice); parse-template checks networks.json against it.
+export const STATIC_FOLIO_DEPLOYERS: string[] = [
+  // mainnet
+  "0xaafb13a3df7ce70c140e40c959d58fd5cc443cba",
+  "0x4c64ef51cb057867e40114dcfa3702c2955d3644",
+  "0xbe3b47587ceeff7d48008a0114f51cd571bec63a",
+  "0x4d201a6e5bf975e2cee9e5cbdfc803c0ff122073",
+  "0x2b1cd9aef0cd3b9ff5dca1c66348ecfc46f37392",
+  // base
+  "0xe926577a152ffd5f5036f88bf7e8e8d3652b558c",
+  "0xb8469986840bc9b7bb101c274950c02842755911",
+  "0xa203aa351723cf943f91684e9f5efca7175ae7ea",
+  "0x3451fd177e9a8bb4eb8271e627a804bd22a816f9",
+  "0x4c891fca6319d492866672e3d2afdaaa5bdcff67",
+  // bsc
+  "0x100e0efdd7a4f67825e1be5f0493f8d2aeac00bb",
+  "0x5bed18aca50e6057e6658fe8498004092eedcdcf",
+  "0x72f87239981159ed23673012ee3806ca6114ab2a",
+  "0x9837ce9825d52672ca02533b5a160212bf901963",
+];

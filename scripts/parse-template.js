@@ -59,18 +59,17 @@ const templateData = {
   grafting: hasGrafting,
 };
 
-// The registry mapping skips deployers whose version is in STATIC_DEPLOYER_VERSIONS; a static
-// entry whose version is missing there would be indexed twice (static source + registry template).
-const staticVersions = fs
+// The registry mapping skips deployers listed in STATIC_FOLIO_DEPLOYERS; a static entry missing
+// there would be indexed twice (static source + registry template).
+const staticDeployers = fs
   .readFileSync("src/utils/constants.ts", "utf8")
-  .match(/STATIC_DEPLOYER_VERSIONS[^=]*=\s*\[([^\]]*)\]/)[1]
-  .match(/"[^"]+"/g)
+  .match(/STATIC_FOLIO_DEPLOYERS[^=]*=\s*\[([^\]]*)\]/)[1]
+  .match(/"0x[0-9a-f]{40}"/g)
   .map((entry) => entry.replace(/"/g, ""));
 for (const deployer of networksData[network].FolioDeployer) {
-  const version = String(deployer._version || "").replace(/-fork$/, "");
-  if (!staticVersions.includes(version)) {
+  if (!staticDeployers.includes(deployer.address.toLowerCase())) {
     console.error(
-      `Error: FolioDeployer ${deployer.address} (${deployer._version}) is not in STATIC_DEPLOYER_VERSIONS; add it or index it through the registry instead`
+      `Error: FolioDeployer ${deployer.address} (${deployer._version}) is not in STATIC_FOLIO_DEPLOYERS; add it or index it through the registry instead`
     );
     process.exit(1);
   }

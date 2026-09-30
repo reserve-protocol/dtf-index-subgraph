@@ -3,15 +3,19 @@ const path = require("path");
 
 const MAINNET = {
   v5FolioDeployer: "0x4D201a6e5BF975E2CEE9e5cbDfc803C0Ff122073",
+  v6FolioDeployer: "0x2B1Cd9aEF0CD3B9fF5DCa1C66348eCfC46F37392",
   versionRegistry: "0xA665b273997F70b647B66fa7Ed021287544849dB",
   v5GovernanceDeployer: "0x72f87239981159ed23673012EE3806Ca6114AB2A",
   optimisticGovernorDeployer: "0x2acc45e12776579f40ae3419764eef7022763735",
+  // Wired into the 6.0.0 deployer
+  optimisticGovernorDeployerV11: "0x4292433c772958ae93bebf32602ffDe0f9C5Fcd6",
   rsr: "0x320623b8e4ff03373931769a31fc52a4e78b5d70",
 };
 
 const args = process.argv.slice(2);
 const forkBlock = getArgument("--fork-block") || process.env.FORK_BLOCK;
-// The v6 deployer is discovered through the fork's version registry, exactly as on mainnet.
+// The real 6.0.0 deployer is a static source like on mainnet (harmless on a fork older than it);
+// a sandbox-built v6 deployer is discovered through the fork's version registry.
 const versionRegistry = optionalAddress(
   "--version-registry",
   "VERSION_REGISTRY_ADDRESS",
@@ -32,6 +36,16 @@ const v5GovernanceDeployer = optionalAddress(
   "--v5-governance-deployer",
   "V5_GOVERNANCE_DEPLOYER_ADDRESS",
   MAINNET.v5GovernanceDeployer
+);
+const v6FolioDeployer = optionalAddress(
+  "--v6-folio-deployer",
+  "V6_FOLIO_DEPLOYER_ADDRESS",
+  MAINNET.v6FolioDeployer
+);
+const optimisticGovernorDeployerV11 = optionalAddress(
+  "--optimistic-governor-deployer-v11",
+  "OPTIMISTIC_GOVERNOR_DEPLOYER_V11_ADDRESS",
+  MAINNET.optimisticGovernorDeployerV11
 );
 const optimisticGovernorDeployer = optionalAddress(
   "--optimistic-governor-deployer",
@@ -54,6 +68,11 @@ const config = {
         startBlock,
         _version: "5.0.0-fork",
       },
+      {
+        address: v6FolioDeployer,
+        startBlock,
+        _version: "6.0.0-fork",
+      },
     ],
     GovernanceDeployer: [
       {
@@ -67,6 +86,11 @@ const config = {
         address: optimisticGovernorDeployer,
         startBlock,
         _version: "reserve-governor-fork",
+      },
+      {
+        address: optimisticGovernorDeployerV11,
+        startBlock,
+        _version: "reserve-governor-1.1.0-fork",
       },
     ],
     TrackedVault: [],

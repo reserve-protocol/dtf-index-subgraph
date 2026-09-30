@@ -42,7 +42,7 @@ describe("Folio version registry", () => {
     clearStore();
   });
 
-  test("records registered releases and spawns a deployer source only past the static ones", () => {
+  test("records registered releases and spawns a deployer source only for deployers without a static one", () => {
     createMockedFunction(V5_DEPLOYER, "version", "version():(string)").returns([
       ethereum.Value.fromString("5.0.0"),
     ]);
@@ -51,6 +51,7 @@ describe("Folio version registry", () => {
     ]);
 
     // Data source counts persist across tests in a file, so the negative cases run before the first spawn.
+    // V6_DEPLOYER stands for a sandbox-built 6.0.0 deployer: not static, so the registry spawns it.
     const UNKNOWN = Address.fromString("0x9000000000000000000000000000000000000009");
     const V401 = Address.fromString("0x5Bed18AcA50E6057E6658Fe8498004092EedCDcF");
     createMockedFunction(UNKNOWN, "version", "version():(string)").reverts();
@@ -60,6 +61,12 @@ describe("Folio version registry", () => {
     assert.dataSourceCount("FolioDeployerFromRegistry", 0);
     handleVersionRegistered(registered(V5_HASH, V401, 301));
     assert.fieldEquals("FolioVersion", V5_HASH.toHexString(), "version", "4.0.1");
+    assert.dataSourceCount("FolioDeployerFromRegistry", 0);
+    // The real 6.0.0 deployer is a static source in networks.json: recorded, not spawned again.
+    const REAL_V6 = Address.fromString("0x2B1Cd9aEF0CD3B9fF5DCa1C66348eCfC46F37392");
+    createMockedFunction(REAL_V6, "version", "version():(string)").returns([ethereum.Value.fromString("6.0.0")]);
+    handleVersionRegistered(registered(V6_HASH, REAL_V6, 302));
+    assert.fieldEquals("FolioVersion", V6_HASH.toHexString(), "deployer", REAL_V6.toHexString());
     assert.dataSourceCount("FolioDeployerFromRegistry", 0);
     clearStore();
 

@@ -167,8 +167,8 @@ type DTF @entity(immutable: false) {
   " Legacy auction approvers "
   legacyAuctionApprovers: [String!]!
 
-  " Former rebalance authorities that were indexed governances (raw history stays in legacyAuctionApprovers) "
-  legacyTradingGovernances: [Governance!]!
+  " Former rebalance authorities that were indexed governances (raw history stays in legacyAuctionApprovers); null on DTFs carried over by the 1.11.0 graft until their next revoke "
+  legacyTradingGovernances: [Governance!]
 
   " Auction launchers "
   auctionLaunchers: [String!]!
@@ -182,8 +182,8 @@ type DTF @entity(immutable: false) {
   " Legacy admins "
   legacyAdmins: [String!]!
 
-  " Former admins that were indexed governances (raw history stays in legacyAdmins) "
-  legacyAdminGovernances: [Governance!]!
+  " Former admins that were indexed governances (raw history stays in legacyAdmins); null on DTFs carried over by the 1.11.0 graft until their next revoke "
+  legacyAdminGovernances: [Governance!]
 
   " stDAO "
   stToken: StakingToken
@@ -218,8 +218,8 @@ type DTF @entity(immutable: false) {
   " Whether rebalance token allowlisting is enabled (v6.0+) "
   tradeAllowlistEnabled: Boolean
 
-  " Rebalance token allowlist (v6.0+); empty before 6.0 "
-  tradeTokenAllowlist: [String!]!
+  " Rebalance token allowlist (v6.0+); empty for DTFs deployed from 1.11.0 on, null on DTFs carried over by the 1.11.0 graft "
+  tradeTokenAllowlist: [String!]
 
   " Rebalances "
   rebalances: [Rebalance!]! @derivedFrom(field: "dtf")

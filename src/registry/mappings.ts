@@ -6,7 +6,7 @@ import {
   VersionRegistered,
 } from "../../generated/FolioVersionRegistry/FolioVersionRegistry";
 import { FolioDeployerFromRegistry } from "../../generated/templates";
-import { STATIC_DEPLOYER_VERSIONS } from "../utils/constants";
+import { STATIC_FOLIO_DEPLOYERS } from "../utils/constants";
 
 export function handleVersionRegistered(event: VersionRegistered): void {
   const deployer = event.params.folioDeployer;
@@ -28,9 +28,8 @@ export function handleVersionRegistered(event: VersionRegistered): void {
   record.deployer = deployer;
   record.save();
 
-  // Releases up to 5.0.0 are static data sources in networks.json; a second
-  // source on the same deployer would index every deployment twice.
-  if (STATIC_DEPLOYER_VERSIONS.indexOf(version) !== -1) return;
+  // Deployers listed in networks.json already have a static source.
+  if (STATIC_FOLIO_DEPLOYERS.indexOf(deployer.toHexString()) !== -1) return;
   FolioDeployerFromRegistry.create(deployer);
 }
 

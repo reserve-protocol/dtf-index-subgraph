@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.11.0] - Unreleased
 
-Folio 6.0.0 support. Clean reindex: `DTF.ownerAddress` now records the deployment's `folioOwner`
-(previously the deploy transaction sender) for every version, `DTF.version` is a new field hydrated
-from `version()`, and the version registry is a new data source. No graft.
+Folio 6.0.0 support. Grafted onto 1.10.2 (block per chain in `networks.json`), which is safe for v6 because
+no Folio had been deployed through a 6.0.0 deployer when it was cut (each deployer's contract nonce was still 2:
+only its constructor's implementation). DTFs carried over by the graft keep their 1.10.2 values for what this
+release computes at deployment or from history: `version` stays null until a version-changing upgrade,
+`ownerAddress` keeps the transaction sender, `legacyAdminGovernances` / `legacyTradingGovernances` /
+`tradeTokenAllowlist` are null until their next event, and `FolioVersion` only records registrations after the
+graft block. A clean reindex fills all of them.
 
 ### Added
 
@@ -20,11 +24,17 @@ from `version()`, and the version registry is a new data source. No graft.
   `ImmutableFeeRecipientsSet`, `TradeAllowlistEnabled`, `TradeAllowlistTokenAdded`, `TradeAllowlistTokenRemoved`.
 - `FolioVersion` entity and a `FolioVersionRegistry` data source per chain (mainnet and Base
   `0xA665b273997F70b647B66fa7Ed021287544849dB`, BSC `0x79A4E963378AE34fC6c796a24c764322fC6c9390`, each starting at
-  the chain's earliest static deployer block so every registration is recorded). A `FolioDeployerFromRegistry`
-  template is spawned for releases past the static 1.0.0–5.0.0 sources (`STATIC_DEPLOYER_VERSIONS`, checked
-  against `networks.json` at template time), so a 6.0.0 deployer is indexed from its registration onward without
-  a manifest change. A deployment made through a new deployer before it is registered is not covered; add a static
-  entry at the deployer's creation block for that case.
+  the chain's earliest static deployer block). A `FolioDeployerFromRegistry` template is spawned for a registered
+  deployer that is not a static source (`STATIC_FOLIO_DEPLOYERS`, by address, checked against `networks.json` at
+  template time), so a future release is indexed from its registration onward without a manifest change. A
+  deployment made through a new deployer before it is registered is not covered; add a static entry at the
+  deployer's creation block for that case.
+- Static sources for the production 6.0.0 FolioDeployers (mainnet `0x2B1Cd9aEF0CD3B9fF5DCa1C66348eCfC46F37392`,
+  Base `0x4c891fCa6319d492866672E3D2AfdAAA5bDcfF67`, BSC `0x9837Ce9825D52672Ca02533B5A160212bf901963`), which
+  are not registered yet, and for the ReserveOptimisticGovernorDeployer 1.1.0 they deploy governance through
+  (mainnet `0x4292433c772958ae93bebf32602ffDe0f9C5Fcd6`, Base `0xaC429cc5EA7f34a407f65B769c9AEA0242b075c6`, BSC
+  `0xb4eB87250Ecd8f32BeA775dA6D164D92A398d05b`). Without the latter, v6 governance would not be indexed. The
+  mainnet-fork profile lists both as well.
 - Dockerized mainnet-fork profile (`docs/local-mainnet-fork.md`) with an RPC-versus-GraphQL parity gate
   (`pnpm test:fork:parity`) driven by the protocol sandbox fixture. The gate requires every sandbox case and its
   upgrade/execution evidence unless `FORK_PARITY_SCENARIOS` names an explicit subset, and has offline tests
@@ -33,8 +43,10 @@ from `version()`, and the version registry is a new data source. No graft.
 ### Changed
 
 - `DTF.ownerAddress` is the deployment's `folioOwner`.
-- `DTF.tradeTokenAllowlist` is non-null (empty before 6.0) and a fresh 6.0 Folio's allowlist state is read at
-  deployment, since `initialize` emits no allowlist event.
+- `DTF.tradeTokenAllowlist` is empty before 6.0 (null on grafted DTFs) and a fresh 6.0 Folio's allowlist state
+  is read at deployment, since `initialize` emits no allowlist event.
+- `legacyAdminGovernances`, `legacyTradingGovernances` and `tradeTokenAllowlist` are nullable so the release can
+  graft (a graft may only add nullable fields).
 - `DTF.ownerAddress` changes meaning for existing consumers (deployment owner, not the transaction sender).
 - `DTF.legacyAdminGovernances` and `DTF.legacyTradingGovernances`: the subset of `legacyAdmins` /
   `legacyAuctionApprovers` that resolved to an indexed governance when the role was revoked. The raw lists are

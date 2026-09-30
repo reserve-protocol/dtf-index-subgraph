@@ -23,7 +23,7 @@ import {
   RebalanceStarted1TokensStruct,
   RebalanceStarted1LimitsStruct,
 } from "../../generated/templates/DTF/DTF";
-import { removeFromArrayAtIndex } from "../utils/arrays";
+import { orEmpty, removeFromArrayAtIndex } from "../utils/arrays";
 import {
   BIGINT_ONE,
   BIGINT_ZERO,
@@ -564,7 +564,7 @@ export function _handleRoleRevoked(
     // Only a revoked timelock with an indexed governor counts as a former governance;
     // deployers, spells and EOAs stay in the raw list alone.
     if (timelock !== null && timelock.governance !== null) {
-      let governances = dtf.legacyTradingGovernances;
+      let governances = orEmpty(dtf.legacyTradingGovernances);
       if (governances.indexOf(gov!) == -1) governances.push(gov!);
       dtf.legacyTradingGovernances = governances;
     }
@@ -602,7 +602,7 @@ export function _handleRoleRevoked(
     }
     dtf.legacyAdmins = legacy;
     if (timelock !== null && timelock.governance !== null) {
-      let governances = dtf.legacyAdminGovernances;
+      let governances = orEmpty(dtf.legacyAdminGovernances);
       if (governances.indexOf(gov!) == -1) governances.push(gov!);
       dtf.legacyAdminGovernances = governances;
     }
@@ -718,7 +718,7 @@ export function _handleTradeAllowlistTokenAdded(
   token: Address,
 ): void {
   let dtf = getDTF(dtfAddress);
-  let allowlist = dtf.tradeTokenAllowlist;
+  let allowlist = orEmpty(dtf.tradeTokenAllowlist);
   const tokenId = token.toHexString();
   if (allowlist.indexOf(tokenId) === -1) allowlist.push(tokenId);
   dtf.tradeTokenAllowlist = allowlist;
@@ -730,7 +730,7 @@ export function _handleTradeAllowlistTokenRemoved(
   token: Address,
 ): void {
   let dtf = getDTF(dtfAddress);
-  let allowlist = dtf.tradeTokenAllowlist;
+  let allowlist = orEmpty(dtf.tradeTokenAllowlist);
   const index = allowlist.indexOf(token.toHexString());
   if (index !== -1) allowlist = removeFromArrayAtIndex(allowlist, index);
   dtf.tradeTokenAllowlist = allowlist;
