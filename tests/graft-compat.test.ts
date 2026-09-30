@@ -1,13 +1,21 @@
-import { Address, Bytes } from "@graphprotocol/graph-ts";
-import { assert, beforeEach, clearStore, describe, test } from "matchstick-as/assembly/index";
-import { DTF, GovernanceTimelock } from "../generated/schema";
+import { Address, BigInt, Bytes } from "@graphprotocol/graph-ts";
+import { assert, beforeEach, clearStore, describe, newMockEvent, test } from "matchstick-as/assembly/index";
 import {
+  DTF,
+  GovernanceTimelock,
+  TokenDailySnapshot,
+  TokenHourlySnapshot,
+  TokenMonthlySnapshot,
+} from "../generated/schema";
+import {
+  _handleFolioFeePaid,
+  _handleProtocolFeePaid,
   _handleRoleRevoked,
   _handleTradeAllowlistTokenAdded,
   _handleTradeAllowlistTokenRemoved,
 } from "../src/dtf/handlers";
 import { Role } from "../src/utils/constants";
-import { createTestDTF, createTestGovernance } from "./helpers/mock-entities";
+import { createTestDTF, createTestGovernance, createTestToken } from "./helpers/mock-entities";
 
 // 1.11.0 is grafted onto 1.10.2: DTFs indexed before the graft have no value for the list
 // fields 1.11.0 added, so every handler that appends to them must start from an empty list.
@@ -57,5 +65,46 @@ describe("DTFs carried over by the 1.11.0 graft", () => {
 
     _handleTradeAllowlistTokenAdded(FOLIO, TOKEN);
     assert.fieldEquals("DTF", FOLIO.toHexString(), "tradeTokenAllowlist", "[" + TOKEN.toHexString() + "]");
+  });
+});
+
+// 1.11.1 is grafted onto 1.11.0: the DTF and the snapshots written before the graft have no
+// self-revenue value, so the first self fee must start them from zero.
+describe("entities carried over by the 1.11.1 graft", () => {
+  beforeEach(() => {
+    clearStore();
+  });
+
+  test("the first self fee starts selfRevenue and the snapshot self fields from zero", () => {
+    createTestToken(FOLIO);
+    const dtf = createGraftedDTF();
+    dtf.selfRevenue = null;
+    dtf.save();
+
+    const event = newMockEvent();
+    event.block.timestamp = BigInt.fromI32(86400);
+    // A pre-graft fee created today's snapshots; null their self fields like 1.11.0 left them.
+    _handleProtocolFeePaid(FOLIO, BigInt.fromI32(500), event);
+    const id = FOLIO.toHexString();
+    const daily = TokenDailySnapshot.load(id + "-1")!;
+    daily.dailySelfRevenue = null;
+    daily.save();
+    const hourly = TokenHourlySnapshot.load(id + "-24")!;
+    hourly.hourlySelfRevenue = null;
+    hourly.save();
+    const monthly = TokenMonthlySnapshot.load(id + "-0")!;
+    monthly.monthlySelfRevenue = null;
+    monthly.cumulativeSelfRevenue = null;
+    monthly.save();
+
+    _handleFolioFeePaid(FOLIO, FOLIO, BigInt.fromI32(70), event);
+
+    assert.fieldEquals("DTF", id, "selfRevenue", "70");
+    assert.fieldEquals("DTF", id, "externalRevenue", "0");
+    assert.fieldEquals("DTF", id, "totalRevenue", "570");
+    assert.fieldEquals("TokenDailySnapshot", id + "-1", "dailySelfRevenue", "70");
+    assert.fieldEquals("TokenHourlySnapshot", id + "-24", "hourlySelfRevenue", "70");
+    assert.fieldEquals("TokenMonthlySnapshot", id + "-0", "monthlySelfRevenue", "70");
+    assert.fieldEquals("TokenMonthlySnapshot", id + "-0", "cumulativeSelfRevenue", "70");
   });
 });

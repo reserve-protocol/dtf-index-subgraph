@@ -415,6 +415,12 @@ export function _handleProtocolFeePaid(
   monthlySnapshot.save();
 }
 
+// Self-revenue fields were added in 1.11.1 and are null on entities written before the graft.
+function orZero(value: BigInt | null): BigInt {
+  if (value === null) return BIGINT_ZERO;
+  return value!;
+}
+
 export function _handleFolioFeePaid(
   dtfAddress: Address,
   recipient: Address,
@@ -432,9 +438,13 @@ export function _handleFolioFeePaid(
   let hourlySnapshot = getOrCreateTokenHourlySnapshot(token, event.block);
   hourlySnapshot.hourlyRevenue = hourlySnapshot.hourlyRevenue.plus(amount);
 
+  // Folio 6.0 pays the holders' self fee as FolioFeePaid(address(this), shares). Fee recipient
+  // tables reject the Folio's own address, so this recipient is never an external party.
+  const isSelf = recipient.equals(dtfAddress);
+
   // Check if recipient is governance token to properly track revenue type
   let isGovernanceToken = false;
-  if (dtf.ownerGovernance) {
+  if (!isSelf && dtf.ownerGovernance) {
     let gov = Governance.load(dtf.ownerGovernance as string);
     if (gov) {
       let recipientHex = recipient.toHexString();
@@ -453,7 +463,12 @@ export function _handleFolioFeePaid(
     }
   }
 
-  if (isGovernanceToken) {
+  if (isSelf) {
+    dtf.selfRevenue = orZero(dtf.selfRevenue).plus(amount);
+    // snapshots
+    dailySnapshot.dailySelfRevenue = orZero(dailySnapshot.dailySelfRevenue).plus(amount);
+    hourlySnapshot.hourlySelfRevenue = orZero(hourlySnapshot.hourlySelfRevenue).plus(amount);
+  } else if (isGovernanceToken) {
     dtf.governanceRevenue = dtf.governanceRevenue.plus(amount);
     // snapshots
     dailySnapshot.dailyGovernanceRevenue = dailySnapshot.dailyGovernanceRevenue.plus(amount);
@@ -470,7 +485,10 @@ export function _handleFolioFeePaid(
   // Create monthly snapshot
   let monthlySnapshot = getOrCreateTokenMonthlySnapshot(token, event.block);
   monthlySnapshot.monthlyRevenue = monthlySnapshot.monthlyRevenue.plus(amount);
-  if (isGovernanceToken) {
+  if (isSelf) {
+    monthlySnapshot.monthlySelfRevenue = orZero(monthlySnapshot.monthlySelfRevenue).plus(amount);
+    monthlySnapshot.cumulativeSelfRevenue = dtf.selfRevenue;
+  } else if (isGovernanceToken) {
     monthlySnapshot.monthlyGovernanceRevenue = monthlySnapshot.monthlyGovernanceRevenue.plus(amount);
     monthlySnapshot.cumulativeGovernanceRevenue = dtf.governanceRevenue;
   } else {

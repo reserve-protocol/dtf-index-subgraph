@@ -460,6 +460,7 @@ export function getOrCreateTokenDailySnapshot(
   newSnapshot.dailyProtocolRevenue = BIGINT_ZERO;
   newSnapshot.dailyGovernanceRevenue = BIGINT_ZERO;
   newSnapshot.dailyExternalRevenue = BIGINT_ZERO;
+  newSnapshot.dailySelfRevenue = BIGINT_ZERO;
   newSnapshot.blockNumber = block.number;
   newSnapshot.timestamp = block.timestamp;
 
@@ -495,6 +496,7 @@ export function getOrCreateTokenHourlySnapshot(
   newSnapshot.hourlyProtocolRevenue = BIGINT_ZERO;
   newSnapshot.hourlyGovernanceRevenue = BIGINT_ZERO;
   newSnapshot.hourlyExternalRevenue = BIGINT_ZERO;
+  newSnapshot.hourlySelfRevenue = BIGINT_ZERO;
   newSnapshot.blockNumber = block.number;
   newSnapshot.timestamp = block.timestamp;
 
@@ -529,6 +531,7 @@ export function getOrCreateTokenMonthlySnapshot(
   newSnapshot.monthlyProtocolRevenue = BIGINT_ZERO;
   newSnapshot.monthlyGovernanceRevenue = BIGINT_ZERO;
   newSnapshot.monthlyExternalRevenue = BIGINT_ZERO;
+  newSnapshot.monthlySelfRevenue = BIGINT_ZERO;
   // Seed cumulatives from the parent running totals so months with no fee
   // events (Transfer-first months) inherit the correct lifetime values instead
   // of resetting to zero. Source of truth: Token + DTF entity running totals.
@@ -538,6 +541,7 @@ export function getOrCreateTokenMonthlySnapshot(
   newSnapshot.cumulativeProtocolRevenue = BIGINT_ZERO;
   newSnapshot.cumulativeGovernanceRevenue = BIGINT_ZERO;
   newSnapshot.cumulativeExternalRevenue = BIGINT_ZERO;
+  newSnapshot.cumulativeSelfRevenue = BIGINT_ZERO;
   if (token.type == "DTF") {
     let dtf = DTF.load(token.id);
     if (dtf) {
@@ -545,6 +549,7 @@ export function getOrCreateTokenMonthlySnapshot(
       newSnapshot.cumulativeProtocolRevenue = dtf.protocolRevenue;
       newSnapshot.cumulativeGovernanceRevenue = dtf.governanceRevenue;
       newSnapshot.cumulativeExternalRevenue = dtf.externalRevenue;
+      if (dtf.selfRevenue !== null) newSnapshot.cumulativeSelfRevenue = dtf.selfRevenue;
     }
   }
   newSnapshot.blockNumber = block.number;

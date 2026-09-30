@@ -35,6 +35,7 @@ export function _handleDTFDeployed(
   dtf.protocolRevenue = BIGINT_ZERO;
   dtf.governanceRevenue = BIGINT_ZERO;
   dtf.externalRevenue = BIGINT_ZERO;
+  dtf.selfRevenue = BIGINT_ZERO;
   dtf.mintingFee = BIGINT_ZERO;
   dtf.tvlFee = BIGINT_ZERO;
   dtf.auctionDelay = BIGINT_ZERO;

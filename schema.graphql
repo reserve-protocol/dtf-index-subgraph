@@ -107,7 +107,7 @@ type DTF @entity(immutable: false) {
   " Folio ERC20 token address "
   token: Token!
 
-  " Revenue "
+  " Revenue: every fee share the Folio paid, protocolRevenue + governanceRevenue + externalRevenue + selfRevenue "
   totalRevenue: BigInt!
 
   " Protocol revenue "
@@ -118,6 +118,9 @@ type DTF @entity(immutable: false) {
 
   " External recipients revenue "
   externalRevenue: BigInt!
+
+  " Fees retained for the Folio's own holders (v6.0+ self fee, paid as FolioFeePaid to the Folio itself); part of totalRevenue, not of externalRevenue. Null on DTFs indexed before 1.11.1 (graft) until their first self fee "
+  selfRevenue: BigInt
 
   " Folio deployer address "
   deployer: Bytes!
@@ -623,6 +626,9 @@ type TokenDailySnapshot @entity(immutable: false) {
   " Daily external recipients revenue for this DTF "
   dailyExternalRevenue: BigInt!
 
+  " Daily fees retained for the DTF's own holders (v6.0+ self fee); null on snapshots written before 1.11.1 "
+  dailySelfRevenue: BigInt
+
   " Daily total Supply of the token "
   dailyTotalSupply: BigInt!
 
@@ -678,6 +684,9 @@ type TokenHourlySnapshot @entity(immutable: false) {
 
   " Hourly external recipients revenue for this DTF "
   hourlyExternalRevenue: BigInt!
+
+  " Hourly fees retained for the DTF's own holders (v6.0+ self fee); null on snapshots written before 1.11.1 "
+  hourlySelfRevenue: BigInt
 
   " Hourly total Supply of the token "
   hourlyTotalSupply: BigInt!
@@ -765,6 +774,9 @@ type TokenMonthlySnapshot @entity(immutable: false) {
   " Monthly external revenue for this DTF "
   monthlyExternalRevenue: BigInt!
 
+  " Monthly fees retained for the DTF's own holders (v6.0+ self fee); null on snapshots written before 1.11.1 "
+  monthlySelfRevenue: BigInt
+
   " Cumulative revenue up to this month "
   cumulativeRevenue: BigInt!
 
@@ -776,6 +788,9 @@ type TokenMonthlySnapshot @entity(immutable: false) {
 
   " Cumulative external revenue "
   cumulativeExternalRevenue: BigInt!
+
+  " Cumulative fees retained for the DTF's own holders (v6.0+ self fee); null on snapshots written before 1.11.1 "
+  cumulativeSelfRevenue: BigInt
 
   " Cumulative mints "
   cumulativeMintAmount: BigInt!
