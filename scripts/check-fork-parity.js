@@ -58,6 +58,9 @@ const CASE_EVIDENCE = {
   v5LegacyUpgrade: "upgrade",
   v6Native: "execution",
 };
+// Cases whose sandbox run appends economic completion (bid, close, end) after stateBlock.
+// Their completion is required and asserted at the fixture's completionBlock.
+const CASE_COMPLETION = ["v6Native", "v5LegacyUpgrade"];
 let rpcRequestId = 0;
 
 if (require.main === module) {
@@ -69,10 +72,12 @@ if (require.main === module) {
 
 module.exports = {
   CASE_EVIDENCE,
+  CASE_COMPLETION,
   selectProfile,
   planParity,
   summarizeResults,
   expectedGovernanceLinks,
+  compareCompletion,
 };
 
 async function main() {
@@ -94,15 +99,13 @@ async function main() {
     `query { _meta { block { number } hasIndexingErrors deployment } }`,
   );
   assertEqual(meta._meta.hasIndexingErrors, false, "subgraph indexing errors");
-  if (fixture.minimumIndexedBlock !== undefined) {
-    const indexed = Number(meta._meta.block.number);
-    if (indexed < fixture.minimumIndexedBlock) {
-      fail(`indexed block ${indexed} is below ${fixture.minimumIndexedBlock}`);
-    }
+  const indexed = Number(meta._meta.block.number);
+  if (indexed < fixture.requiredIndexedBlock) {
+    fail(`indexed block ${indexed} is below ${fixture.requiredIndexedBlock}`);
   }
   const deploymentStatus = await assertActiveDeploymentStatus(
     meta._meta.deployment,
-    fixture.minimumIndexedBlock,
+    fixture.requiredIndexedBlock,
   );
 
   const results = [];
@@ -121,7 +124,10 @@ async function main() {
   const summary = summarizeResults(fixture, results);
   if (!summary.passed) fail(summary.message);
   console.log(
-    `${summary.message} at block ${meta._meta.block.number}: ${defeatedSetupProposals} harmless defeated setup proposal(s); active deployment ${meta._meta.deployment} is healthy (${deploymentStatus.historical} historical deployment(s) ignored); block-pinned event accounting, execution receipts, roles, governance links, fees, and RPC post-state match`,
+    `${summary.message} at block ${meta._meta.block.number}: ${defeatedSetupProposals} harmless defeated setup proposal(s); active deployment ${meta._meta.deployment} is healthy (${deploymentStatus.historical} historical deployment(s) ignored); block-pinned event accounting, execution receipts, roles, governance links, fees, and RPC post-state match at stateBlock ${fixture.minimumIndexedBlock}` +
+      (fixture.completionBlock !== undefined
+        ? `; bids, closed auctions and ended rebalances match at completionBlock ${fixture.completionBlock}`
+        : ""),
   );
 }
 
@@ -129,10 +135,75 @@ async function main() {
 async function checkCase(fixture, parityCase) {
   await checkFolio(fixture, parityCase.folio);
   if (parityCase.proposal) await checkProposal(fixture, parityCase.proposal);
-  if (!parityCase.execution) return 0;
-  await assertExecutionParity(fixture, parityCase.execution);
-  if (parityCase.name !== "v6Native") return 0;
-  return assertNativeExecutionGovernance(fixture, parityCase.execution);
+  let defeatedSetupProposals = 0;
+  if (parityCase.execution) {
+    await assertExecutionParity(fixture, parityCase.execution);
+    if (parityCase.name === "v6Native") {
+      defeatedSetupProposals = await assertNativeExecutionGovernance(fixture, parityCase.execution);
+    }
+  }
+  if (parityCase.completion) await assertCompletionParity(fixture, parityCase.completion);
+  return defeatedSetupProposals;
+}
+
+// Economic completion is appended after stateBlock, so it is read at completionBlock.
+async function assertCompletionParity(fixture, completion) {
+  const graph = await query(
+    `query Completion($rebalanceId: ID!, $auctionId: ID!, $auction: String!, $block: Int!) {
+      rebalance(id: $rebalanceId, block: { number: $block }) {
+        id availableUntil transactionHash blockNumber
+      }
+      auction(id: $auctionId, block: { number: $block }) {
+        id rebalance { id } startTime endTime transactionHash blockNumber
+      }
+      rebalanceAuctionBids(first: 1000, where: { auction: $auction }, block: { number: $block }) {
+        id bidder sellToken { id } buyToken { id } sellAmount buyAmount
+        blockNumber timestamp transactionHash
+      }
+    }`,
+    {
+      rebalanceId: completion.rebalanceId,
+      auctionId: completion.auctionId,
+      auction: completion.auctionId,
+      block: fixture.completionBlock,
+    },
+  );
+  compareCompletion(completion, graph);
+}
+
+// Pure: the indexed bid, auction and rebalance must match the fixture's completion records.
+function compareCompletion(completion, graph) {
+  const label = `${completion.name}.completion`;
+  const bids = graph.rebalanceAuctionBids || [];
+  if (bids.length !== 1) {
+    fail(`${label}: expected exactly one bid on auction ${completion.auctionId}, got ${bids.length}`);
+  }
+  const bid = bids[0];
+  const expectedBid = completion.bid;
+  assertEqual(bid.bidder, completion.bidder, `${label}.bid.bidder`);
+  assertEqual(bid.sellToken.id, expectedBid.sellToken, `${label}.bid.sellToken`);
+  assertEqual(bid.buyToken.id, expectedBid.buyToken, `${label}.bid.buyToken`);
+  assertEqual(bid.sellAmount, expectedBid.sellAmount, `${label}.bid.sellAmount`);
+  assertEqual(bid.buyAmount, expectedBid.buyAmount, `${label}.bid.buyAmount`);
+  assertEqual(bid.blockNumber, expectedBid.block, `${label}.bid.blockNumber`);
+  assertEqual(bid.timestamp, expectedBid.timestamp, `${label}.bid.timestamp`);
+  assertEqual(bid.transactionHash, expectedBid.txHash, `${label}.bid.transactionHash`);
+
+  if (!graph.rebalance) fail(`${label}: rebalance ${completion.rebalanceId} not indexed`);
+  assertEqual(
+    graph.rebalance.availableUntil,
+    completion.end.availableUntil,
+    `${label}.rebalance.availableUntil (ended)`,
+  );
+  assertEqual(graph.rebalance.transactionHash, completion.rebalance.txHash, `${label}.rebalance.transactionHash`);
+  assertEqual(graph.rebalance.blockNumber, completion.rebalance.block, `${label}.rebalance.blockNumber`);
+
+  if (!graph.auction) fail(`${label}: auction ${completion.auctionId} not indexed`);
+  assertEqual(graph.auction.rebalance.id, completion.rebalanceId, `${label}.auction.rebalance`);
+  assertEqual(graph.auction.startTime, completion.auction.startTime, `${label}.auction.startTime`);
+  assertEqual(graph.auction.endTime, completion.close.endTime, `${label}.auction.endTime (closed)`);
+  assertEqual(graph.auction.transactionHash, completion.auction.txHash, `${label}.auction.transactionHash`);
+  assertEqual(graph.auction.blockNumber, completion.auction.block, `${label}.auction.blockNumber`);
 }
 
 async function checkFolio(fixture, folio) {
@@ -1017,10 +1088,14 @@ function planParity(raw, profile) {
   }
 
   const cases = profile.cases.map((name) => planCase(name, raw.scenarios[name], raw));
+  const hasCompletion = cases.some((parityCase) => parityCase.completion);
   return {
     profile: profile.name,
     rpcUrl: raw.rpcUrl,
+    // stateBlock assertions read here; completion assertions read at completionBlock.
     minimumIndexedBlock: raw.stateBlock,
+    completionBlock: hasCompletion ? raw.completionBlock : undefined,
+    requiredIndexedBlock: hasCompletion ? raw.completionBlock : raw.stateBlock,
     cases,
     skipped: Object.keys(raw.scenarios).filter((name) => !profile.cases.includes(name)),
   };
@@ -1048,6 +1123,9 @@ function planCase(name, scenario, raw) {
   if (evidence === "execution" && !scenario.execution) {
     fail(`schema v1 scenario ${name} requires execution evidence`);
   }
+  if (CASE_COMPLETION.includes(name) && !scenario.completion) {
+    fail(`schema v1 scenario ${name} requires completion evidence (bid, close, end)`);
+  }
 
   return {
     name,
@@ -1063,7 +1141,78 @@ function planCase(name, scenario, raw) {
     },
     proposal: hasUpgrade ? normalizeScenarioProposal(name, scenario) : null,
     execution: scenario.execution ? normalizeExecutionScenario(name, scenario, raw) : null,
+    completion: scenario.completion ? normalizeCompletion(name, scenario, raw) : null,
   };
+}
+
+// Validates a scenario's completion records and returns what the graph must match.
+function normalizeCompletion(name, scenario, raw) {
+  const completion = scenario.completion;
+  const label = `${name}.completion`;
+  if (!Number.isSafeInteger(raw.completionBlock) || raw.completionBlock <= raw.stateBlock) {
+    fail(`schema v1 ${label} requires a top-level completionBlock after stateBlock`);
+  }
+  if (!Number.isSafeInteger(raw.completionTimestamp) || raw.completionTimestamp < raw.stateTimestamp) {
+    fail(`schema v1 ${label} requires a top-level completionTimestamp`);
+  }
+  requireAddress(completion.bidder, `${label}.bidder`);
+  requireAddress(completion.launcher, `${label}.launcher`);
+  const rebalanceNonce = requireUint(completion.rebalanceNonce, `${label}.rebalanceNonce`);
+  const auctionId = requireUint(completion.auctionId, `${label}.auctionId`);
+
+  const records = ["rebalance", "auction", "bid", "close", "end"];
+  for (const record of records) {
+    const value = completion[record];
+    if (!value || typeof value !== "object") fail(`schema v1 ${label} requires ${record}`);
+    if (typeof value.txHash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(value.txHash)) {
+      fail(`schema v1 ${label}.${record}.txHash must be a transaction hash`);
+    }
+    if (!Number.isSafeInteger(value.block)) fail(`schema v1 ${label}.${record}.block must be an integer`);
+  }
+  const blocks = records.map((record) => completion[record].block);
+  const ordered = blocks.every((block, index) => index === 0 || blocks[index - 1] <= block);
+  if (!ordered || blocks[0] < scenario.creationBlock || blocks[blocks.length - 1] > raw.completionBlock) {
+    fail(`schema v1 ${label} has unordered blocks ${blocks.join(", ")}`);
+  }
+
+  const bid = completion.bid;
+  requireAddress(bid.sellToken, `${label}.bid.sellToken`);
+  requireAddress(bid.buyToken, `${label}.bid.buyToken`);
+  if (bid.bidder !== undefined && bid.bidder.toLowerCase() !== completion.bidder.toLowerCase()) {
+    fail(`schema v1 ${label}.bid.bidder does not match ${label}.bidder`);
+  }
+
+  return {
+    name,
+    rebalanceId: `${scenario.folio.toLowerCase()}-0x${BigInt(rebalanceNonce).toString(16)}`,
+    auctionId: `${scenario.folio.toLowerCase()}-${auctionId}`,
+    bidder: completion.bidder,
+    rebalance: { txHash: completion.rebalance.txHash, block: completion.rebalance.block },
+    auction: {
+      txHash: completion.auction.txHash,
+      block: completion.auction.block,
+      startTime: requireUint(completion.auction.startTime, `${label}.auction.startTime`),
+    },
+    bid: {
+      txHash: bid.txHash,
+      block: bid.block,
+      timestamp: requireUint(bid.timestamp, `${label}.bid.timestamp`),
+      sellToken: bid.sellToken,
+      buyToken: bid.buyToken,
+      sellAmount: requireUint(bid.sellAmount, `${label}.bid.sellAmount`),
+      buyAmount: requireUint(bid.buyAmount, `${label}.bid.buyAmount`),
+    },
+    close: { endTime: requireUint(completion.close.endTime, `${label}.close.endTime`) },
+    end: { availableUntil: requireUint(completion.end.availableUntil, `${label}.end.availableUntil`) },
+  };
+}
+
+// Accepts a non-negative safe integer or a decimal string; returns the decimal string.
+function requireUint(value, label) {
+  const valid =
+    (Number.isSafeInteger(value) && value >= 0) || (typeof value === "string" && /^[0-9]+$/.test(value));
+  if (!valid) fail(`schema v1 ${label} must be a non-negative integer`);
+  return BigInt(value).toString();
 }
 
 function planGovernance(name, scenario) {
@@ -1099,7 +1248,8 @@ function summarizeResults(plan, results) {
   }
   const upgrades = plan.cases.filter((parityCase) => parityCase.proposal).length;
   const executions = plan.cases.filter((parityCase) => parityCase.execution).length;
-  const coverage = `${selected.length} Folios, ${upgrades} upgrade proposals, ${executions} execution flows (${counts})`;
+  const completions = plan.cases.filter((parityCase) => parityCase.completion).length;
+  const coverage = `${selected.length} Folios, ${upgrades} upgrade proposals, ${executions} execution flows, ${completions} economic completions (${counts})`;
   if (plan.profile === "full") {
     return { passed: true, message: `Fork parity FULL profile passed: ${coverage}` };
   }

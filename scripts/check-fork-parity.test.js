@@ -10,6 +10,7 @@ const {
   planParity,
   summarizeResults,
   expectedGovernanceLinks,
+  compareCompletion,
 } = require("./check-fork-parity.js");
 
 const FULL_FIXTURE = path.join(__dirname, "fixtures/fork-parity-full.json");
@@ -19,6 +20,48 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 function fullFixture() {
   return structuredClone(require(FULL_FIXTURE));
+}
+
+// What a correct subgraph returns at completionBlock, built straight from the fixture records.
+function indexedCompletion(fixture, name) {
+  const scenario = fixture.scenarios[name];
+  const completion = scenario.completion;
+  const folio = scenario.folio.toLowerCase();
+  const rebalanceId = `${folio}-0x${completion.rebalanceNonce.toString(16)}`;
+  return {
+    rebalance: {
+      id: rebalanceId,
+      availableUntil: String(completion.end.availableUntil),
+      transactionHash: completion.rebalance.txHash,
+      blockNumber: String(completion.rebalance.block),
+    },
+    auction: {
+      id: `${folio}-${completion.auctionId}`,
+      rebalance: { id: rebalanceId },
+      startTime: String(completion.auction.startTime),
+      endTime: String(completion.close.endTime),
+      transactionHash: completion.auction.txHash,
+      blockNumber: String(completion.auction.block),
+    },
+    rebalanceAuctionBids: [
+      {
+        id: `${folio}-${completion.auctionId}-bid`,
+        bidder: completion.bidder.toLowerCase(),
+        sellToken: { id: completion.bid.sellToken.toLowerCase() },
+        buyToken: { id: completion.bid.buyToken.toLowerCase() },
+        sellAmount: completion.bid.sellAmount,
+        buyAmount: completion.bid.buyAmount,
+        blockNumber: String(completion.bid.block),
+        timestamp: String(completion.bid.timestamp),
+        transactionHash: completion.bid.txHash,
+      },
+    ],
+  };
+}
+
+function completionCase(fixture, name) {
+  const plan = planParity(fixture, selectProfile(undefined));
+  return plan.cases.find((parityCase) => parityCase.name === name).completion;
 }
 
 function passAll(plan) {
@@ -35,8 +78,89 @@ test("full profile plans every case with its evidence", () => {
   );
   assert.equal(plan.cases.filter((parityCase) => parityCase.proposal).length, 2);
   assert.equal(plan.cases.filter((parityCase) => parityCase.execution).length, 2);
+  assert.deepEqual(
+    plan.cases.filter((parityCase) => parityCase.completion).map((parityCase) => parityCase.name),
+    ["v5LegacyUpgrade", "v6Native"],
+  );
   assert.deepEqual(plan.skipped, []);
-  assert.match(summarizeResults(plan, passAll(plan)).message, /^Fork parity FULL profile passed: 4 Folios, 2 upgrade proposals, 2 execution flows \(4 selected, 4 passed, 0 failed, 0 skipped\)$/);
+  // stateBlock assertions keep reading at stateBlock; the indexer must reach completionBlock.
+  const fixture = fullFixture();
+  assert.equal(plan.minimumIndexedBlock, fixture.stateBlock);
+  assert.equal(plan.completionBlock, fixture.completionBlock);
+  assert.equal(plan.requiredIndexedBlock, fixture.completionBlock);
+  assert.match(summarizeResults(plan, passAll(plan)).message, /^Fork parity FULL profile passed: 4 Folios, 2 upgrade proposals, 2 execution flows, 2 economic completions \(4 selected, 4 passed, 0 failed, 0 skipped\)$/);
+});
+
+test("full profile rejects a missing or malformed completion", () => {
+  for (const name of ["v6Native", "v5LegacyUpgrade"]) {
+    const fixture = fullFixture();
+    delete fixture.scenarios[name].completion;
+    assert.throws(
+      () => planParity(fixture, selectProfile(undefined)),
+      new RegExp(`${name} requires completion evidence`),
+    );
+  }
+
+  const withoutBlock = fullFixture();
+  delete withoutBlock.completionBlock;
+  assert.throws(
+    () => planParity(withoutBlock, selectProfile(undefined)),
+    /completion requires a top-level completionBlock after stateBlock/,
+  );
+
+  const withoutBid = fullFixture();
+  delete withoutBid.scenarios.v6Native.completion.bid;
+  assert.throws(() => planParity(withoutBid, selectProfile(undefined)), /v6Native.completion requires bid/);
+
+  const unordered = fullFixture();
+  const legacy = unordered.scenarios.v5LegacyUpgrade.completion;
+  legacy.close.block = legacy.bid.block - 1;
+  assert.throws(() => planParity(unordered, selectProfile(undefined)), /v5LegacyUpgrade.completion has unordered blocks/);
+});
+
+test("completion passes when the indexed bid, closed auction and ended rebalance match", () => {
+  const fixture = fullFixture();
+  for (const name of ["v6Native", "v5LegacyUpgrade"]) {
+    assert.doesNotThrow(() => compareCompletion(completionCase(fixture, name), indexedCompletion(fixture, name)));
+  }
+});
+
+test("completion fails on a missing bid", () => {
+  const fixture = fullFixture();
+  const graph = indexedCompletion(fixture, "v5LegacyUpgrade");
+  const duplicated = structuredClone(graph);
+  graph.rebalanceAuctionBids = [];
+  assert.throws(
+    () => compareCompletion(completionCase(fixture, "v5LegacyUpgrade"), graph),
+    /v5LegacyUpgrade.completion: expected exactly one bid on auction .*-0, got 0/,
+  );
+  duplicated.rebalanceAuctionBids.push(duplicated.rebalanceAuctionBids[0]);
+  assert.throws(
+    () => compareCompletion(completionCase(fixture, "v5LegacyUpgrade"), duplicated),
+    /got 2/,
+  );
+});
+
+test("completion fails on a wrong bid amount", () => {
+  const fixture = fullFixture();
+  const graph = indexedCompletion(fixture, "v6Native");
+  graph.rebalanceAuctionBids[0].buyAmount = (BigInt(graph.rebalanceAuctionBids[0].buyAmount) + 1n).toString();
+  assert.throws(
+    () => compareCompletion(completionCase(fixture, "v6Native"), graph),
+    /v6Native.completion.bid.buyAmount: expected "33333334", got "33333335"/,
+  );
+});
+
+test("completion fails when the closed auction's endTime is the close block's timestamp", () => {
+  // Folio stores block.timestamp - 1 on close; the pre-1.11.1 handler stored block.timestamp.
+  const fixture = fullFixture();
+  const close = fixture.scenarios.v6Native.completion.close;
+  const graph = indexedCompletion(fixture, "v6Native");
+  graph.auction.endTime = String(close.timestamp);
+  assert.throws(
+    () => compareCompletion(completionCase(fixture, "v6Native"), graph),
+    new RegExp(`v6Native.completion.auction.endTime \\(closed\\): expected "${close.endTime}", got "${close.timestamp}"`),
+  );
 });
 
 test("full profile rejects the empty-scenario fixture from the audit", () => {
@@ -111,7 +235,7 @@ test("a subset profile is explicit and never reports a full-suite pass", () => {
   assert.equal(summary.passed, true);
   assert.equal(
     summary.message,
-    "Fork parity SUBSET passed for v5Control, v6Native only: 2 Folios, 0 upgrade proposals, 2 execution flows (2 selected, 2 passed, 0 failed, 2 skipped); this does not certify the full suite",
+    "Fork parity SUBSET passed for v5Control, v6Native only: 2 Folios, 0 upgrade proposals, 2 execution flows, 1 economic completions (2 selected, 2 passed, 0 failed, 2 skipped); this does not certify the full suite",
   );
   assert.doesNotMatch(summary.message, /FULL/);
 });

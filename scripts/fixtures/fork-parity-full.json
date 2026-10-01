@@ -1,25 +1,30 @@
 {
   "schemaVersion": 1,
-  "rpcUrl": "http://127.0.0.1:8545",
+  "rpcUrl": "http://127.0.0.1:8549",
   "chainId": 1,
-  "forkBlock": 25834864,
-  "stateBlock": 25834903,
-  "stateTimestamp": 1787693625,
+  "forkBlock": 26091150,
+  "stateBlock": 26091189,
+  "stateTimestamp": 1790782373,
   "writePaths": {
-    "deadline": 1787696860,
+    "deadline": 1790785603,
     "auctionLength": 300
   },
   "protocol": {
     "v5Deployer": "0x4D201a6e5BF975E2CEE9e5cbDfc803C0Ff122073",
-    "v6Deployer": "0x388dB009b7984E673938AC20480194D4481bEF11",
-    "v6Implementation": "0x10E8ADc336e9D3d18E52567ecd0B151A54ac8E3D",
+    "v6Deployer": "0x2B1Cd9aEF0CD3B9fF5DCa1C66348eCfC46F37392",
+    "v6Implementation": "0x76b72b8e454374340921D7535a5511f442554f9c",
     "versionRegistry": "0xA665b273997F70b647B66fa7Ed021287544849dB",
-    "upgradeSpell": "0x6f0921A2F9c7da5F579f0Fc83873E52f6352B994",
-    "upgradeSpellSourceCommit": "33c315690a71c826b5bcd01b69110f478ccd865d",
+    "upgradeSpell": "0x9e2AbA3F2143B799085694fA5606cd0864DA24Ee",
+    "upgradeSpellSourceCommit": "50f29f4a4dd2c8877d9879130f16eb23636cccfb",
+    "upgradeSpellSourceSha256": "6fd0b3d6fc77b0c0946db53d3b2c2afffde93d050fe268d5dc394eef45fd835c",
     "startRebalanceSelectors": {
       "v5": "0x207c8eed",
       "v6": "0xc1e54b89"
-    }
+    },
+    "v6DeployerSource": "real",
+    "v6OptimisticGovernorDeployer": "0x4292433c772958ae93bebf32602ffDe0f9C5Fcd6",
+    "v5OptimisticGovernorDeployer": "0x2ACC45e12776579f40Ae3419764EEf7022763735",
+    "upgradeSpellSource": "sandbox"
   },
   "scenarios": {
     "v5Control": {
@@ -27,7 +32,7 @@
       "proxyAdmin": "0x719a31656F71605819173437082212c98b169E9e",
       "governance": "0x0000000000000000000000000000000000000000",
       "governanceKind": "standard",
-      "creationBlock": 25834873,
+      "creationBlock": 26091156,
       "expectedVersion": "5.0.0",
       "execution": {
         "actor": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
@@ -37,11 +42,11 @@
           "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
         ],
         "rebalanceNonce": 1,
-        "rebalanceTxHash": "0xc9e849d4a16b10ff90329e2f35895a92ecc2b7cd4a92ea98402268d48f8e8da9",
-        "rebalanceBlock": 25834897,
+        "rebalanceTxHash": "0x5bc1f66bd6190c9aa238a8f0c47847d03ab2b5d56e489820ab5d5064c920b21b",
+        "rebalanceBlock": 26091180,
         "auctionId": 0,
-        "auctionTxHash": "0x49e5abc594d4d59f4ad2e26f755c05189d7ab0431e070251cdf1ac2b18900f4f",
-        "auctionBlock": 25834898,
+        "auctionTxHash": "0xfd518c229e3cf9749c7bb28ff49dc16579a15b9eb6c636d1730f6ea08604ba50",
+        "auctionBlock": 26091181,
         "auctionLength": 300
       }
     },
@@ -56,23 +61,23 @@
         "stakingVault": "0x6Ca2Ff7D61674181e1F3F2575a2e56f11fe70aFf",
         "selectorRegistry": "0x48eE1c75E733147b115f30f7e71d5f40aA44b1ed"
       },
-      "creationBlock": 25834874,
-      "upgradeBlock": 25834895,
+      "creationBlock": 26091157,
+      "upgradeBlock": 26091178,
       "proposalCallCount": 4,
       "expectedVersion": "6.0.0",
       "proposal": {
-        "proposalId": "49651669486396712934988820509275523492729743469185371636286576677573978320841",
-        "entityId": "0xbf39a799ef57e712b88419cc254e002dd167a94c-49651669486396712934988820509275523492729743469185371636286576677573978320841",
+        "proposalId": "110106772783501131130792518134784792131064239069411581704771502285931955458786",
+        "entityId": "0xbf39a799ef57e712b88419cc254e002dd167a94c-110106772783501131130792518134784792131064239069411581704771502285931955458786",
         "kind": "standard",
         "optimistic": false,
         "state": "executed",
-        "proposalBlock": 25834886,
-        "executeBlock": 25834895,
+        "proposalBlock": 26091169,
+        "executeBlock": 26091178,
         "targets": [
           "0x48eE1c75E733147b115f30f7e71d5f40aA44b1ed",
           "0x48eE1c75E733147b115f30f7e71d5f40aA44b1ed",
           "0xD67a34848dB699670052B8a81220C6c71d371150",
-          "0x6f0921A2F9c7da5F579f0Fc83873E52f6352B994"
+          "0x9e2AbA3F2143B799085694fA5606cd0864DA24Ee"
         ],
         "values": [
           0,
@@ -83,7 +88,7 @@
         "calldatas": [
           "0x39535e96000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000512a93643ae35f895ec02bee94670af77c9021be00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000001c1e54b8900000000000000000000000000000000000000000000000000000000",
           "0x3bb9e672000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000512a93643ae35f895ec02bee94670af77c9021be00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000001207c8eed00000000000000000000000000000000000000000000000000000000",
-          "0xf2fde38b0000000000000000000000006f0921a2f9c7da5f579f0fc83873e52f6352b994",
+          "0xf2fde38b0000000000000000000000009e2aba3f2143b799085694fa5606cd0864da24ee",
           "0x2aa6b211000000000000000000000000512a93643ae35f895ec02bee94670af77c9021be000000000000000000000000d67a34848db699670052b8a81220c6c71d37115000000000000000000000000048ee1c75e733147b115f30f7e71d5f40aa44b1ed"
         ],
         "selectors": [
@@ -105,48 +110,95 @@
         "stakingVault": "0x0E35e233DD2373C50e8649a2505C7e1D7CF83AC6",
         "selectorRegistry": "0x0000000000000000000000000000000000000000"
       },
-      "creationBlock": 25834882,
-      "upgradeBlock": 25834896,
+      "creationBlock": 26091165,
+      "upgradeBlock": 26091179,
       "proposalCallCount": 2,
       "expectedVersion": "6.0.0",
       "proposal": {
-        "proposalId": "65074364691890431347318934547956912406241027446101044707023779785867599899039",
-        "entityId": "0xbb8b7766ff7efe1884dfbde25e1827356fa0bd16-65074364691890431347318934547956912406241027446101044707023779785867599899039",
+        "proposalId": "40048523367299580407765632580872310772183994954533502203272247760343638743976",
+        "entityId": "0xbb8b7766ff7efe1884dfbde25e1827356fa0bd16-40048523367299580407765632580872310772183994954533502203272247760343638743976",
         "kind": "standard",
         "optimistic": false,
         "state": "executed",
-        "proposalBlock": 25834887,
-        "executeBlock": 25834896,
+        "proposalBlock": 26091170,
+        "executeBlock": 26091179,
         "targets": [
           "0x22FaE17D5832f661A6d6d4bdA7222B7A1b55aCF6",
-          "0x6f0921A2F9c7da5F579f0Fc83873E52f6352B994"
+          "0x9e2AbA3F2143B799085694fA5606cd0864DA24Ee"
         ],
         "values": [
           0,
           0
         ],
         "calldatas": [
-          "0xf2fde38b0000000000000000000000006f0921a2f9c7da5f579f0fc83873e52f6352b994",
+          "0xf2fde38b0000000000000000000000009e2aba3f2143b799085694fa5606cd0864da24ee",
           "0x2aa6b2110000000000000000000000006a473eb2ffaf3efd14e136c72ee94c2c6a7c308700000000000000000000000022fae17d5832f661a6d6d4bda7222b7a1b55acf60000000000000000000000000000000000000000000000000000000000000000"
         ],
         "selectors": [
           "0xf2fde38b",
           "0x2aa6b211"
         ]
+      },
+      "completion": {
+        "bidder": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+        "launcher": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "rebalanceNonce": 1,
+        "auctionId": 0,
+        "rebalance": {
+          "txHash": "0x69597c85316ef3d3efe63daf7a09f5ea726a504325f658918a6ca27774e2a08b",
+          "block": 26091193,
+          "selector": "0xc1e54b89"
+        },
+        "auction": {
+          "txHash": "0x59b722fbd15dff4307df1f173ee93c130ecd5f98074c6dc4a2483fed18f38265",
+          "block": 26091195,
+          "selector": "0x072c2f17",
+          "startTime": 1790782557,
+          "endTime": 1790782857,
+          "length": 300
+        },
+        "bid": {
+          "txHash": "0xba83f08982cfa8f9a182e10ba7668bf548391584192209fffd9b2d5138542189",
+          "block": 26091196,
+          "timestamp": 1790782557,
+          "bidder": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "sellToken": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+          "buyToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "sellAmount": "10000000000000000",
+          "buyAmount": "33333334",
+          "price": "3333333333333333334",
+          "priceBasis": "auction-start",
+          "expected": {
+            "sellAmount": "10000000000000000",
+            "buyAmount": "33333334"
+          }
+        },
+        "close": {
+          "txHash": "0xf75cb30a6c352af2ec78505cb89e9861005ba369a6f4eb1e8188be4311b2859e",
+          "block": 26091197,
+          "timestamp": 1790782558,
+          "endTime": 1790782557
+        },
+        "end": {
+          "txHash": "0xdede7ff18e7bbbd0b965f9efb220f9a61c657148c2b8010c7f56c9c234d177e0",
+          "block": 26091198,
+          "timestamp": 1790782558,
+          "availableUntil": 1790782558
+        }
       }
     },
     "v6Native": {
-      "folio": "0x996DFBa757799B60A2657b0DBB9938B8c8654CA0",
-      "proxyAdmin": "0xC2383b66B359000a59b923adE43dB138f0185519",
-      "governance": "0x7D20182FD2BAD414c982a14B85e8646C4A56FC20",
+      "folio": "0x3c010cF9Fe0dcBdc2A478730624cf2AC517d3030",
+      "proxyAdmin": "0xef25667406AEE86182Da0C287DE851cd129BfF97",
+      "governance": "0x8c35E42491E849575380B6dF41007944bDA93513",
       "governanceKind": "optimistic",
       "governanceAddresses": {
-        "governor": "0x7D20182FD2BAD414c982a14B85e8646C4A56FC20",
-        "timelock": "0x694CfF1Dfc73f670d4542db78d6C2543E43C275D",
+        "governor": "0x8c35E42491E849575380B6dF41007944bDA93513",
+        "timelock": "0x06f8edEc586a447bC712CaE83B542E1569BFAf4E",
         "stakingVault": "0x6Ca2Ff7D61674181e1F3F2575a2e56f11fe70aFf",
-        "selectorRegistry": "0xEc1342215bf499ddf461b6Ad926CC2D62152192C"
+        "selectorRegistry": "0xE25964EE8f08172Df4371Ed832E0B179E732e378"
       },
-      "creationBlock": 25834885,
+      "creationBlock": 26091168,
       "expectedVersion": "6.0.0",
       "execution": {
         "actor": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
@@ -167,27 +219,76 @@
           "kind": "optimistic",
           "optimistic": true,
           "state": "executed",
-          "description": "Sandbox native-v6 optimistic rebalance at 1787693260",
-          "proposalId": "15479507344912150184482317935283442196836952947971475934343575195881998114815",
-          "proposalTxHash": "0x1e75d2513d259fe3e53e35e4676ef5a2bc926d4f6ecc7b6467a13dea32e298c9",
-          "proposalBlock": 25834899,
-          "executeTxHash": "0x3e891fff594aa2e33c74ab7d637e29d903444c0f3ca96fb3825ebc257f429e4b",
-          "executeBlock": 25834902,
-          "deadline": 1787696860
+          "description": "Sandbox native-v6 optimistic rebalance at 1790782003",
+          "proposalId": "89752894237801638221298708598772957604882535157042892170432395229886978283401",
+          "proposalTxHash": "0x85226149b57358d105d1c6dd0ec83a0f6dc4bf98d13b46194fd046ca251a227c",
+          "proposalBlock": 26091182,
+          "executeTxHash": "0xab6ae3ffccb0d59370bde3c65ad31f419a16c4d2e50cf03fd7d972e9fbfa0fd1",
+          "executeBlock": 26091185,
+          "deadline": 1790785603
         },
+        "deadline": 1790785603,
         "tokens": [
           "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
           "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
         ],
         "rebalanceNonce": 1,
-        "deadline": 1787696860,
-        "rebalanceTxHash": "0x3e891fff594aa2e33c74ab7d637e29d903444c0f3ca96fb3825ebc257f429e4b",
-        "rebalanceBlock": 25834902,
+        "rebalanceTxHash": "0xab6ae3ffccb0d59370bde3c65ad31f419a16c4d2e50cf03fd7d972e9fbfa0fd1",
+        "rebalanceBlock": 26091185,
         "auctionId": 0,
-        "auctionTxHash": "0x82c2046d82dcd2c7b68c88ab620f07e780792d378bdb38b1620bea4b37e001c9",
-        "auctionBlock": 25834903,
+        "auctionTxHash": "0xa50fdb42e78cff69f2189875b219fed0c503ad2a99a40e56974afec69527111e",
+        "auctionBlock": 26091189,
         "auctionLength": 300
+      },
+      "completion": {
+        "bidder": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+        "launcher": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "rebalanceNonce": 1,
+        "auctionId": 0,
+        "rebalance": {
+          "txHash": "0xab6ae3ffccb0d59370bde3c65ad31f419a16c4d2e50cf03fd7d972e9fbfa0fd1",
+          "block": 26091185,
+          "selector": "0x2656227d"
+        },
+        "auction": {
+          "txHash": "0xa50fdb42e78cff69f2189875b219fed0c503ad2a99a40e56974afec69527111e",
+          "block": 26091189,
+          "selector": "0x9bd97b3e",
+          "startTime": 1790782403,
+          "endTime": 1790782703,
+          "length": 300
+        },
+        "bid": {
+          "txHash": "0x5d0a121e2beb044a43383c75abffb06dd5c796fa37873bca2ca17cde7481f237",
+          "block": 26091190,
+          "timestamp": 1790782403,
+          "bidder": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "sellToken": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+          "buyToken": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "sellAmount": "10000000000000000",
+          "buyAmount": "33333334",
+          "price": "3333333333333333334",
+          "priceBasis": "auction-start",
+          "expected": {
+            "sellAmount": "10000000000000000",
+            "buyAmount": "33333334"
+          }
+        },
+        "close": {
+          "txHash": "0xed813a4679cb4e15807055392203316be6b83cf57993429a5bdf7623f19cdb65",
+          "block": 26091191,
+          "timestamp": 1790782404,
+          "endTime": 1790782403
+        },
+        "end": {
+          "txHash": "0x40ca02366fe83478e981d9c7ef19fc69367688057cab19ea98d29fd8554ff8d2",
+          "block": 26091192,
+          "timestamp": 1790782404,
+          "availableUntil": 1790782404
+        }
       }
     }
-  }
+  },
+  "completionBlock": 26091198,
+  "completionTimestamp": 1790782558
 }

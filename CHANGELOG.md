@@ -40,6 +40,10 @@ timestamp as `endTime` (one second later than the contract) until a clean reinde
   until its first self fee (read it as 0, no 6.0.0 Folio existed before the graft); new ones start at 0.
 - `scripts/graft-parity.mjs`: compares the DTF fields two deployments share at a common block and reports the
   newer deployment's health.
+- Fork parity requires the sandbox's economic completion for `v6Native` and `v5LegacyUpgrade` and asserts it at
+  the fixture's `completionBlock`: the single indexed bid, the auction's start and closed end, the rebalance's
+  `availableUntil` after `endRebalance`, and the rebalance/auction transactions. `stateBlock` checks are
+  unchanged.
 
 ### Changed
 

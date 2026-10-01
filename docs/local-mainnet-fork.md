@@ -207,6 +207,15 @@ reported as a subset and never as a full-suite pass:
 FORK_PARITY_SCENARIOS=v5Control,v6Native pnpm test:fork:parity .fork/fixture.json
 ```
 
+`v6Native` and `v5LegacyUpgrade` must also carry economic completion
+(`completion`, `CASE_COMPLETION` in the script), which the sandbox appends after
+`stateBlock`. It is asserted at the top-level `completionBlock`: exactly one
+indexed bid on the completed auction with the fixture's bidder, tokens, amounts,
+block, timestamp and transaction; the auction's `startTime` and closed `endTime`
+(`close.endTime`, i.e. the close timestamp minus one, as Folio stores it); the
+rebalance's `availableUntil` after `endRebalance`; and the rebalance and auction
+transactions and blocks. A selected case without its completion fails.
+
 Each selected case runs independently and the summary reconciles selected,
 passed, failed and skipped counts. Owner and trading governance links are
 compared with the scenario governor whenever its timelock holds the admin or
