@@ -120,15 +120,16 @@ describe("_handleTradeKilled", () => {
     createTestDTF(DTF_ADDR);
   });
 
-  test("when Auction exists, updates endTime to block timestamp", () => {
+  test("when Auction exists, sets endTime to block timestamp - 1 like Folio.closeAuction", () => {
     let auctionId = BigInt.fromI32(1);
     createTestAuction(DTF_ADDR, auctionId);
 
     let event = createAuctionEvent();
     _handleTradeKilled(DTF_ADDR, auctionId, event);
 
+    // Folio 4.0-6.0: auctions[auctionId].endTime = block.timestamp - 1 (inclusive end)
     let auctionEntityId = DTF_ADDR.toHexString() + "-1";
-    assert.fieldEquals("Auction", auctionEntityId, "endTime", "5000");
+    assert.fieldEquals("Auction", auctionEntityId, "endTime", "4999");
   });
 
   test("when Auction does not exist, marks Trade as killed", () => {

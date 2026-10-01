@@ -11,7 +11,9 @@ Deployed as `1.11.1-test` (the suffix marks a candidate; `prod` still points at 
 (block per chain in `networks.json`). A graft copies state instead of replaying it, so the graft block has to
 precede every event this release handles differently: a `FolioFeePaid` to the Folio itself (only 6.0.0 Folios
 emit it, and each 6.0.0 deployer's contract nonce was still 2 at deploy time) and a DTF role granted to an
-indexed timelock first registered for another entity (none in 1.11.0 at the graft block on any chain).
+indexed timelock first registered for another entity (none in 1.11.0 at the graft block on any chain). The
+`AuctionClosed` fix below is the exception: auctions closed before the graft block keep the close block's
+timestamp as `endTime` (one second later than the contract) until a clean reindex.
 
 ### Fixed
 
@@ -23,6 +25,9 @@ indexed timelock first registered for another entity (none in 1.11.0 at the graf
   The granting DTF is now linked by its own role membership; the timelock keeps its first entity and the vault
   keeps its governance. A governor attached to a shared timelock after the grant (a later `PROPOSER_ROLE`)
   still only relinks the timelock's first entity.
+- **A closed auction's `endTime` matches the contract.** Folio 4.0 to 6.0 `closeAuction` stores
+  `endTime = block.timestamp - 1` (the last second bids were accepted); the `AuctionClosed` handler stored
+  `block.timestamp`. 1.0/2.0 trades are unchanged (`closedTimestamp` is still the close block's timestamp).
 - **Folio 6.0's self fee is no longer booked as external revenue.** Folio 6.0 pays the holders' share as
   `FolioFeePaid(address(this), shares)`, which the handler counted in `externalRevenue` and the external
   snapshot fields. It now goes to the self-revenue fields below.

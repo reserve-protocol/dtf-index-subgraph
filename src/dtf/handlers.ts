@@ -950,8 +950,9 @@ export function _handleTradeKilled(
   );
 
   if (auction) {
-    // Lets just update the end time to make the auction end.
-    auction.endTime = event.block.timestamp;
+    // Folio 4.0+ closeAuction stores endTime = block.timestamp - 1 (the last second bids were
+    // accepted) and only emits AuctionClosed when the auction had not ended yet.
+    auction.endTime = event.block.timestamp.minus(BIGINT_ONE);
     auction.save();
   } else {
     // @deprecated 1.0/2.0 trades killed
