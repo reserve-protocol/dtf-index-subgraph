@@ -22,6 +22,7 @@ export function createTestDTF(dtfAddress: Address): DTF {
   dtf.protocolRevenue = BIGINT_ZERO;
   dtf.governanceRevenue = BIGINT_ZERO;
   dtf.externalRevenue = BIGINT_ZERO;
+  dtf.selfRevenue = BIGINT_ZERO;
   dtf.mintingFee = BIGINT_ZERO;
   dtf.tvlFee = BIGINT_ZERO;
   dtf.auctionDelay = BIGINT_ZERO;
@@ -34,10 +35,13 @@ export function createTestDTF(dtfAddress: Address): DTF {
   dtf.ownerAddress = dtfAddress;
   dtf.auctionApprovers = [];
   dtf.legacyAuctionApprovers = [];
+  dtf.legacyTradingGovernances = [];
   dtf.auctionLaunchers = [];
   dtf.brandManagers = [];
   dtf.admins = [];
   dtf.legacyAdmins = [];
+  dtf.legacyAdminGovernances = [];
+  dtf.tradeTokenAllowlist = [];
   dtf.save();
   return dtf;
 }
@@ -175,6 +179,8 @@ export function createTestGovernance(
   stakingToken.optimisticDelegatedVotesRaw = BIGINT_ZERO;
   stakingToken.optimisticDelegatedVotes = BIGINT_ZERO.toBigDecimal();
   stakingToken.legacyGovernance = [];
+  stakingToken.exchangeRate = BigInt.fromI32(10).pow(18);
+  stakingToken.totalAssets = BIGINT_ZERO;
   stakingToken.save();
 
   // Create required GovernanceTimelock

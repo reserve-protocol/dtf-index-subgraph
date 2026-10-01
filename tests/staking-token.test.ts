@@ -1,16 +1,20 @@
-import { Address, BigInt, ethereum } from "@graphprotocol/graph-ts";
+import { Address, BigInt } from "@graphprotocol/graph-ts";
 import {
   clearStore,
   describe,
   test,
   assert,
   beforeEach,
-  createMockedFunction,
 } from "matchstick-as/assembly/index";
 import {
   getOrCreateStakingToken,
 } from "../src/utils/getters";
-import { mockERC20, mockERC20TotalSupply } from "./helpers/mock-erc20";
+import { _handleOwnershipTransferred } from "../src/staking-token/handlers";
+import { createMockedFunction } from "matchstick-as/assembly/index";
+import { newMockEvent } from "matchstick-as/assembly/index";
+import { ethereum } from "@graphprotocol/graph-ts";
+import { mockERC20 } from "./helpers/mock-erc20";
+import { mockStakingVault, mockVaultTokenJar } from "./helpers/mock-staking-vault";
 
 const ST_TOKEN = Address.fromString(
   "0xEE00000000000000000000000000000000000001"
@@ -18,14 +22,20 @@ const ST_TOKEN = Address.fromString(
 const RSR = Address.fromString("0x320623b8E4fF03373931769A31Fc52A4E78B5d70");
 const ON_CHAIN_SUPPLY: i64 = 5555555555;
 
-mockERC20(ST_TOKEN, "vlTEST", "Vote-Locked Test", 18);
-mockERC20TotalSupply(ST_TOKEN, BigInt.fromI64(ON_CHAIN_SUPPLY));
 mockERC20(RSR, "RSR", "Reserve Rights", 18);
-createMockedFunction(ST_TOKEN, "asset", "asset():(address)").returns([
-  ethereum.Value.fromAddress(RSR),
-]);
 // Legacy / non-jar vault: tokenJar() reverts → StakingToken.tokenJar stays null
-createMockedFunction(ST_TOKEN, "tokenJar", "tokenJar():(address)").reverts();
+mockStakingVault(
+  ST_TOKEN,
+  "vlTEST",
+  "Vote-Locked Test",
+  18,
+  BigInt.fromI64(ON_CHAIN_SUPPLY),
+  RSR,
+  null,
+  null,
+  null,
+  null
+);
 
 const ST_TOKEN_WITH_JAR = Address.fromString(
   "0xEE00000000000000000000000000000000000002"
@@ -33,14 +43,50 @@ const ST_TOKEN_WITH_JAR = Address.fromString(
 const JAR_ADDR = Address.fromString(
   "0xFF00000000000000000000000000000000000003"
 );
-mockERC20(ST_TOKEN_WITH_JAR, "vlJAR", "Vote-Locked Jar", 18);
-mockERC20TotalSupply(ST_TOKEN_WITH_JAR, BigInt.fromI64(ON_CHAIN_SUPPLY));
-createMockedFunction(ST_TOKEN_WITH_JAR, "asset", "asset():(address)").reverts();
-createMockedFunction(
+mockStakingVault(
   ST_TOKEN_WITH_JAR,
-  "tokenJar",
-  "tokenJar():(address)"
-).returns([ethereum.Value.fromAddress(JAR_ADDR)]);
+  "vlJAR",
+  "Vote-Locked Jar",
+  18,
+  BigInt.fromI64(ON_CHAIN_SUPPLY),
+  null,
+  null,
+  null,
+  null,
+  null
+);
+mockVaultTokenJar(ST_TOKEN_WITH_JAR, JAR_ADDR);
+
+const DEPLOYER = Address.fromString("0x7777777777777777777777777777777777777777");
+const OWNER_TIMELOCK = Address.fromString("0x8888888888888888888888888888888888888888");
+// Neither is a timelock: createGovernanceTimelock bails out on getMinDelay()
+createMockedFunction(DEPLOYER, "getMinDelay", "getMinDelay():(uint256)").reverts();
+createMockedFunction(OWNER_TIMELOCK, "getMinDelay", "getMinDelay():(uint256)").reverts();
+
+function ownershipEvent(vault: Address): ethereum.Event {
+  let event = newMockEvent();
+  event.address = vault;
+  return event;
+}
+
+describe("_handleOwnershipTransferred", () => {
+  beforeEach(() => {
+    clearStore();
+  });
+
+  test("the constructor's 0x0 → deployer transfer adds no legacy governance entry", () => {
+    _handleOwnershipTransferred(Address.zero(), DEPLOYER, ownershipEvent(ST_TOKEN));
+    assert.fieldEquals("StakingToken", ST_TOKEN.toHexString(), "legacyGovernance", "[]");
+
+    _handleOwnershipTransferred(DEPLOYER, OWNER_TIMELOCK, ownershipEvent(ST_TOKEN));
+    assert.fieldEquals(
+      "StakingToken",
+      ST_TOKEN.toHexString(),
+      "legacyGovernance",
+      "[" + DEPLOYER.toHexString() + "]"
+    );
+  });
+});
 
 describe("getOrCreateStakingToken", () => {
   beforeEach(() => {

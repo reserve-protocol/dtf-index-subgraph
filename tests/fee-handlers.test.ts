@@ -307,3 +307,82 @@ describe("_handleFolioFeePaid", () => {
     );
   });
 });
+
+describe("_handleFolioFeePaid: Folio 6.0 self fee", () => {
+  beforeEach(() => {
+    clearStore();
+    createTestToken(DTF_ADDR);
+    createTestToken(ST_TOKEN_ADDR);
+    let dtf = createTestDTF(DTF_ADDR);
+    let governance = createTestGovernance(
+      GOVERNANCE_ADDR,
+      TIMELOCK_ADDR,
+      ST_TOKEN_ADDR
+    );
+    dtf.ownerGovernance = governance.id;
+    dtf.save();
+  });
+
+  test("a fee paid to the Folio itself is selfRevenue, not externalRevenue, and stays in totalRevenue", () => {
+    _handleProtocolFeePaid(DTF_ADDR, BigInt.fromI32(500), createFeeEvent());
+    _handleFolioFeePaid(DTF_ADDR, ST_TOKEN_ADDR, BigInt.fromI32(100), createFeeEvent());
+    _handleFolioFeePaid(DTF_ADDR, RANDOM_RECIPIENT, BigInt.fromI32(150), createFeeEvent());
+    // Folio 6.0: emit FolioFeePaid(address(this), selfShares)
+    _handleFolioFeePaid(DTF_ADDR, DTF_ADDR, BigInt.fromI32(250), createFeeEvent());
+
+    const id = DTF_ADDR.toHexString();
+    assert.fieldEquals("DTF", id, "selfRevenue", "250");
+    assert.fieldEquals("DTF", id, "externalRevenue", "150");
+    assert.fieldEquals("DTF", id, "governanceRevenue", "100");
+    assert.fieldEquals("DTF", id, "protocolRevenue", "500");
+    // totalRevenue = protocol + governance + external + self
+    assert.fieldEquals("DTF", id, "totalRevenue", "1000");
+
+    const dayId = id + "-1";
+    assert.fieldEquals("TokenDailySnapshot", dayId, "dailyRevenue", "1000");
+    assert.fieldEquals("TokenDailySnapshot", dayId, "dailySelfRevenue", "250");
+    assert.fieldEquals("TokenDailySnapshot", dayId, "dailyExternalRevenue", "150");
+
+    const hourId = id + "-24";
+    assert.fieldEquals("TokenHourlySnapshot", hourId, "hourlyRevenue", "1000");
+    assert.fieldEquals("TokenHourlySnapshot", hourId, "hourlySelfRevenue", "250");
+    assert.fieldEquals("TokenHourlySnapshot", hourId, "hourlyExternalRevenue", "150");
+
+    const monthId = id + "-0";
+    assert.fieldEquals("TokenMonthlySnapshot", monthId, "monthlyRevenue", "1000");
+    assert.fieldEquals("TokenMonthlySnapshot", monthId, "monthlySelfRevenue", "250");
+    assert.fieldEquals("TokenMonthlySnapshot", monthId, "monthlyExternalRevenue", "150");
+    assert.fieldEquals("TokenMonthlySnapshot", monthId, "cumulativeSelfRevenue", "250");
+    assert.fieldEquals("TokenMonthlySnapshot", monthId, "cumulativeExternalRevenue", "150");
+    assert.fieldEquals("TokenMonthlySnapshot", monthId, "cumulativeRevenue", "1000");
+  });
+
+  test("self fees accumulate and the next month's snapshot carries the cumulative", () => {
+    _handleFolioFeePaid(DTF_ADDR, DTF_ADDR, BigInt.fromI32(250), createFeeEvent());
+
+    // First fee of the next month is a protocol fee: the snapshot is seeded from the DTF totals.
+    const nextMonth = 2592000 + 86400;
+    _handleProtocolFeePaid(DTF_ADDR, BigInt.fromI32(10), createFeeEvent(nextMonth));
+    const id = DTF_ADDR.toHexString();
+    assert.fieldEquals("TokenMonthlySnapshot", id + "-1", "monthlySelfRevenue", "0");
+    assert.fieldEquals("TokenMonthlySnapshot", id + "-1", "cumulativeSelfRevenue", "250");
+
+    _handleFolioFeePaid(DTF_ADDR, DTF_ADDR, BigInt.fromI32(50), createFeeEvent(nextMonth));
+    assert.fieldEquals("DTF", id, "selfRevenue", "300");
+    assert.fieldEquals("DTF", id, "externalRevenue", "0");
+    assert.fieldEquals("TokenMonthlySnapshot", id + "-1", "monthlySelfRevenue", "50");
+    assert.fieldEquals("TokenMonthlySnapshot", id + "-1", "cumulativeSelfRevenue", "300");
+    assert.fieldEquals("TokenDailySnapshot", id + "-" + (nextMonth / 86400).toString(), "dailySelfRevenue", "50");
+  });
+
+  test("new snapshots start the self-revenue fields at zero", () => {
+    _handleFolioFeePaid(DTF_ADDR, RANDOM_RECIPIENT, BigInt.fromI32(150), createFeeEvent());
+
+    const id = DTF_ADDR.toHexString();
+    assert.fieldEquals("DTF", id, "selfRevenue", "0");
+    assert.fieldEquals("TokenDailySnapshot", id + "-1", "dailySelfRevenue", "0");
+    assert.fieldEquals("TokenHourlySnapshot", id + "-24", "hourlySelfRevenue", "0");
+    assert.fieldEquals("TokenMonthlySnapshot", id + "-0", "monthlySelfRevenue", "0");
+    assert.fieldEquals("TokenMonthlySnapshot", id + "-0", "cumulativeSelfRevenue", "0");
+  });
+});

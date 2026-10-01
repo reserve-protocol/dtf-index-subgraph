@@ -42,6 +42,11 @@ import {
   fetchTokenSymbol,
   fetchTokenTotalSupply,
 } from "./tokens";
+import {
+  oneShare,
+  sampleExchangeRate,
+  subscribeUnstakingManager,
+} from "./staking-vault";
 
 export function getOrCreateToken(
   tokenAddress: Address,
@@ -71,10 +76,11 @@ export function getOrCreateToken(
 }
 
 // Canonical "first time we see this stToken" hook. On CREATE: initializes
-// entity state, seeds totalSupply from chain (so pre-discovery Transfers aren't
-// lost), and subscribes to the StakingToken template so future events index.
-// All three side effects fire exactly once per stToken lifetime — there is no
-// other place that needs to subscribe. Callers don't need to coordinate.
+// entity state, seeds totalSupply / exchange rate from chain (so pre-discovery
+// Transfers aren't lost), and subscribes BOTH the StakingToken template and the
+// vault's UnstakingManager template so future events index. Every discovery path
+// (deployer events, Governor.token(), timelock role grants) goes through here, so
+// a vault from an untracked deployer still gets its locks indexed.
 export function getOrCreateStakingToken(
   tokenAddress: Address,
   underlyingAddress: Address | null = null
@@ -120,6 +126,21 @@ export function getOrCreateStakingToken(
       ? null
       : jarResult.value.toHexString();
 
+  const unstakingDelay = vault.try_unstakingDelay();
+  stakingToken.unstakingDelay = unstakingDelay.reverted
+    ? null
+    : unstakingDelay.value;
+
+  const rewardRatio = vault.try_rewardRatio();
+  stakingToken.rewardRatio = rewardRatio.reverted ? null : rewardRatio.value;
+
+  // Defaults for tokens that are not ERC4626 vaults (calls below revert): 1:1.
+  stakingToken.exchangeRate = oneShare(stakingToken);
+  stakingToken.totalAssets = BIGINT_ZERO;
+  sampleExchangeRate(stakingToken, vault, null);
+
+  subscribeUnstakingManager(stakingToken, vault);
+
   stakingToken.save();
 
   StakingTokenTemplate.create(tokenAddress);
@@ -137,6 +158,12 @@ export function createGovernanceTimelock(
   );
   if (existingTimelock) {
     refreshGovernanceLinks(existingTimelock);
+    // The timelock keeps the entity it was first indexed for (e.g. the vault of an optimistic
+    // system deployed with a new vault, or another DTF), but a DTF granting it a role now must be
+    // linked too — refreshGovernanceLinks only knows the first entity.
+    if (entityType != GovernanceType.VOTE_LOCKING && entity != existingTimelock.entity) {
+      linkDTFToGovernance(entity, existingTimelock);
+    }
     return;
   }
 
@@ -222,30 +249,39 @@ function refreshGovernanceLinks(timelock: GovernanceTimelock): void {
     stakingToken.governance = governance.id;
     stakingToken.save();
   } else {
-    const dtf = DTF.load(timelock.entity);
-    if (dtf) {
-      // A single timelock can hold multiple DTF roles (e.g. DEFAULT_ADMIN +
-      // REBALANCE_MANAGER). Use the DTF's own role membership rather than
-      // timelock.type — which only records whichever role was granted first.
-      const timelockId = timelock.id;
-      if (dtf.admins.indexOf(timelockId) != -1) {
-        dtf.ownerGovernance = governance.id;
-        dtf.stToken = governance.token;
-        dtf.stTokenAddress = Address.fromString(governance.token);
-      }
-      if (
-        dtf.auctionApprovers.indexOf(timelockId) != -1
-      ) {
-        dtf.tradingGovernance = governance.id;
-      }
-      // Backfill DTF → stToken link if it wasn't set by GovernedFolioDeployed.
-      if (!dtf.stToken) {
-        dtf.stToken = governance.token;
-        dtf.stTokenAddress = Address.fromString(governance.token);
-      }
-      dtf.save();
-    }
+    linkDTFToGovernance(timelock.entity, timelock);
   }
+}
+
+function linkDTFToGovernance(dtfId: string, timelock: GovernanceTimelock): void {
+  if (timelock.governance === null) {
+    return;
+  }
+
+  const governance = Governance.load(timelock.governance!);
+  const dtf = DTF.load(dtfId);
+  if (!governance || !dtf) {
+    return;
+  }
+
+  // A single timelock can hold multiple DTF roles (e.g. DEFAULT_ADMIN +
+  // REBALANCE_MANAGER). Use the DTF's own role membership rather than
+  // timelock.type — which only records whichever role was granted first.
+  const timelockId = timelock.id;
+  if (dtf.admins.indexOf(timelockId) != -1) {
+    dtf.ownerGovernance = governance.id;
+    dtf.stToken = governance.token;
+    dtf.stTokenAddress = Address.fromString(governance.token);
+  }
+  if (dtf.auctionApprovers.indexOf(timelockId) != -1) {
+    dtf.tradingGovernance = governance.id;
+  }
+  // Backfill DTF → stToken link if it wasn't set by GovernedFolioDeployed.
+  if (!dtf.stToken) {
+    dtf.stToken = governance.token;
+    dtf.stTokenAddress = Address.fromString(governance.token);
+  }
+  dtf.save();
 }
 
 export function getOrCreateGovernance(

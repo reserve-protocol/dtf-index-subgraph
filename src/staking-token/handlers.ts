@@ -30,6 +30,8 @@ import {
   getOrCreateStakingToken,
   getOrCreateToken,
 } from "../utils/getters";
+import { sampleExchangeRate } from "../utils/staking-vault";
+import { StakingVault } from "../../generated/templates/StakingToken/StakingVault";
 
 function getOrCreateStakeTokenHolder(
   delegator: string,
@@ -299,7 +301,7 @@ export function _handleOwnershipTransferred(
 ): void {
   let stakingToken = getOrCreateStakingToken(event.address);
 
-  if (oldOwner.toHexString() !== GENESIS_ADDRESS) {
+  if (oldOwner.toHexString() != GENESIS_ADDRESS) {
     let timelock = getGovernanceTimelock(oldOwner);
     let gov =
       timelock !== null && timelock.governance !== null
@@ -321,4 +323,42 @@ export function _handleOwnershipTransferred(
 
 export function getTokenFromManager(manager: Address): string {
   return UnstakingManager.load(manager.toHexString())!.token;
+}
+
+export function _handleUnstakingDelaySet(
+  stakingTokenAddress: Address,
+  delay: BigInt
+): void {
+  let stakingToken = getOrCreateStakingToken(stakingTokenAddress);
+  stakingToken.unstakingDelay = delay;
+  stakingToken.save();
+}
+
+export function _handleRewardRatioSet(
+  stakingTokenAddress: Address,
+  rewardRatio: BigInt,
+  halfLife: BigInt
+): void {
+  let stakingToken = getOrCreateStakingToken(stakingTokenAddress);
+  stakingToken.rewardRatio = rewardRatio;
+  stakingToken.rewardHalfLife = halfLife;
+  stakingToken.save();
+}
+
+// Polling block handler of the hardcoded TrackedVault data sources (one vlRSR
+// vault per chain, ~10 min cadence, see subgraph.yaml.mustache). Goes through
+// getOrCreateStakingToken so the tracked vault is indexed from its start block
+// even if no deployer event ever named it.
+export function _handleExchangeRatePoll(
+  stakingTokenAddress: Address,
+  block: ethereum.Block
+): void {
+  let stakingToken = getOrCreateStakingToken(stakingTokenAddress);
+  // No manager ⇔ not a StakingVault (every vault version exposes one): skip the
+  // two eth_calls instead of letting them revert every poll forever.
+  if (stakingToken.unstakingManager === null) {
+    return;
+  }
+  sampleExchangeRate(stakingToken, StakingVault.bind(stakingTokenAddress), block);
+  stakingToken.save();
 }

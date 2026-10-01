@@ -23,7 +23,7 @@ import {
   RebalanceStarted1TokensStruct,
   RebalanceStarted1LimitsStruct,
 } from "../../generated/templates/DTF/DTF";
-import { removeFromArrayAtIndex } from "../utils/arrays";
+import { orEmpty, removeFromArrayAtIndex } from "../utils/arrays";
 import {
   BIGINT_ONE,
   BIGINT_ZERO,
@@ -45,6 +45,7 @@ import {
   AuctionApproved1DetailsStruct,
   AuctionOpened1AuctionStruct,
   FeeRecipientsSetRecipientsStruct,
+  ImmutableFeeRecipientsSetRecipientsStruct,
 } from "./../../generated/templates/DTF/DTF";
 import {
   getOrCreateTokenDailySnapshot,
@@ -414,6 +415,12 @@ export function _handleProtocolFeePaid(
   monthlySnapshot.save();
 }
 
+// Self-revenue fields were added in 1.11.1 and are null on entities written before the graft.
+function orZero(value: BigInt | null): BigInt {
+  if (value === null) return BIGINT_ZERO;
+  return value!;
+}
+
 export function _handleFolioFeePaid(
   dtfAddress: Address,
   recipient: Address,
@@ -431,9 +438,13 @@ export function _handleFolioFeePaid(
   let hourlySnapshot = getOrCreateTokenHourlySnapshot(token, event.block);
   hourlySnapshot.hourlyRevenue = hourlySnapshot.hourlyRevenue.plus(amount);
 
+  // Folio 6.0 pays the holders' self fee as FolioFeePaid(address(this), shares). Fee recipient
+  // tables reject the Folio's own address, so this recipient is never an external party.
+  const isSelf = recipient.equals(dtfAddress);
+
   // Check if recipient is governance token to properly track revenue type
   let isGovernanceToken = false;
-  if (dtf.ownerGovernance) {
+  if (!isSelf && dtf.ownerGovernance) {
     let gov = Governance.load(dtf.ownerGovernance as string);
     if (gov) {
       let recipientHex = recipient.toHexString();
@@ -452,7 +463,12 @@ export function _handleFolioFeePaid(
     }
   }
 
-  if (isGovernanceToken) {
+  if (isSelf) {
+    dtf.selfRevenue = orZero(dtf.selfRevenue).plus(amount);
+    // snapshots
+    dailySnapshot.dailySelfRevenue = orZero(dailySnapshot.dailySelfRevenue).plus(amount);
+    hourlySnapshot.hourlySelfRevenue = orZero(hourlySnapshot.hourlySelfRevenue).plus(amount);
+  } else if (isGovernanceToken) {
     dtf.governanceRevenue = dtf.governanceRevenue.plus(amount);
     // snapshots
     dailySnapshot.dailyGovernanceRevenue = dailySnapshot.dailyGovernanceRevenue.plus(amount);
@@ -469,7 +485,10 @@ export function _handleFolioFeePaid(
   // Create monthly snapshot
   let monthlySnapshot = getOrCreateTokenMonthlySnapshot(token, event.block);
   monthlySnapshot.monthlyRevenue = monthlySnapshot.monthlyRevenue.plus(amount);
-  if (isGovernanceToken) {
+  if (isSelf) {
+    monthlySnapshot.monthlySelfRevenue = orZero(monthlySnapshot.monthlySelfRevenue).plus(amount);
+    monthlySnapshot.cumulativeSelfRevenue = dtf.selfRevenue;
+  } else if (isGovernanceToken) {
     monthlySnapshot.monthlyGovernanceRevenue = monthlySnapshot.monthlyGovernanceRevenue.plus(amount);
     monthlySnapshot.cumulativeGovernanceRevenue = dtf.governanceRevenue;
   } else {
@@ -560,6 +579,13 @@ export function _handleRoleRevoked(
       legacy.push(gov!);
     }
     dtf.legacyAuctionApprovers = legacy;
+    // Only a revoked timelock with an indexed governor counts as a former governance;
+    // deployers, spells and EOAs stay in the raw list alone.
+    if (timelock !== null && timelock.governance !== null) {
+      let governances = orEmpty(dtf.legacyTradingGovernances);
+      if (governances.indexOf(gov!) == -1) governances.push(gov!);
+      dtf.legacyTradingGovernances = governances;
+    }
   } else if (role.equals(Bytes.fromHexString(Role.AUCTION_LAUNCHER))) {
     let current = dtf.auctionLaunchers;
     let index = current.indexOf(account.toHexString());
@@ -593,6 +619,11 @@ export function _handleRoleRevoked(
       legacy.push(gov!);
     }
     dtf.legacyAdmins = legacy;
+    if (timelock !== null && timelock.governance !== null) {
+      let governances = orEmpty(dtf.legacyAdminGovernances);
+      if (governances.indexOf(gov!) == -1) governances.push(gov!);
+      dtf.legacyAdminGovernances = governances;
+    }
   }
 
   dtf.save();
@@ -633,6 +664,26 @@ export function _handleAuctionLengthSet(
   dtf.save();
 }
 
+export function _handleMaxAuctionLengthSet(
+  dtfAddress: Address,
+  length: BigInt,
+): void {
+  let dtf = getDTF(dtfAddress);
+  dtf.maxAuctionLength = length;
+  // Preserve the legacy field until all clients consume maxAuctionLength.
+  dtf.auctionLength = length;
+  dtf.save();
+}
+
+export function _handleFolioFeeSet(
+  dtfAddress: Address,
+  fee: BigInt,
+): void {
+  let dtf = getDTF(dtfAddress);
+  dtf.folioFeeForSelf = fee;
+  dtf.save();
+}
+
 export function _handleMandateSet(dtfAddress: Address, mandate: string): void {
   let dtf = getDTF(dtfAddress);
   dtf.mandate = mandate;
@@ -652,6 +703,55 @@ export function _handleFeeRecipientsSet(
     );
   }
   dtf.feeRecipients = recipientStrings.join(",");
+  dtf.save();
+}
+
+export function _handleImmutableFeeRecipientsSet(
+  dtfAddress: Address,
+  recipients: ImmutableFeeRecipientsSetRecipientsStruct[],
+): void {
+  let dtf = getDTF(dtfAddress);
+  let recipientStrings: string[] = [];
+  for (let i = 0; i < recipients.length; i++) {
+    let recipient = recipients[i];
+    recipientStrings.push(
+      `${recipient.recipient.toHexString()}:${recipient.portion.toString()}`,
+    );
+  }
+  dtf.immutableFeeRecipients = recipientStrings.join(",");
+  dtf.save();
+}
+
+export function _handleTradeAllowlistEnabled(
+  dtfAddress: Address,
+  enabled: bool,
+): void {
+  let dtf = getDTF(dtfAddress);
+  dtf.tradeAllowlistEnabled = enabled;
+  dtf.save();
+}
+
+export function _handleTradeAllowlistTokenAdded(
+  dtfAddress: Address,
+  token: Address,
+): void {
+  let dtf = getDTF(dtfAddress);
+  let allowlist = orEmpty(dtf.tradeTokenAllowlist);
+  const tokenId = token.toHexString();
+  if (allowlist.indexOf(tokenId) === -1) allowlist.push(tokenId);
+  dtf.tradeTokenAllowlist = allowlist;
+  dtf.save();
+}
+
+export function _handleTradeAllowlistTokenRemoved(
+  dtfAddress: Address,
+  token: Address,
+): void {
+  let dtf = getDTF(dtfAddress);
+  let allowlist = orEmpty(dtf.tradeTokenAllowlist);
+  const index = allowlist.indexOf(token.toHexString());
+  if (index !== -1) allowlist = removeFromArrayAtIndex(allowlist, index);
+  dtf.tradeTokenAllowlist = allowlist;
   dtf.save();
 }
 
@@ -850,8 +950,9 @@ export function _handleTradeKilled(
   );
 
   if (auction) {
-    // Lets just update the end time to make the auction end.
-    auction.endTime = event.block.timestamp;
+    // Folio 4.0+ closeAuction stores endTime = block.timestamp - 1 (the last second bids were
+    // accepted) and only emits AuctionClosed when the auction had not ended yet.
+    auction.endTime = event.block.timestamp.minus(BIGINT_ONE);
     auction.save();
   } else {
     // @deprecated 1.0/2.0 trades killed
