@@ -5,15 +5,32 @@ All notable changes to the DTF Index Subgraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.2] - Unreleased
+
+Deployed as `1.11.2-test`, grafted onto `1.11.1-test` (block per chain in `networks.json`); `prod` still points at
+1.10.2. Auctions closed before the graft block keep the close block's timestamp as `endTime` (one second later than
+the contract) until a clean reindex.
+
+### Fixed
+
+- **A closed auction's `endTime` matches the contract.** Folio 4.0 to 6.0 `closeAuction` stores
+  `endTime = block.timestamp - 1` (the last second bids were accepted); the `AuctionClosed` handler stored
+  `block.timestamp`. 1.0/2.0 trades are unchanged (`closedTimestamp` is still the close block's timestamp).
+
+### Added
+
+- Fork parity requires the sandbox's economic completion for `v6Native` and `v5LegacyUpgrade` and asserts it at
+  the fixture's `completionBlock`: the single indexed bid, the auction's start and closed end, the rebalance's
+  `availableUntil` after `endRebalance`, and the rebalance/auction transactions. `stateBlock` checks are
+  unchanged.
+
 ## [1.11.1] - Unreleased
 
 Deployed as `1.11.1-test` (the suffix marks a candidate; `prod` still points at 1.10.2). Grafted onto 1.11.0
 (block per chain in `networks.json`). A graft copies state instead of replaying it, so the graft block has to
 precede every event this release handles differently: a `FolioFeePaid` to the Folio itself (only 6.0.0 Folios
 emit it, and each 6.0.0 deployer's contract nonce was still 2 at deploy time) and a DTF role granted to an
-indexed timelock first registered for another entity (none in 1.11.0 at the graft block on any chain). The
-`AuctionClosed` fix below is the exception: auctions closed before the graft block keep the close block's
-timestamp as `endTime` (one second later than the contract) until a clean reindex.
+indexed timelock first registered for another entity (none in 1.11.0 at the graft block on any chain).
 
 ### Fixed
 
@@ -25,9 +42,6 @@ timestamp as `endTime` (one second later than the contract) until a clean reinde
   The granting DTF is now linked by its own role membership; the timelock keeps its first entity and the vault
   keeps its governance. A governor attached to a shared timelock after the grant (a later `PROPOSER_ROLE`)
   still only relinks the timelock's first entity.
-- **A closed auction's `endTime` matches the contract.** Folio 4.0 to 6.0 `closeAuction` stores
-  `endTime = block.timestamp - 1` (the last second bids were accepted); the `AuctionClosed` handler stored
-  `block.timestamp`. 1.0/2.0 trades are unchanged (`closedTimestamp` is still the close block's timestamp).
 - **Folio 6.0's self fee is no longer booked as external revenue.** Folio 6.0 pays the holders' share as
   `FolioFeePaid(address(this), shares)`, which the handler counted in `externalRevenue` and the external
   snapshot fields. It now goes to the self-revenue fields below.
@@ -40,10 +54,6 @@ timestamp as `endTime` (one second later than the contract) until a clean reinde
   until its first self fee (read it as 0, no 6.0.0 Folio existed before the graft); new ones start at 0.
 - `scripts/graft-parity.mjs`: compares the DTF fields two deployments share at a common block and reports the
   newer deployment's health.
-- Fork parity requires the sandbox's economic completion for `v6Native` and `v5LegacyUpgrade` and asserts it at
-  the fixture's `completionBlock`: the single indexed bid, the auction's start and closed end, the rebalance's
-  `availableUntil` after `endRebalance`, and the rebalance/auction transactions. `stateBlock` checks are
-  unchanged.
 
 ### Changed
 
