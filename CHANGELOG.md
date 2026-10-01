@@ -5,13 +5,53 @@ All notable changes to the DTF Index Subgraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.1] - Unreleased
+
+Deployed as `1.11.1-test` (the suffix marks a candidate; `prod` still points at 1.10.2). Grafted onto 1.11.0
+(block per chain in `networks.json`). A graft copies state instead of replaying it, so the graft block has to
+precede every event this release handles differently: a `FolioFeePaid` to the Folio itself (only 6.0.0 Folios
+emit it, and each 6.0.0 deployer's contract nonce was still 2 at deploy time) and a DTF role granted to an
+indexed timelock first registered for another entity (none in 1.11.0 at the graft block on any chain).
+
+### Fixed
+
+- **A DTF that grants `DEFAULT_ADMIN` / `REBALANCE_MANAGER` to an already-indexed timelock is linked to its
+  governance.** `createGovernanceTimelock` returned early for a known timelock and only refreshed the entity it
+  was first indexed for. When that entity was a new-vault optimistic system's vault (indexed as `VOTE_LOCKING`
+  by the `OptimisticGovernorDeployer` handler) or another DTF, the granting DTF kept `ownerGovernance`,
+  `tradingGovernance` and `stToken` null: the v5 to optimistic upgrade topology the fork parity gate failed on.
+  The granting DTF is now linked by its own role membership; the timelock keeps its first entity and the vault
+  keeps its governance. A governor attached to a shared timelock after the grant (a later `PROPOSER_ROLE`)
+  still only relinks the timelock's first entity.
+- **Folio 6.0's self fee is no longer booked as external revenue.** Folio 6.0 pays the holders' share as
+  `FolioFeePaid(address(this), shares)`, which the handler counted in `externalRevenue` and the external
+  snapshot fields. It now goes to the self-revenue fields below.
+
+### Added
+
+- `DTF.selfRevenue`, `TokenDailySnapshot.dailySelfRevenue`, `TokenHourlySnapshot.hourlySelfRevenue`,
+  `TokenMonthlySnapshot.monthlySelfRevenue` and `TokenMonthlySnapshot.cumulativeSelfRevenue`: fees retained for
+  the Folio's own holders. Nullable so the release can graft: a DTF or snapshot written before the graft is null
+  until its first self fee (read it as 0, no 6.0.0 Folio existed before the graft); new ones start at 0.
+- `scripts/graft-parity.mjs`: compares the DTF fields two deployments share at a common block and reports the
+  newer deployment's health.
+
+### Changed
+
+- `totalRevenue` keeps its meaning, every fee share the Folio paid (`ProtocolFeePaid` + `FolioFeePaid`), which
+  is now `protocolRevenue + governanceRevenue + externalRevenue + selfRevenue`. Folios before 6.0 have no self
+  fee, so nothing changes for them. For a 6.0 Folio the self fee moves from `externalRevenue` to `selfRevenue`
+  and stays in `totalRevenue` and the snapshot revenue totals; revenue paid out to parties other than the
+  holders is `totalRevenue - selfRevenue`.
+
 ## [1.11.0] - Unreleased
 
 Folio 6.0.0 support. Grafted onto 1.10.2 (block per chain in `networks.json`), which is safe for v6 because
 no Folio had been deployed through a 6.0.0 deployer when it was cut (each deployer's contract nonce was still 2:
 only its constructor's implementation). DTFs carried over by the graft keep their 1.10.2 values for what this
 release computes at deployment or from history: `version` stays null until a version-changing upgrade,
-`ownerAddress` keeps the transaction sender, `legacyAdminGovernances` / `legacyTradingGovernances` /
+ungoverned deployments keep the transaction sender as `ownerAddress` (governed ones already recorded the owner
+timelock from `GovernedFolioDeployed` in 1.10.2), `legacyAdminGovernances` / `legacyTradingGovernances` /
 `tradeTokenAllowlist` are null until their next event, and `FolioVersion` only records registrations after the
 graft block. A clean reindex fills all of them.
 
@@ -33,8 +73,13 @@ graft block. A clean reindex fills all of them.
   Base `0x4c891fCa6319d492866672E3D2AfdAAA5bDcfF67`, BSC `0x9837Ce9825D52672Ca02533B5A160212bf901963`), which
   are not registered yet, and for the ReserveOptimisticGovernorDeployer 1.1.0 they deploy governance through
   (mainnet `0x4292433c772958ae93bebf32602ffDe0f9C5Fcd6`, Base `0xaC429cc5EA7f34a407f65B769c9AEA0242b075c6`, BSC
-  `0xb4eB87250Ecd8f32BeA775dA6D164D92A398d05b`). Without the latter, v6 governance would not be indexed. The
-  mainnet-fork profile lists both as well.
+  `0xb4eB87250Ecd8f32BeA775dA6D164D92A398d05b`). v6 governance is indexed without the latter too:
+  `GovernedFolioDeployed` and the Folio's `RoleGranted` create the governance and its timelock, and
+  `Governor.token()` discovers the vault. The OGD source adds systems deployed with a new vault
+  (`deployWithNewStakingVault`), whose vault, UnstakingManager, timelock and governance are indexed from their
+  deployment even before a DTF grants that timelock a role (e.g. ahead of an upgrade proposal); for
+  `deployWithExistingStakingVault`, which the 6.0.0 `deployGovernedFolio` calls, it only discovers the vault
+  earlier. The mainnet-fork profile lists both as well.
 - Dockerized mainnet-fork profile (`docs/local-mainnet-fork.md`) with an RPC-versus-GraphQL parity gate
   (`pnpm test:fork:parity`) driven by the protocol sandbox fixture. The gate requires every sandbox case and its
   upgrade/execution evidence unless `FORK_PARITY_SCENARIOS` names an explicit subset, and has offline tests
@@ -42,12 +87,14 @@ graft block. A clean reindex fills all of them.
 
 ### Changed
 
-- `DTF.ownerAddress` is the deployment's `folioOwner`.
+- `DTF.ownerAddress` is the deployment's `folioOwner` for ungoverned deployments; governed deployments still
+  record the owner timelock from `GovernedFolioDeployed`.
 - `DTF.tradeTokenAllowlist` is empty before 6.0 (null on grafted DTFs) and a fresh 6.0 Folio's allowlist state
   is read at deployment, since `initialize` emits no allowlist event.
 - `legacyAdminGovernances`, `legacyTradingGovernances` and `tradeTokenAllowlist` are nullable so the release can
   graft (a graft may only add nullable fields).
-- `DTF.ownerAddress` changes meaning for existing consumers (deployment owner, not the transaction sender).
+- `DTF.ownerAddress` changes meaning for ungoverned deployments only (deployment owner, not the transaction
+  sender); governed deployments already recorded the owner timelock in 1.10.2.
 - `DTF.legacyAdminGovernances` and `DTF.legacyTradingGovernances`: the subset of `legacyAdmins` /
   `legacyAuctionApprovers` that resolved to an indexed governance when the role was revoked. The raw lists are
   unchanged and still record every former holder, including deployers, upgrade spells and EOAs.

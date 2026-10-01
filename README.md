@@ -101,6 +101,18 @@ npm run deploy:bsc
 npm run deploy:mainnet -- --version 1.8.4
 ```
 
+### Grafted Deployments
+
+`networks.json` `grafting` (`base`: `dtf-index-<network>/<version>`, `block`) makes `deploy.js` pass
+`--graft-from` / `--start-block` to Goldsky. The block must be at or below what Goldsky has indexed for the base
+(the deploy fails with the base's block otherwise) and before any event the new release handles differently,
+since a graft copies that state instead of replaying it. Once the new version has synced, compare every DTF
+field both versions share at a common block and check its health:
+
+```bash
+node scripts/graft-parity.mjs <network> <baseVersion> <newVersion>   # e.g. base 1.11.0 1.11.1-test
+```
+
 ### Interactive Deployment
 
 ```bash
