@@ -5,6 +5,157 @@ All notable changes to the DTF Index Subgraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.2] - Unreleased
+
+Deployed as `1.11.2-test`, grafted onto `1.11.1-test` (block per chain in `networks.json`); `prod` still points at
+1.10.2. Auctions closed before the graft block keep the close block's timestamp as `endTime` (one second later than
+the contract) until a clean reindex.
+
+### Fixed
+
+- **A closed auction's `endTime` matches the contract.** Folio 4.0 to 6.0 `closeAuction` stores
+  `endTime = block.timestamp - 1` (the last second bids were accepted); the `AuctionClosed` handler stored
+  `block.timestamp`. 1.0/2.0 trades are unchanged (`closedTimestamp` is still the close block's timestamp).
+
+### Added
+
+- Fork parity requires the sandbox's economic completion for `v6Native` and `v5LegacyUpgrade` and asserts it at
+  the fixture's `completionBlock`: the single indexed bid, the auction's start and closed end, the rebalance's
+  `availableUntil` after `endRebalance`, and the rebalance/auction transactions. `stateBlock` checks are
+  unchanged.
+
+## [1.11.1] - Unreleased
+
+Deployed as `1.11.1-test` (the suffix marks a candidate; `prod` still points at 1.10.2). Grafted onto 1.11.0
+(block per chain in `networks.json`). A graft copies state instead of replaying it, so the graft block has to
+precede every event this release handles differently: a `FolioFeePaid` to the Folio itself (only 6.0.0 Folios
+emit it, and each 6.0.0 deployer's contract nonce was still 2 at deploy time) and a DTF role granted to an
+indexed timelock first registered for another entity (none in 1.11.0 at the graft block on any chain).
+
+### Fixed
+
+- **A DTF that grants `DEFAULT_ADMIN` / `REBALANCE_MANAGER` to an already-indexed timelock is linked to its
+  governance.** `createGovernanceTimelock` returned early for a known timelock and only refreshed the entity it
+  was first indexed for. When that entity was a new-vault optimistic system's vault (indexed as `VOTE_LOCKING`
+  by the `OptimisticGovernorDeployer` handler) or another DTF, the granting DTF kept `ownerGovernance`,
+  `tradingGovernance` and `stToken` null: the v5 to optimistic upgrade topology the fork parity gate failed on.
+  The granting DTF is now linked by its own role membership; the timelock keeps its first entity and the vault
+  keeps its governance. A governor attached to a shared timelock after the grant (a later `PROPOSER_ROLE`)
+  still only relinks the timelock's first entity.
+- **Folio 6.0's self fee is no longer booked as external revenue.** Folio 6.0 pays the holders' share as
+  `FolioFeePaid(address(this), shares)`, which the handler counted in `externalRevenue` and the external
+  snapshot fields. It now goes to the self-revenue fields below.
+
+### Added
+
+- `DTF.selfRevenue`, `TokenDailySnapshot.dailySelfRevenue`, `TokenHourlySnapshot.hourlySelfRevenue`,
+  `TokenMonthlySnapshot.monthlySelfRevenue` and `TokenMonthlySnapshot.cumulativeSelfRevenue`: fees retained for
+  the Folio's own holders. Nullable so the release can graft: a DTF or snapshot written before the graft is null
+  until its first self fee (read it as 0, no 6.0.0 Folio existed before the graft); new ones start at 0.
+- `scripts/graft-parity.mjs`: compares the DTF fields two deployments share at a common block and reports the
+  newer deployment's health.
+
+### Changed
+
+- `totalRevenue` keeps its meaning, every fee share the Folio paid (`ProtocolFeePaid` + `FolioFeePaid`), which
+  is now `protocolRevenue + governanceRevenue + externalRevenue + selfRevenue`. Folios before 6.0 have no self
+  fee, so nothing changes for them. For a 6.0 Folio the self fee moves from `externalRevenue` to `selfRevenue`
+  and stays in `totalRevenue` and the snapshot revenue totals; revenue paid out to parties other than the
+  holders is `totalRevenue - selfRevenue`.
+
+## [1.11.0] - Unreleased
+
+Folio 6.0.0 support. Grafted onto 1.10.2 (block per chain in `networks.json`), which is safe for v6 because
+no Folio had been deployed through a 6.0.0 deployer when it was cut (each deployer's contract nonce was still 2:
+only its constructor's implementation). DTFs carried over by the graft keep their 1.10.2 values for what this
+release computes at deployment or from history: `version` stays null until a version-changing upgrade,
+ungoverned deployments keep the transaction sender as `ownerAddress` (governed ones already recorded the owner
+timelock from `GovernedFolioDeployed` in 1.10.2), `legacyAdminGovernances` / `legacyTradingGovernances` /
+`tradeTokenAllowlist` are null until their next event, and `FolioVersion` only records registrations after the
+graft block. A clean reindex fills all of them.
+
+### Added
+
+- `DTF.version`, hydrated from `version()` at deployment and refreshed when the proxy reports a different
+  version after an `Upgraded` log (constructor `Upgraded` logs are ignored by comparing versions, not blocks).
+- Folio 6.0 fields on `DTF`: `maxAuctionLength` (mirrored into `auctionLength` for existing clients),
+  `immutableFeeRecipients`, `folioFeeForSelf`, `tradeAllowlistEnabled`, `tradeTokenAllowlist`, with handlers for `MaxAuctionLengthSet`, `FolioFeeSet`,
+  `ImmutableFeeRecipientsSet`, `TradeAllowlistEnabled`, `TradeAllowlistTokenAdded`, `TradeAllowlistTokenRemoved`.
+- `FolioVersion` entity and a `FolioVersionRegistry` data source per chain (mainnet and Base
+  `0xA665b273997F70b647B66fa7Ed021287544849dB`, BSC `0x79A4E963378AE34fC6c796a24c764322fC6c9390`, each starting at
+  the chain's earliest static deployer block). A `FolioDeployerFromRegistry` template is spawned for a registered
+  deployer that is not a static source (`STATIC_FOLIO_DEPLOYERS`, by address, checked against `networks.json` at
+  template time), so a future release is indexed from its registration onward without a manifest change. A
+  deployment made through a new deployer before it is registered is not covered; add a static entry at the
+  deployer's creation block for that case.
+- Static sources for the production 6.0.0 FolioDeployers (mainnet `0x2B1Cd9aEF0CD3B9fF5DCa1C66348eCfC46F37392`,
+  Base `0x4c891fCa6319d492866672E3D2AfdAAA5bDcfF67`, BSC `0x9837Ce9825D52672Ca02533B5A160212bf901963`), which
+  are not registered yet, and for the ReserveOptimisticGovernorDeployer 1.1.0 they deploy governance through
+  (mainnet `0x4292433c772958ae93bebf32602ffDe0f9C5Fcd6`, Base `0xaC429cc5EA7f34a407f65B769c9AEA0242b075c6`, BSC
+  `0xb4eB87250Ecd8f32BeA775dA6D164D92A398d05b`). v6 governance is indexed without the latter too:
+  `GovernedFolioDeployed` and the Folio's `RoleGranted` create the governance and its timelock, and
+  `Governor.token()` discovers the vault. The OGD source adds systems deployed with a new vault
+  (`deployWithNewStakingVault`), whose vault, UnstakingManager, timelock and governance are indexed from their
+  deployment even before a DTF grants that timelock a role (e.g. ahead of an upgrade proposal); for
+  `deployWithExistingStakingVault`, which the 6.0.0 `deployGovernedFolio` calls, it only discovers the vault
+  earlier. The mainnet-fork profile lists both as well.
+- Dockerized mainnet-fork profile (`docs/local-mainnet-fork.md`) with an RPC-versus-GraphQL parity gate
+  (`pnpm test:fork:parity`) driven by the protocol sandbox fixture. The gate requires every sandbox case and its
+  upgrade/execution evidence unless `FORK_PARITY_SCENARIOS` names an explicit subset, and has offline tests
+  (`pnpm test:fork:parity:offline`).
+
+### Changed
+
+- `DTF.ownerAddress` is the deployment's `folioOwner` for ungoverned deployments; governed deployments still
+  record the owner timelock from `GovernedFolioDeployed`.
+- `DTF.tradeTokenAllowlist` is empty before 6.0 (null on grafted DTFs) and a fresh 6.0 Folio's allowlist state
+  is read at deployment, since `initialize` emits no allowlist event.
+- `legacyAdminGovernances`, `legacyTradingGovernances` and `tradeTokenAllowlist` are nullable so the release can
+  graft (a graft may only add nullable fields).
+- `DTF.ownerAddress` changes meaning for ungoverned deployments only (deployment owner, not the transaction
+  sender); governed deployments already recorded the owner timelock in 1.10.2.
+- `DTF.legacyAdminGovernances` and `DTF.legacyTradingGovernances`: the subset of `legacyAdmins` /
+  `legacyAuctionApprovers` that resolved to an indexed governance when the role was revoked. The raw lists are
+  unchanged and still record every former holder, including deployers, upgrade spells and EOAs.
+
+## [1.10.2] - 2026-09-14
+
+- Version bump only; no schema or mapping change.
+
+## [1.10.1] - 2026-08-21
+
+Review follow-ups on 1.10.0 (which was deployed but never tagged `prod`). Clean reindex, no graft.
+
+### Fixed
+- **Legacy vaults no longer get a bogus `0x0` entry as their first `legacyGovernance` element.** `_handleOwnershipTransferred` compared the previous owner with `!==`, which is reference identity on AssemblyScript strings, so the constructor's `OwnershipTransferred(0x0 → deployer)` always passed the guard. Visible on every legacy vault in prod today.
+- **Withdrawals to another receiver** (`Withdraw.receiver != owner`) now book `totalWithdrawn` / `realizedRewards` on the receiver (who gets the lock) while the owner only releases principal; a later lock cancel lands on the same account. Records carry a `counterparty`.
+- **Lock cancellations net out of `totalWithdrawn`**, so `totalDeposited` / `totalWithdrawn` stay a matched pair and `realizedRewards == totalWithdrawn − totalDeposited + principal` holds across cancel round-trips.
+- `StakingPosition` rows are no longer created for vote tokens that are not vaults (guarded on `unstakingManager`).
+- `getOrCreateAccount` saves on create, fixing dangling `Account` references from proposal actors (`cancellationAccount`, `executionAccount`, `queueAccount`) as well as locks, claims and positions.
+
+### Changed
+- Every vault's `Deposit` / `Withdraw` now samples the exchange rate (two eth_calls per event) and retries the `UnstakingManager` subscription if discovery skipped it (with a `log.warning` on the skip), so vaults outside the polled `TrackedVault` list still carry an accurate rate as of their last activity and a missed subscription heals itself.
+- `StakingPositionRecord.counterparty` (transfer sender/receiver, withdraw receiver/owner, the unstaking manager for `LOCK_CANCEL`).
+
+## [1.10.0] - 2026-08-20
+
+Requires a clean reindex (no graft): the UnstakingManager subscription and the exchange-rate / position entities are created at staking-token discovery and from historical Deposit/Withdraw events.
+
+### Fixed
+- **Vaults discovered outside a tracked deployer event never had their `UnstakingManager` subscribed, so their locks were never indexed.** Concretely the shared BSC vlRSR `0xE744C8157c346B2931807F42552c8CBc0BB6D34f` (deployed by the untracked `ReserveOptimisticGovernorDeployer` at block 102317233) had `unstakingManager: null` and `locks: []` on Goldsky while two `LockCreated` events (blocks 116930184 / 116931302) sat on chain. The subscription now lives in `getOrCreateStakingToken` (`subscribeUnstakingManager`), i.e. on every discovery path — deployer events, `Governor.token()`, timelock role grants. Verified by replaying the two real events in `tests/unstaking-manager-fallback.test.ts`.
+- `Lock.account` / `RewardClaim.account` referenced an `Account` that was never saved when the address had not held the vault token before (e.g. a withdraw to a different receiver).
+
+### Added
+- **`OptimisticGovernorDeployer` data source** (networks.json; mainnet `0x2acc45e1…` from block 25245938, base `0x604d70d1…` from 46904843, bsc `0x1c10e68b…` from 102317103 — the mainnet/base vlRSR vaults `0xABbDD9AC…` / `0x2F0D6538…` had the same missing-manager bug) handling `ReserveOptimisticGovernorSystemDeployed`. `deployWithNewStakingVault` indexes the vault, its manager, governance and timelock (the AccessControl vault emits no `OwnershipTransferred`, so the timelock entity is created here); `deployWithExistingStakingVault` (`stakingVault = 0x0`) only discovers the vault through `Governor.token()`; the DTF governance keeps being created by the DTF role grant, where its timelock and `optimisticProposers` are known.
+- **Vault exchange-rate tracking.** The new StakingVault streams native RSR rewards into `totalAssets()`, so the share → asset rate drifts every block. A hardcoded `TrackedVault` data source per chain (networks.json: the vlRSR vault — mainnet `0xABbDD9AC…`, base `0x2F0D6538…`, bsc `0xE744C815…`) runs a polling block handler (`handleExchangeRatePoll`) that samples `convertToAssets(10^decimals)` + `totalAssets()` roughly every 10 minutes — `every` is derived per network from `networks.json.secondsPerBlock` (mainnet 12s → 50 blocks, base 2s → 300, bsc 0.45s → 1333). New fields `StakingToken.exchangeRate / totalAssets / exchangeRateBlock / exchangeRateTimestamp`, `StakingTokenExchangeRateDailySnapshot` (last sample per day, upsert) and `StakingTokenExchangeRateSnapshot` (immutable, written on the first poll and whenever the rate moves — legacy 1:1 vaults get a single baseline row). Only the tracked vault is polled (two eth_calls per poll); the cadence is one constant in `scripts/parse-template.js`, adding a vault is one `TrackedVault` entry.
+- **Per-account staking accounting** for the "locked 100 RSR → 96 vlRSR, now worth 120 RSR" view: `StakingPosition` (shares, average-cost `principal`, `totalDeposited`, `totalWithdrawn`, `realizedRewards`), `StakingPositionRecord` per `Deposit` / `Withdraw` / wallet `Transfer` (with the implied exchange rate), `StakingPositionDailySnapshot`. Withdrawals release principal pro rata and book the excess as realized rewards; wallet transfers move principal pro rata; a cancelled lock re-enters as a `LOCK_CANCEL` record (principal at today's rate; see 1.10.1 for how it nets against `totalWithdrawn`). Validated against the full real history of the BSC locker `0xb0bd…6e18` with an independent BigInt oracle (`tests/staking-position.test.ts`). See `docs/staking-vaults.md` for the query recipe.
+- `StakingToken.unstakingManager`, `unstakingDelay`, `rewardRatio`, `rewardHalfLife` (from `UnstakingDelaySet` / `RewardRatioSet` and resolved at discovery).
+
+### Changed
+- `abis/staking-vault.json` gains `versionRegistry()`, `rewardTokenRegistry()`, `VersionRegistrySet`, `RewardTokenRegistrySet`; new `abis/optimistic-governor-deployer.json`.
+- `scripts/parse-template.js` requires `secondsPerBlock` per network and renders `OptimisticGovernorDeployer` and `TrackedVault` data sources.
+- Test helpers: `tests/helpers/mock-staking-vault.ts` mocks every vault / governor / timelock read the discovery path performs.
+
 ## [1.9.8] - 2026-06-23
 
 ### Fixed

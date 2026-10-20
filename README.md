@@ -22,7 +22,7 @@ The DTF Index Subgraph tracks and indexes:
 This subgraph uses a Mustache-based template system to generate network-specific configurations:
 
 1. **Template File**: `subgraph.yaml.mustache` contains the base configuration with placeholders
-2. **Network Configuration**: `networks.json` stores deployment addresses and block numbers for each network
+2. **Network Configuration**: `networks.json` stores deployment addresses and block numbers for each network, plus `secondsPerBlock` (drives the exchange-rate polling cadence, see below)
 3. **Parser Script**: `scripts/parse-template.js` generates the final `subgraph.yaml`
 
 ### How It Works
@@ -30,8 +30,9 @@ This subgraph uses a Mustache-based template system to generate network-specific
 The template parsing process:
 1. Takes a network argument (e.g., "mainnet", "base", "bsc")
 2. Loads network-specific addresses and block numbers from `networks.json`
-3. Handles multiple protocol versions (1.0.0, 2.0.0, 4.0.0) with different deployer contracts
-4. Generates `subgraph.yaml` with all network-specific values filled in
+3. Handles multiple protocol versions (1.0.0, 2.0.0, 4.0.0, 5.0.0, 6.0.0) with different deployer contracts, plus the standalone `ReserveOptimisticGovernorDeployer` (`OptimisticGovernorDeployer` in `networks.json`)
+4. Converts the 10-minute exchange-rate polling cadence into a per-network block count (`every: round(600 / secondsPerBlock)`)
+5. Generates `subgraph.yaml` with all network-specific values filled in
 
 ### Building for Different Networks
 
@@ -53,6 +54,11 @@ npm run build
 ## Deployment
 
 This subgraph is deployed using Goldsky infrastructure. Multiple deployment options are available:
+
+For local v5/v6 protocol tests on a Dockerized Anvil mainnet fork, use the isolated
+[mainnet fork profile](docs/local-mainnet-fork.md). It generates a manifest from
+the pinned fork block and the locally deployed v6 FolioDeployer address without
+changing the production network configuration.
 
 ### Prerequisites
 
@@ -95,6 +101,18 @@ npm run deploy:bsc
 npm run deploy:mainnet -- --version 1.8.4
 ```
 
+### Grafted Deployments
+
+`networks.json` `grafting` (`base`: `dtf-index-<network>/<version>`, `block`) makes `deploy.js` pass
+`--graft-from` / `--start-block` to Goldsky. The block must be at or below what Goldsky has indexed for the base
+(the deploy fails with the base's block otherwise) and before any event the new release handles differently,
+since a graft copies that state instead of replaying it. Once the new version has synced, compare every DTF
+field both versions share at a common block and check its health:
+
+```bash
+node scripts/graft-parity.mjs <network> <baseVersion> <newVersion>   # e.g. base 1.11.0 1.11.1-test
+```
+
 ### Interactive Deployment
 
 ```bash
@@ -123,12 +141,22 @@ The deployment process automatically:
 - **Token**: ERC20 tokens with transfer history and holder analytics
 - **Governance**: Proposals, votes, delegates, and timelock operations
 - **VoteLockedToken**: stDAO tokens with delegation and vote-locking mechanisms
+- **FolioVersion**: Folio releases registered on the chain's version registry (version, deployer, deprecation)
+- **StakingPosition / exchange rate**: per-account principal vs. current value for appreciating vaults — see `docs/staking-vaults.md`
 
 ## Version Support
 
 The subgraph supports multiple protocol versions:
 - Version 1.0.0: Initial protocol deployment
 - Version 2.0.0: Enhanced features and updated contracts
-- Version 4.0.0: Latest version with advanced functionality
+- Version 4.0.0: Rebalance-based portfolio management
+- Version 5.0.0: Singleton auctions and permissionless bids
+- Version 6.0.0: Version-aware fork support, self-fees, immutable recipients,
+  maximum auction length, and trade allowlists
 
 Each version has its own deployer contracts (FolioDeployer and GovernanceDeployer) at different addresses across networks.
+Releases up to 5.0.0 are static data sources in `networks.json`. The `FolioVersionRegistry` data source records
+every `VersionRegistered` as a `FolioVersion` entity and, for releases past the static ones, spawns a
+`FolioDeployerFromRegistry` template, so registering a release on chain is enough for its later deployments to be
+indexed. The RPC registry (`getLatestVersion`, in the SDK) stays the source of truth for "latest"; `FolioVersion`
+is the indexed history.

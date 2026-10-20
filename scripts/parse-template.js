@@ -1,22 +1,22 @@
 const fs = require("fs");
 const mustache = require("mustache");
 
-// Parse command line arguments
 const args = process.argv.slice(2);
-const networkIndex = args.indexOf("--network");
-if (networkIndex === -1 || networkIndex === args.length - 1) {
+const network = getArgument("--network");
+if (!network) {
   console.error("Error: --network argument is required");
   process.exit(1);
 }
-const network = args[networkIndex + 1];
+const configPath = getArgument("--config") || "networks.json";
+const outputPath = getArgument("--output") || "subgraph.yaml";
 
 const template = fs.readFileSync("subgraph.yaml.mustache", "utf8");
-const data = fs.readFileSync("networks.json", "utf8");
+const data = fs.readFileSync(configPath, "utf8");
 const networksData = JSON.parse(data);
 
 // Check if the specified network exists
 if (!networksData[network]) {
-  console.error(`Error: Network '${network}' not found in networks.json`);
+  console.error(`Error: Network '${network}' not found in ${configPath}`);
   process.exit(1);
 }
 
@@ -27,19 +27,65 @@ const graftingConfig = networksData[network].grafting;
 const hasGrafting =
   graftingConfig && graftingConfig.base && graftingConfig.base !== "";
 
+// Vault exchange rates are sampled by a polling block handler. The cadence is
+// expressed in seconds here and converted to blocks per chain (block times differ
+// by ~25x between mainnet and BSC).
+const EXCHANGE_RATE_POLL_SECONDS = 600;
+const secondsPerBlock = networksData[network].secondsPerBlock;
+if (!secondsPerBlock) {
+  console.error(`Error: Network '${network}' is missing secondsPerBlock in networks.json`);
+  process.exit(1);
+}
+const exchangeRatePollingBlocks = Math.max(
+  1,
+  Math.round(EXCHANGE_RATE_POLL_SECONDS / secondsPerBlock)
+);
+
 const templateData = {
   network: network,
+  exchangeRatePollingBlocks: exchangeRatePollingBlocks,
   rsrAddress: networksData[network].RSR.address,
   rsrBurnStartBlock: networksData[network].RSR.startBlock,
   FolioDeployer: getWithPostfix(networksData[network].FolioDeployer),
   GovernanceDeployer: getWithPostfix(networksData[network].GovernanceDeployer),
+  OptimisticGovernorDeployer: getWithPostfix(
+    networksData[network].OptimisticGovernorDeployer || []
+  ),
+  // Vaults whose share -> asset rate is polled (one vlRSR vault per chain)
+  TrackedVault: getWithPostfix(networksData[network].TrackedVault || []),
   BridgedDTF: getWithPostfix(networksData[network].BridgedDTF || []),
+  // One registry per chain; omitted from configs that list every deployer statically (fork profile)
+  FolioVersionRegistry: networksData[network].FolioVersionRegistry,
   grafting: hasGrafting,
 };
 
+// The registry mapping skips deployers listed in STATIC_FOLIO_DEPLOYERS; a static entry missing
+// there would be indexed twice (static source + registry template).
+const staticDeployers = fs
+  .readFileSync("src/utils/constants.ts", "utf8")
+  .match(/STATIC_FOLIO_DEPLOYERS[^=]*=\s*\[([^\]]*)\]/)[1]
+  .match(/"0x[0-9a-f]{40}"/g)
+  .map((entry) => entry.replace(/"/g, ""));
+for (const deployer of networksData[network].FolioDeployer) {
+  if (!staticDeployers.includes(deployer.address.toLowerCase())) {
+    console.error(
+      `Error: FolioDeployer ${deployer.address} (${deployer._version}) is not in STATIC_FOLIO_DEPLOYERS; add it or index it through the registry instead`
+    );
+    process.exit(1);
+  }
+}
+
 const output = mustache.render(template, templateData);
 
-fs.writeFileSync("subgraph.yaml", output);
+fs.writeFileSync(outputPath, output);
+
+function getArgument(name) {
+  const index = args.indexOf(name);
+  if (index === -1 || index === args.length - 1) {
+    return undefined;
+  }
+  return args[index + 1];
+}
 
 function getWithPostfix(array) {
   return array.map((item, index) => ({

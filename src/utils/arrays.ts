@@ -64,3 +64,9 @@ export function arrayUniqueBy<T>(array: T[], pluck: (item: T) => string): T[] {
 
   return unique;
 }
+
+// DTF list fields added in 1.11.0 are null on entities carried over by the graft.
+export function orEmpty(x: string[] | null): string[] {
+  if (x === null) return new Array<string>();
+  return x!;
+}

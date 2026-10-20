@@ -77,13 +77,37 @@ type RSRBurnMonthlySnapshot @entity(immutable: false) {
 #############################
 ####### DTF FOLIO      ######
 #############################
+" A Folio release registered on the chain's FolioVersionRegistry "
+type FolioVersion @entity(immutable: false) {
+  " keccak256(version string) "
+  id: ID!
+
+  " Semantic version string read from the deployer "
+  version: String!
+
+  " FolioDeployer for this release "
+  deployer: Bytes!
+
+  " Registration block "
+  blockNumber: BigInt!
+
+  " Registration timestamp "
+  timestamp: BigInt!
+
+  " Whether the registry deprecated this release "
+  deprecated: Boolean!
+}
+
 type DTF @entity(immutable: false) {
   id: ID!
+
+  " Folio implementation version hydrated from version() "
+  version: String
 
   " Folio ERC20 token address "
   token: Token!
 
-  " Revenue "
+  " Revenue: every fee share the Folio paid, protocolRevenue + governanceRevenue + externalRevenue + selfRevenue "
   totalRevenue: BigInt!
 
   " Protocol revenue "
@@ -94,6 +118,9 @@ type DTF @entity(immutable: false) {
 
   " External recipients revenue "
   externalRevenue: BigInt!
+
+  " Fees retained for the Folio's own holders (v6.0+ self fee, paid as FolioFeePaid to the Folio itself); part of totalRevenue, not of externalRevenue. Null on DTFs indexed before 1.11.1 (graft) until their first self fee "
+  selfRevenue: BigInt
 
   " Folio deployer address "
   deployer: Bytes!
@@ -112,6 +139,9 @@ type DTF @entity(immutable: false) {
 
   " Auction length "
   auctionLength: BigInt!
+
+  " Maximum auction length (v6.0+); auctionLength remains populated for compatibility "
+  maxAuctionLength: BigInt
 
   " Bids enabled (v5.0+) "
   bidsEnabled: Boolean
@@ -140,6 +170,9 @@ type DTF @entity(immutable: false) {
   " Legacy auction approvers "
   legacyAuctionApprovers: [String!]!
 
+  " Former rebalance authorities that were indexed governances (raw history stays in legacyAuctionApprovers); null on DTFs carried over by the 1.11.0 graft until their next revoke "
+  legacyTradingGovernances: [Governance!]
+
   " Auction launchers "
   auctionLaunchers: [String!]!
 
@@ -151,6 +184,9 @@ type DTF @entity(immutable: false) {
 
   " Legacy admins "
   legacyAdmins: [String!]!
+
+  " Former admins that were indexed governances (raw history stays in legacyAdmins); null on DTFs carried over by the 1.11.0 graft until their next revoke "
+  legacyAdminGovernances: [Governance!]
 
   " stDAO "
   stToken: StakingToken
@@ -175,6 +211,18 @@ type DTF @entity(immutable: false) {
 
   " Fee recipients "
   feeRecipients: String!
+
+  " Immutable fee recipients (v6.0+) "
+  immutableFeeRecipients: String
+
+  " Fraction of non-DAO fees retained for Folio holders (v6.0+) "
+  folioFeeForSelf: BigInt
+
+  " Whether rebalance token allowlisting is enabled (v6.0+) "
+  tradeAllowlistEnabled: Boolean
+
+  " Rebalance token allowlist (v6.0+); empty for DTFs deployed from 1.11.0 on, null on DTFs carried over by the 1.11.0 graft "
+  tradeTokenAllowlist: [String!]
 
   " Rebalances "
   rebalances: [Rebalance!]! @derivedFrom(field: "dtf")
@@ -578,6 +626,9 @@ type TokenDailySnapshot @entity(immutable: false) {
   " Daily external recipients revenue for this DTF "
   dailyExternalRevenue: BigInt!
 
+  " Daily fees retained for the DTF's own holders (v6.0+ self fee); null on snapshots written before 1.11.1 "
+  dailySelfRevenue: BigInt
+
   " Daily total Supply of the token "
   dailyTotalSupply: BigInt!
 
@@ -633,6 +684,9 @@ type TokenHourlySnapshot @entity(immutable: false) {
 
   " Hourly external recipients revenue for this DTF "
   hourlyExternalRevenue: BigInt!
+
+  " Hourly fees retained for the DTF's own holders (v6.0+ self fee); null on snapshots written before 1.11.1 "
+  hourlySelfRevenue: BigInt
 
   " Hourly total Supply of the token "
   hourlyTotalSupply: BigInt!
@@ -720,6 +774,9 @@ type TokenMonthlySnapshot @entity(immutable: false) {
   " Monthly external revenue for this DTF "
   monthlyExternalRevenue: BigInt!
 
+  " Monthly fees retained for the DTF's own holders (v6.0+ self fee); null on snapshots written before 1.11.1 "
+  monthlySelfRevenue: BigInt
+
   " Cumulative revenue up to this month "
   cumulativeRevenue: BigInt!
 
@@ -731,6 +788,9 @@ type TokenMonthlySnapshot @entity(immutable: false) {
 
   " Cumulative external revenue "
   cumulativeExternalRevenue: BigInt!
+
+  " Cumulative fees retained for the DTF's own holders (v6.0+ self fee); null on snapshots written before 1.11.1 "
+  cumulativeSelfRevenue: BigInt
 
   " Cumulative mints "
   cumulativeMintAmount: BigInt!
@@ -837,6 +897,8 @@ type Account @entity(immutable: false) {
 
   " Locks "
   locks: [Lock!]! @derivedFrom(field: "account")
+
+  stakingPositions: [StakingPosition!]! @derivedFrom(field: "account")
 
   " Reward claims "
   rewardClaims: [RewardClaim!]! @derivedFrom(field: "account")
@@ -1217,6 +1279,38 @@ type StakingToken @entity(immutable: false) {
   " Reward jar that converts governance-share fees into the underlying token (new StakingVault); null if the vault has none "
   tokenJar: String
 
+  " Unstaking manager that holds withdrawal locks for this vault; null for tokens that are not StakingVaults "
+  unstakingManager: UnstakingManager
+
+  " Seconds between withdraw and claim (StakingVault.unstakingDelay) "
+  unstakingDelay: BigInt
+
+  " D18 reward ratio per second (StakingVault.rewardRatio), read at discovery and on RewardRatioSet; null for tokens without one "
+  rewardRatio: BigInt
+
+  " Reward half-life in seconds, from RewardRatioSet "
+  rewardHalfLife: BigInt
+
+  " Underlying asset units (raw, asset decimals) received for one whole share: convertToAssets(10^shareDecimals). Defaults to 10^shareDecimals (1:1) for tokens that are not vaults "
+  exchangeRate: BigInt!
+
+  " Vault totalAssets() at the last sample "
+  totalAssets: BigInt!
+
+  " Block of the last exchange rate sample; null when only seeded at discovery "
+  exchangeRateBlock: BigInt
+
+  " Timestamp of the last exchange rate sample; null when only seeded at discovery "
+  exchangeRateTimestamp: BigInt
+
+  " Exchange rate history, one row per sample where the rate moved "
+  exchangeRateSnapshots: [StakingTokenExchangeRateSnapshot!]! @derivedFrom(field: "token")
+
+  " Exchange rate history, last sample per day "
+  exchangeRateDailySnapshots: [StakingTokenExchangeRateDailySnapshot!]! @derivedFrom(field: "token")
+
+  positions: [StakingPosition!]! @derivedFrom(field: "token")
+
   " Governance "
   governance: Governance
 
@@ -1281,8 +1375,157 @@ type UnstakingManager @entity(immutable: true) {
   token: StakingToken!
 }
 
+type StakingTokenExchangeRateDailySnapshot @entity(immutable: false) {
+  " { StakingToken Address }-{ Day ID } — last sample of the day "
+  id: ID!
+
+  " Staking token "
+  token: StakingToken!
+
+  " Underlying asset units (raw) per one whole share: convertToAssets(10^decimals) "
+  exchangeRate: BigInt!
+
+  " Vault totalAssets() "
+  totalAssets: BigInt!
+
+  " Vault share supply at sample time "
+  totalSupply: BigInt!
+
+  blockNumber: BigInt!
+  timestamp: BigInt!
+}
+
+enum StakingPositionRecordType {
+  DEPOSIT
+  " UnstakingManager.cancelLock re-depositing a pending unlock (Deposit.sender == unstakingManager); not new capital "
+  LOCK_CANCEL
+  WITHDRAW
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+"""
+Per-account accounting for a vault. principal is an average cost basis in the
+underlying: deposits add the underlying paid, withdrawals release principal pro
+rata to the shares burned, transfers move principal pro rata between accounts.
+Unrealized rewards = shares * StakingToken.exchangeRate / 10^decimals - principal.
+"""
+type StakingPosition @entity(immutable: false) {
+  " { Account }-{ StakingToken Address } "
+  id: ID!
+
+  account: Account!
+
+  token: StakingToken!
+
+  " Vault shares currently held "
+  shares: BigInt!
+
+  " Underlying principal still backing the held shares "
+  principal: BigInt!
+
+  " Lifetime underlying deposited (lock cancellations are not deposits) "
+  totalDeposited: BigInt!
+
+  " Lifetime underlying withdrawn to this account's unstaking locks, net of cancelled locks. Withdrawals to another receiver count on the receiver "
+  totalWithdrawn: BigInt!
+
+  " Underlying received on withdrawals above the principal those shares carried; follows the withdraw receiver "
+  realizedRewards: BigInt!
+
+  depositCount: Int!
+
+  withdrawCount: Int!
+
+  " Last change "
+  blockNumber: BigInt!
+
+  " Last change "
+  timestamp: BigInt!
+
+  records: [StakingPositionRecord!]! @derivedFrom(field: "position")
+
+  dailySnapshots: [StakingPositionDailySnapshot!]! @derivedFrom(field: "position")
+}
+
+type StakingPositionRecord @entity(immutable: true) {
+  " { Position ID }-{ Transaction Hash }-{ Log Index } "
+  id: ID!
+
+  position: StakingPosition!
+
+  account: Account!
+
+  token: StakingToken!
+
+  type: StakingPositionRecordType!
+
+  " Shares minted / burned / moved "
+  shares: BigInt!
+
+  " DEPOSIT / WITHDRAW: underlying moved. TRANSFER_*: principal moved with the shares "
+  assets: BigInt!
+
+  " Change applied to StakingPosition.principal (negative on withdraw / transfer out) "
+  principalDelta: BigInt!
+
+  " WITHDRAW only: underlying received above the released principal "
+  realizedRewards: BigInt!
+
+  " Underlying per whole share at the time of the record (implied by the event for deposits / withdrawals, last sample for transfers) "
+  exchangeRate: BigInt!
+
+  " Other account involved: transfer sender/receiver, withdraw receiver/owner when they differ, the unstaking manager for LOCK_CANCEL "
+  counterparty: Account
+
+  hash: String!
+  logIndex: Int!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+}
+
+type StakingPositionDailySnapshot @entity(immutable: false) {
+  " { Position ID }-{ Day ID } — position state at the end of a day it changed "
+  id: ID!
+
+  position: StakingPosition!
+
+  account: Account!
+
+  token: StakingToken!
+
+  shares: BigInt!
+  principal: BigInt!
+  totalDeposited: BigInt!
+  totalWithdrawn: BigInt!
+  realizedRewards: BigInt!
+
+  blockNumber: BigInt!
+  timestamp: BigInt!
+}
+
+type StakingTokenExchangeRateSnapshot @entity(immutable: true) {
+  " { StakingToken Address }-{ Block Number } "
+  id: ID!
+
+  " Staking token "
+  token: StakingToken!
+
+  " Underlying asset units (raw) per one whole share: convertToAssets(10^decimals) "
+  exchangeRate: BigInt!
+
+  " Vault totalAssets() "
+  totalAssets: BigInt!
+
+  " Vault share supply at sample time "
+  totalSupply: BigInt!
+
+  blockNumber: BigInt!
+  timestamp: BigInt!
+}
+
 type Lock @entity(immutable: false) {
-  " { StakingToken Address }-{ Lock ID } "
+  " { UnstakingManager Address }-{ Lock ID } "
   id: ID!
 
   " Lock id "

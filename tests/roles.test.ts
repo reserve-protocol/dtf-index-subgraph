@@ -351,6 +351,19 @@ describe("_handleRoleGranted", () => {
       "legacyAuctionApprovers",
       "[" + OLD_TRADING_GOVERNOR.toHexString() + "]"
     );
+    // Raw history keeps the spell; the governance views keep only the former governors.
+    assert.fieldEquals(
+      "DTF",
+      MAINNET_DTF.toHexString(),
+      "legacyAdminGovernances",
+      "[" + OLD_OWNER_GOVERNOR.toHexString() + "]"
+    );
+    assert.fieldEquals(
+      "DTF",
+      MAINNET_DTF.toHexString(),
+      "legacyTradingGovernances",
+      "[" + OLD_TRADING_GOVERNOR.toHexString() + "]"
+    );
   });
 });
 
@@ -422,6 +435,8 @@ describe("_handleRoleRevoked", () => {
       "legacyAdmins",
       "[" + ACCOUNT_1.toHexString() + "]"
     );
+    // A plain account is history, not a former governance.
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "legacyAdminGovernances", "[]");
   });
 
   test("revoke for non-existent member is safe", () => {

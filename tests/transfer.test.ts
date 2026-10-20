@@ -48,6 +48,21 @@ describe("_handleTransfer", () => {
     assert.entityCount("TransferEvent", 0);
   });
 
+  test("self-transfer of full balance is a no-op (no holder count change, no event)", () => {
+    _handleTransfer(GENESIS, ALICE, BigInt.fromI32(100), createTransferEvent(0));
+    _handleTransfer(ALICE, ALICE, BigInt.fromI32(100), createTransferEvent(1));
+
+    assert.fieldEquals("Token", TOKEN_ADDR.toHexString(), "currentHolderCount", "1");
+    assert.fieldEquals("Token", TOKEN_ADDR.toHexString(), "transferCount", "0");
+    assert.fieldEquals(
+      "AccountBalance",
+      ALICE.toHexString() + "-" + TOKEN_ADDR.toHexString(),
+      "amount",
+      "100"
+    );
+    assert.entityCount("TransferEvent", 1); // only the mint
+  });
+
   // ---- MINT (from == GENESIS) ----
 
   test("mint increments totalSupply, mintCount, totalMinted", () => {
