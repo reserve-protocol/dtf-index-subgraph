@@ -20,6 +20,7 @@ import {
 } from "../../generated/schema";
 import {
   BIGDECIMAL_ZERO,
+  BIGINT_D18,
   BIGINT_ONE,
   BIGINT_ZERO,
   GENESIS_ADDRESS,
@@ -32,7 +33,6 @@ import { Governor } from "../../generated/templates/Governance/Governor";
 import { StakingVault } from "../../generated/templates/Governance/StakingVault";
 
 export const SECONDS_PER_DAY = 60 * 60 * 24;
-const BIGINT_D18 = BigInt.fromString("1000000000000000000");
 
 export function toDecimal(value: BigInt, decimals: number = 18): BigDecimal {
   return value.divDecimal(
