@@ -5,6 +5,30 @@ All notable changes to the DTF Index Subgraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+A graft keeps the old values: a governance carried over keeps its threshold until its vault gets a deposit or its
+governor gets a proposal, and a timelock keeps its type. A clean reindex corrects all of them.
+
+### Fixed
+
+- **`Governance.proposalThreshold` is the D18 ratio for every governor.** The governor emits its ratio in
+  `ProposalThresholdSet` at initialization, before the subgraph subscribes to it, and `proposalThreshold()` returns
+  votes. A new governance stored the vote count, or the 0.1% default when the vote supply was zero. It now reads
+  the ratio from `proposalThreshold()` and `getPastTotalSupply(clock() - 1)`, which is exact with one token of
+  supply or more. Below that it keeps the default with `proposalThresholdExact = false` and reads it again on the
+  vault's next `Deposit` or the governor's next `ProposalCreated`. Example: the Base vlPMF DAO (`0xa7469b6f…`) and
+  the aiDTF1 trading governor (`0xa802e0fd…`) showed 0.1%; the real ratio is 1%.
+- **A single-governor DTF's timelock is `OWNER`.** The Folio grants `REBALANCE_MANAGER` before `DEFAULT_ADMIN`, so its
+  only timelock was stored as `TRADING`. It becomes `OWNER` when the same DTF grants it `DEFAULT_ADMIN`. A DTF with
+  separate timelocks is unchanged.
+
+### Added
+
+- `Governance.proposalThresholdExact`: true when `proposalThreshold` is the exact ratio.
+- `Governance.lateQuorumVoteExtension`: read at creation and updated by `LateQuorumVoteExtensionSet`.
+- `StakingToken.governances`: the governors that vote with the token.
+
 ## [1.11.2] - Unreleased
 
 Deployed as `1.11.2-test`, grafted onto `1.11.1-test` (block per chain in `networks.json`); `prod` still points at
