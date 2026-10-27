@@ -5,7 +5,7 @@ All notable changes to the DTF Index Subgraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.11.3] - 2026-10-27
 
 A graft keeps the old values: a governance carried over keeps its threshold until its vault gets a deposit or its
 governor gets a proposal, and a timelock keeps its type. A clean reindex corrects all of them.
@@ -29,7 +29,7 @@ governor gets a proposal, and a timelock keeps its type. A clean reindex correct
 - `Governance.lateQuorumVoteExtension`: read at creation and updated by `LateQuorumVoteExtensionSet`.
 - `StakingToken.governances`: the governors that vote with the token.
 
-## [1.11.2] - Unreleased
+## [1.11.2] - 2026-10-01
 
 Deployed as `1.11.2-test`, grafted onto `1.11.1-test` (block per chain in `networks.json`); `prod` still points at
 1.10.2. Auctions closed before the graft block keep the close block's timestamp as `endTime` (one second later than
@@ -48,7 +48,7 @@ the contract) until a clean reindex.
   `availableUntil` after `endRebalance`, and the rebalance/auction transactions. `stateBlock` checks are
   unchanged.
 
-## [1.11.1] - Unreleased
+## [1.11.1] - 2026-09-30
 
 Deployed as `1.11.1-test` (the suffix marks a candidate; `prod` still points at 1.10.2). Grafted onto 1.11.0
 (block per chain in `networks.json`). A graft copies state instead of replaying it, so the graft block has to
@@ -87,7 +87,7 @@ indexed timelock first registered for another entity (none in 1.11.0 at the graf
   and stays in `totalRevenue` and the snapshot revenue totals; revenue paid out to parties other than the
   holders is `totalRevenue - selfRevenue`.
 
-## [1.11.0] - Unreleased
+## [1.11.0] - 2026-09-30
 
 Folio 6.0.0 support. Grafted onto 1.10.2 (block per chain in `networks.json`), which is safe for v6 because
 no Folio had been deployed through a 6.0.0 deployer when it was cut (each deployer's contract nonce was still 2:
