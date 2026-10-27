@@ -1,6 +1,7 @@
 import { dataSource, ethereum } from "@graphprotocol/graph-ts";
 import { _handleTransfer } from "../token/mappings";
 import { GENESIS_ADDRESS } from "../utils/constants";
+import { refreshVaultGovernances } from "../utils/getters";
 import {
   _handlePositionTransfer,
   _handleVaultDeposit,
@@ -166,6 +167,7 @@ export function handleDeposit(event: Deposit): void {
     event.params.shares,
     event
   );
+  refreshVaultGovernances(event.address);
 }
 
 export function handleWithdraw(event: Withdraw): void {

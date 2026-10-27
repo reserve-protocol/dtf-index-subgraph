@@ -1021,8 +1021,12 @@ type Governance @entity(immutable: false) {
   votingDelay: BigInt!
   "The duration of voting on a proposal in blocks"
   votingPeriod: BigInt!
-  "The number of votes required in order for a voter to become a proposer"
+  "Share of the vote supply required to become a proposer, D18 (1e16 = 1%)"
   proposalThreshold: BigInt!
+  " True once proposalThreshold is the governor's exact ratio; false or null while it is a fallback (vote supply below one token when indexed) "
+  proposalThresholdExact: Boolean
+  " Minimum voting time left after quorum is reached late, in clock units; null for governors without it "
+  lateQuorumVoteExtension: BigInt
 
   "The number of votes for a proposal to succeed."
   quorumVotes: BigInt
@@ -1305,6 +1309,9 @@ type StakingToken @entity(immutable: false) {
 
   " Exchange rate history, one row per sample where the rate moved "
   exchangeRateSnapshots: [StakingTokenExchangeRateSnapshot!]! @derivedFrom(field: "token")
+
+  " Governors that vote with this token "
+  governances: [Governance!]! @derivedFrom(field: "token")
 
   " Exchange rate history, last sample per day "
   exchangeRateDailySnapshots: [StakingTokenExchangeRateDailySnapshot!]! @derivedFrom(field: "token")

@@ -26,6 +26,7 @@ import { Governor } from "../../generated/templates/Governance/Governor";
 import { Timelock } from "../../generated/templates/Governance/Timelock";
 import { StakingVault } from "../../generated/templates/StakingToken/StakingVault";
 import {
+  BIGINT_D18,
   BIGINT_ONE,
   BIGINT_ZERO,
   DEFAULT_GOVERNANCE_PROPOSAL_THRESHOLD,
@@ -157,6 +158,15 @@ export function createGovernanceTimelock(
     timelockAddress.toHexString(),
   );
   if (existingTimelock) {
+    // A single-governor DTF grants REBALANCE_MANAGER before DEFAULT_ADMIN, so its only timelock is first seen as TRADING.
+    if (
+      entityType == GovernanceType.OWNER &&
+      existingTimelock.type == GovernanceType.TRADING &&
+      entity == existingTimelock.entity
+    ) {
+      existingTimelock.type = GovernanceType.OWNER;
+      existingTimelock.save();
+    }
     refreshGovernanceLinks(existingTimelock);
     // The timelock keeps the entity it was first indexed for (e.g. the vault of an optimistic
     // system deployed with a new vault, or another DTF), but a DTF granting it a role now must be
@@ -332,11 +342,13 @@ export function getOrCreateGovernance(
   governance.version = contract.version();
   governance.votingDelay = contract.votingDelay();
   governance.votingPeriod = contract.votingPeriod();
-  const proposalThreshold = contract.proposalThreshold();
-  // Dynamic FolioGovernor.proposalThreshold() returns votes, and zero vote supply rounds to 1.
-  governance.proposalThreshold = proposalThreshold.equals(BIGINT_ONE)
-    ? DEFAULT_GOVERNANCE_PROPOSAL_THRESHOLD
-    : proposalThreshold;
+  governance.proposalThreshold = DEFAULT_GOVERNANCE_PROPOSAL_THRESHOLD;
+  governance.proposalThresholdExact = false;
+  readProposalThreshold(governance, contract);
+  const voteExtension = contract.try_lateQuorumVoteExtension();
+  if (!voteExtension.reverted) {
+    governance.lateQuorumVoteExtension = voteExtension.value;
+  }
   governance.quorumDenominator = contract.quorumDenominator();
   const quorumNumerator = contract.try_quorumNumerator1();
   governance.quorumNumerator = quorumNumerator.reverted
@@ -391,6 +403,51 @@ export function getOrCreateGovernance(
   GovernanceTemplate.create(governanceAddress);
 
   return governance as Governance;
+}
+
+// The governor emits its D18 ratio at initialization, before the subgraph subscribes to it, and proposalThreshold()
+// returns votes: ceil(ratio * supply / 1e18). With at least one token of supply that rounding is below 1 wei of
+// ratio, so floor(votes * 1e18 / supply) is the exact ratio. Below that the fallback stays until the next refresh.
+function readProposalThreshold(governance: Governance, contract: Governor): void {
+  const votes = contract.try_proposalThreshold();
+  const clock = contract.try_clock();
+  if (votes.reverted || clock.reverted || clock.value.equals(BIGINT_ZERO)) {
+    return;
+  }
+
+  const supply = StakingVault.bind(Address.fromString(governance.token)).try_getPastTotalSupply(
+    clock.value.minus(BIGINT_ONE),
+  );
+  if (supply.reverted || supply.value.lt(BIGINT_D18)) {
+    return;
+  }
+
+  governance.proposalThreshold = votes.value.times(BIGINT_D18).div(supply.value);
+  governance.proposalThresholdExact = true;
+}
+
+export function refreshProposalThreshold(governance: Governance): void {
+  if (governance.proposalThresholdExact) {
+    return;
+  }
+
+  readProposalThreshold(governance, Governor.bind(Address.fromString(governance.id)));
+  if (governance.proposalThresholdExact) {
+    governance.save();
+  }
+}
+
+// A vault's first deposits give its governors the supply their threshold ratio needs.
+export function refreshVaultGovernances(vault: Address): void {
+  const stakingToken = StakingToken.load(vault.toHexString());
+  if (!stakingToken) {
+    return;
+  }
+
+  const governances = stakingToken.governances.load();
+  for (let i = 0; i < governances.length; i++) {
+    refreshProposalThreshold(governances[i]);
+  }
 }
 
 function getRoleMembers(timelock: Timelock, role: Bytes): Array<string> {

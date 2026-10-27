@@ -1,8 +1,8 @@
 {
   "mainnet": {
     "grafting": {
-      "base": "dtf-index-mainnet/1.11.1-test",
-      "block": 26099249
+      "base": "",
+      "block": 0
     },
     "secondsPerBlock": 12,
     "FolioDeployer": [
@@ -84,8 +84,8 @@
   },
   "base": {
     "grafting": {
-      "base": "dtf-index-base/1.11.1-test",
-      "block": 52046488
+      "base": "",
+      "block": 0
     },
     "secondsPerBlock": 2,
     "FolioDeployer": [
@@ -174,8 +174,8 @@
   },
   "bsc": {
     "grafting": {
-      "base": "dtf-index-bsc/1.11.1-test",
-      "block": 125156355
+      "base": "",
+      "block": 0
     },
     "secondsPerBlock": 0.45,
     "FolioDeployer": [

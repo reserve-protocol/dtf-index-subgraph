@@ -499,6 +499,8 @@ templates:
           handler: handleProposalQueued
         - event: ProposalThresholdSet(uint256,uint256)
           handler: handleProposalThresholdSet
+        - event: LateQuorumVoteExtensionSet(uint64,uint64)
+          handler: handleLateQuorumVoteExtensionSet
         - event: QuorumNumeratorUpdated(uint256,uint256)
           handler: handleQuorumNumeratorUpdated
         - event: OptimisticParamsUpdated((uint48,uint32,uint256))

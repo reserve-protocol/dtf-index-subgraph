@@ -5,7 +5,30 @@ All notable changes to the DTF Index Subgraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.11.2] - Unreleased
+## [1.11.3] - 2026-10-27
+
+Deployed as a clean reindex, without a graft, so every governance and timelock indexed before is corrected.
+
+### Fixed
+
+- **`Governance.proposalThreshold` is the D18 ratio for every governor.** The governor emits its ratio in
+  `ProposalThresholdSet` at initialization, before the subgraph subscribes to it, and `proposalThreshold()` returns
+  votes. A new governance stored the vote count, or the 0.1% default when the vote supply was zero. It now reads
+  the ratio from `proposalThreshold()` and `getPastTotalSupply(clock() - 1)`, which is exact with one token of
+  supply or more. Below that it keeps the default with `proposalThresholdExact = false` and reads it again on the
+  vault's next `Deposit` or the governor's next `ProposalCreated`. Example: the Base vlPMF DAO (`0xa7469b6f…`) and
+  the aiDTF1 trading governor (`0xa802e0fd…`) showed 0.1%; the real ratio is 1%.
+- **A single-governor DTF's timelock is `OWNER`.** The Folio grants `REBALANCE_MANAGER` before `DEFAULT_ADMIN`, so its
+  only timelock was stored as `TRADING`. It becomes `OWNER` when the same DTF grants it `DEFAULT_ADMIN`. A DTF with
+  separate timelocks is unchanged.
+
+### Added
+
+- `Governance.proposalThresholdExact`: true when `proposalThreshold` is the exact ratio.
+- `Governance.lateQuorumVoteExtension`: read at creation and updated by `LateQuorumVoteExtensionSet`.
+- `StakingToken.governances`: the governors that vote with the token.
+
+## [1.11.2] - 2026-10-01
 
 Deployed as `1.11.2-test`, grafted onto `1.11.1-test` (block per chain in `networks.json`); `prod` still points at
 1.10.2. Auctions closed before the graft block keep the close block's timestamp as `endTime` (one second later than
@@ -24,7 +47,7 @@ the contract) until a clean reindex.
   `availableUntil` after `endRebalance`, and the rebalance/auction transactions. `stateBlock` checks are
   unchanged.
 
-## [1.11.1] - Unreleased
+## [1.11.1] - 2026-09-30
 
 Deployed as `1.11.1-test` (the suffix marks a candidate; `prod` still points at 1.10.2). Grafted onto 1.11.0
 (block per chain in `networks.json`). A graft copies state instead of replaying it, so the graft block has to
@@ -63,7 +86,7 @@ indexed timelock first registered for another entity (none in 1.11.0 at the graf
   and stays in `totalRevenue` and the snapshot revenue totals; revenue paid out to parties other than the
   holders is `totalRevenue - selfRevenue`.
 
-## [1.11.0] - Unreleased
+## [1.11.0] - 2026-09-30
 
 Folio 6.0.0 support. Grafted onto 1.10.2 (block per chain in `networks.json`), which is safe for v6 because
 no Folio had been deployed through a 6.0.0 deployer when it was cut (each deployer's contract nonce was still 2:
