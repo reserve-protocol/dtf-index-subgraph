@@ -7,8 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.11.3] - 2026-10-27
 
-A graft keeps the old values: a governance carried over keeps its threshold until its vault gets a deposit or its
-governor gets a proposal, and a timelock keeps its type. A clean reindex corrects all of them.
+Deployed as a clean reindex, without a graft, so every governance and timelock indexed before is corrected.
 
 ### Fixed
 

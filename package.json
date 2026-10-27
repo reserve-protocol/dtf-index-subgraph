@@ -2,7 +2,7 @@
   "name": "dtf-index-subgraph",
   "license": "UNLICENSED",
   "packageManager": "pnpm@11.5.2",
-  "version": "1.11.2",
+  "version": "1.11.3",
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
