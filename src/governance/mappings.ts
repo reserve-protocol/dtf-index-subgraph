@@ -35,6 +35,7 @@ import {
 } from "../utils/constants";
 import {
   Governor,
+  LateQuorumVoteExtensionSet,
   ProposalCanceled,
   ProposalCreated,
   ProposalExecuted,
@@ -48,7 +49,10 @@ import {
   VotingDelaySet,
   VotingPeriodSet,
 } from "./../../generated/templates/Governance/Governor";
-import { attachGovernanceToTimelock } from "../utils/getters";
+import {
+  attachGovernanceToTimelock,
+  refreshProposalThreshold,
+} from "../utils/getters";
 
 // ProposalCanceled(proposalId)
 export function handleProposalCanceled(event: ProposalCanceled): void {
@@ -61,6 +65,8 @@ export function handleProposalCreated(event: ProposalCreated): void {
     event.address,
     event.block.timestamp.minus(BIGINT_ONE)
   );
+
+  refreshProposalThreshold(getGovernance(event.address.toHexString()));
 
   // FIXME: Prefer to use a single object arg for params
   // e.g.  { proposalId: event.params.proposalId, proposer: event.params.proposer, ...}
@@ -169,6 +175,15 @@ export function handleTimelockCancelled(event: Cancelled): void {
 export function handleProposalThresholdSet(event: ProposalThresholdSet): void {
   const governance = getGovernance(event.address.toHexString());
   governance.proposalThreshold = event.params.newProposalThreshold;
+  governance.proposalThresholdExact = true;
+  governance.save();
+}
+
+export function handleLateQuorumVoteExtensionSet(
+  event: LateQuorumVoteExtensionSet
+): void {
+  const governance = getGovernance(event.address.toHexString());
+  governance.lateQuorumVoteExtension = event.params.newVoteExtension;
   governance.save();
 }
 

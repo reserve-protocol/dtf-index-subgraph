@@ -191,7 +191,10 @@ export function mockOptimisticGovernor(
   vetoPeriod: BigInt,
   vetoThreshold: BigInt,
   proposalThrottleCapacity: BigInt,
-  selectorRegistry: Address
+  selectorRegistry: Address,
+  pastSupply: BigInt = BigInt.zero(),
+  voteExtension: BigInt = BigInt.fromI32(172800),
+  clock: BigInt = BigInt.fromI32(1_700_000_000)
 ): void {
   createMockedFunction(governor, "token", "token():(address)").returns([
     ethereum.Value.fromAddress(token),
@@ -244,4 +247,28 @@ export function mockOptimisticGovernor(
     "selectorRegistry",
     "selectorRegistry():(address)"
   ).returns([ethereum.Value.fromAddress(selectorRegistry)]);
+  createMockedFunction(governor, "clock", "clock():(uint48)").returns([
+    ethereum.Value.fromUnsignedBigInt(clock),
+  ]);
+  createMockedFunction(
+    governor,
+    "lateQuorumVoteExtension",
+    "lateQuorumVoteExtension():(uint48)"
+  ).returns([ethereum.Value.fromUnsignedBigInt(voteExtension)]);
+  mockPastTotalSupply(token, clock.minus(BigInt.fromI32(1)), pastSupply);
+}
+
+// ERC20Votes getPastTotalSupply(timepoint) on a vote-lock vault.
+export function mockPastTotalSupply(
+  token: Address,
+  timepoint: BigInt,
+  supply: BigInt
+): void {
+  createMockedFunction(
+    token,
+    "getPastTotalSupply",
+    "getPastTotalSupply(uint256):(uint256)"
+  )
+    .withArgs([ethereum.Value.fromUnsignedBigInt(timepoint)])
+    .returns([ethereum.Value.fromUnsignedBigInt(supply)]);
 }
