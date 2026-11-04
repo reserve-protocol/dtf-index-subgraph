@@ -1,5 +1,6 @@
-import { Address, BigInt, Bytes, log } from "@graphprotocol/graph-ts";
+import { Address, BigInt, Bytes, dataSource, ethereum, log } from "@graphprotocol/graph-ts";
 import {
+  Governance,
   GovernanceTimelock,
   Proposal,
   StakingToken,
@@ -48,6 +49,7 @@ import {
   VoteCast,
   VotingDelaySet,
   VotingPeriodSet,
+  Upgraded,
 } from "./../../generated/templates/Governance/Governor";
 import {
   attachGovernanceToTimelock,
@@ -176,6 +178,28 @@ export function handleProposalThresholdSet(event: ProposalThresholdSet): void {
   const governance = getGovernance(event.address.toHexString());
   governance.proposalThreshold = event.params.newProposalThreshold;
   governance.proposalThresholdExact = true;
+  governance.save();
+}
+
+// UUPS upgrades (e.g. vlRSR to 1.1.0) change version(); it is otherwise read only when the governance is created.
+export function handleGovernorUpgraded(event: Upgraded): void {
+  refreshGovernanceVersion(event.address);
+}
+
+// Polls a governor upgraded before the graft this release starts from, so its Upgraded event is never replayed.
+export function handleGovernanceVersionRefresh(block: ethereum.Block): void {
+  refreshGovernanceVersion(dataSource.address());
+}
+
+function refreshGovernanceVersion(governor: Address): void {
+  const governance = Governance.load(governor.toHexString());
+  if (!governance) return;
+  const version = Governor.bind(governor).try_version();
+  if (version.reverted) {
+    log.warning("version() reverted on governor {}", [governor.toHexString()]);
+    return;
+  }
+  governance.version = version.value;
   governance.save();
 }
 

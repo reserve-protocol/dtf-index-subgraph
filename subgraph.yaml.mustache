@@ -201,6 +201,31 @@ dataSources:
             every: {{exchangeRatePollingBlocks}}
       file: ./src/staking-token/mappings.ts
 {{/TrackedVault}}
+{{#GovernanceVersionRefresh}}
+  - kind: ethereum
+    name: GovernanceVersionRefresh{{postfix}}
+    network: {{network}}
+    source:
+      abi: Governor
+      address: "{{address}}"
+      startBlock: {{startBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Governance
+      abis:
+        - name: Governor
+          file: ./abis/governor.json
+      # A once filter does not fire on a grafted start; polling re-reads version() (idempotent, one call per 100 blocks).
+      blockHandlers:
+        - handler: handleGovernanceVersionRefresh
+          filter:
+            kind: polling
+            every: 100
+      file: ./src/governance/mappings.ts
+{{/GovernanceVersionRefresh}}
 {{#BridgedDTF}}
   - kind: ethereum
     name: BridgedDTF{{postfix}}
@@ -501,6 +526,8 @@ templates:
           handler: handleProposalThresholdSet
         - event: LateQuorumVoteExtensionSet(uint64,uint64)
           handler: handleLateQuorumVoteExtensionSet
+        - event: Upgraded(indexed address)
+          handler: handleGovernorUpgraded
         - event: QuorumNumeratorUpdated(uint256,uint256)
           handler: handleQuorumNumeratorUpdated
         - event: OptimisticParamsUpdated((uint48,uint32,uint256))
