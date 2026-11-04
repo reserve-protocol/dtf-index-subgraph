@@ -218,10 +218,12 @@ dataSources:
       abis:
         - name: Governor
           file: ./abis/governor.json
+      # A once filter does not fire on a grafted start; polling re-reads version() (idempotent, one call per 100 blocks).
       blockHandlers:
         - handler: handleGovernanceVersionRefresh
           filter:
-            kind: once
+            kind: polling
+            every: 100
       file: ./src/governance/mappings.ts
 {{/GovernanceVersionRefresh}}
 {{#BridgedDTF}}

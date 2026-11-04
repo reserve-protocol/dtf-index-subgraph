@@ -262,7 +262,7 @@ describe("Governance version", () => {
     assert.fieldEquals("Governance", VLRSR_GOVERNOR.toHexString(), "version", "1.1.0");
   });
 
-  test("reads it once for a governor upgraded before the graft", () => {
+  test("re-reads it for a governor upgraded before the graft", () => {
     mockGovernor(VLRSR_GOVERNOR, VLRSR, VLRSR_THRESHOLD_VOTES, VLRSR_SUPPLY);
     getOrCreateGovernance(VLRSR_GOVERNOR, VLRSR_TIMELOCK);
     createMockedFunction(VLRSR_GOVERNOR, "version", "version():(string)").returns([

@@ -186,7 +186,7 @@ export function handleGovernorUpgraded(event: Upgraded): void {
   refreshGovernanceVersion(event.address);
 }
 
-// Runs once at the data source's startBlock, for a governor upgraded before the graft this release starts from.
+// Polls a governor upgraded before the graft this release starts from, so its Upgraded event is never replayed.
 export function handleGovernanceVersionRefresh(block: ethereum.Block): void {
   refreshGovernanceVersion(dataSource.address());
 }

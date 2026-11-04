@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Grafted onto 1.11.3 (block per chain in `networks.json`). On Ethereum and Base the graft block is before the
 vlRSR 1.1.0 upgrade, so it replays with the new handler. On BSC, Goldsky had pruned 1.11.3 before the upgrade
-block, so the graft starts after it, and a one-time block handler (`GovernanceVersionRefresh`, BSC only) reads the
-vlRSR governor's `version()` at the first block.
+block, so the graft starts after it, and a polling block handler (`GovernanceVersionRefresh`, BSC only, every 100
+blocks) re-reads the vlRSR governor's `version()`.
 
 ### Fixed
 
