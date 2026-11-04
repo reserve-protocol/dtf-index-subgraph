@@ -1,5 +1,6 @@
 import { Address, BigInt, Bytes, log } from "@graphprotocol/graph-ts";
 import {
+  Governance,
   GovernanceTimelock,
   Proposal,
   StakingToken,
@@ -48,6 +49,7 @@ import {
   VoteCast,
   VotingDelaySet,
   VotingPeriodSet,
+  Upgraded,
 } from "./../../generated/templates/Governance/Governor";
 import {
   attachGovernanceToTimelock,
@@ -176,6 +178,19 @@ export function handleProposalThresholdSet(event: ProposalThresholdSet): void {
   const governance = getGovernance(event.address.toHexString());
   governance.proposalThreshold = event.params.newProposalThreshold;
   governance.proposalThresholdExact = true;
+  governance.save();
+}
+
+// UUPS upgrades (e.g. vlRSR to 1.1.0) change version(); it is otherwise read only when the governance is created.
+export function handleGovernorUpgraded(event: Upgraded): void {
+  const governance = Governance.load(event.address.toHexString());
+  if (!governance) return;
+  const version = Governor.bind(event.address).try_version();
+  if (version.reverted) {
+    log.warning("Upgraded on governor {} but version() reverted", [event.address.toHexString()]);
+    return;
+  }
+  governance.version = version.value;
   governance.save();
 }
 

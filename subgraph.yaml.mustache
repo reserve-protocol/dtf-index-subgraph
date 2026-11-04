@@ -501,6 +501,8 @@ templates:
           handler: handleProposalThresholdSet
         - event: LateQuorumVoteExtensionSet(uint64,uint64)
           handler: handleLateQuorumVoteExtensionSet
+        - event: Upgraded(indexed address)
+          handler: handleGovernorUpgraded
         - event: QuorumNumeratorUpdated(uint256,uint256)
           handler: handleQuorumNumeratorUpdated
         - event: OptimisticParamsUpdated((uint48,uint32,uint256))

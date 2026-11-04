@@ -4,15 +4,18 @@ import {
   beforeEach,
   clearStore,
   describe,
+  createMockedFunction,
   newMockEvent,
   test,
 } from "matchstick-as/assembly/index";
 import {
   LateQuorumVoteExtensionSet,
   ProposalThresholdSet,
+  Upgraded,
 } from "../generated/templates/Governance/Governor";
 import { _handleRoleGranted } from "../src/dtf/handlers";
 import {
+  handleGovernorUpgraded,
   handleLateQuorumVoteExtensionSet,
   handleProposalThresholdSet,
 } from "../src/governance/mappings";
@@ -227,5 +230,39 @@ describe("GovernanceTimelock type", () => {
 
     assert.fieldEquals("GovernanceTimelock", OWNER_TIMELOCK.toHexString(), "type", "OWNER");
     assert.fieldEquals("GovernanceTimelock", TRADING_TIMELOCK.toHexString(), "type", "TRADING");
+  });
+});
+
+function upgradedEvent(governor: Address): Upgraded {
+  const event = changetype<Upgraded>(newMockEvent());
+  event.address = governor;
+  event.parameters = [
+    new ethereum.EventParam("implementation", ethereum.Value.fromAddress(FOLIO)),
+  ];
+  return event;
+}
+
+describe("Governance version", () => {
+  beforeEach(() => {
+    clearStore();
+  });
+
+  test("follows a UUPS upgrade of the governor", () => {
+    mockGovernor(VLRSR_GOVERNOR, VLRSR, VLRSR_THRESHOLD_VOTES, VLRSR_SUPPLY);
+    getOrCreateGovernance(VLRSR_GOVERNOR, VLRSR_TIMELOCK);
+    assert.fieldEquals("Governance", VLRSR_GOVERNOR.toHexString(), "version", "1.0.0");
+
+    createMockedFunction(VLRSR_GOVERNOR, "version", "version():(string)").returns([
+      ethereum.Value.fromString("1.1.0"),
+    ]);
+    handleGovernorUpgraded(upgradedEvent(VLRSR_GOVERNOR));
+
+    assert.fieldEquals("Governance", VLRSR_GOVERNOR.toHexString(), "version", "1.1.0");
+  });
+
+  test("ignores an upgrade of a governor it does not index", () => {
+    handleGovernorUpgraded(upgradedEvent(VLRSR_GOVERNOR));
+
+    assert.notInStore("Governance", VLRSR_GOVERNOR.toHexString());
   });
 });
