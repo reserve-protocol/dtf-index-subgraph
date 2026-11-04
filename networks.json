@@ -2,7 +2,7 @@
   "mainnet": {
     "grafting": {
       "base": "dtf-index-mainnet/1.11.3",
-      "block": 26342539
+      "block": 26342590
     },
     "secondsPerBlock": 12,
     "FolioDeployer": [
@@ -175,8 +175,15 @@
   "bsc": {
     "grafting": {
       "base": "dtf-index-bsc/1.11.3",
-      "block": 131653704
+      "block": 131671362
     },
+    "GovernanceVersionRefresh": [
+      {
+        "address": "0xbaf703e7891943d46ee462a4ec74945b09c67b86",
+        "startBlock": 131671363,
+        "_symbol": "vlRSR DAO"
+      }
+    ],
     "secondsPerBlock": 0.45,
     "FolioDeployer": [
       {

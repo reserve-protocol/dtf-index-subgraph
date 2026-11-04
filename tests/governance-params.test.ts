@@ -5,6 +5,7 @@ import {
   clearStore,
   describe,
   createMockedFunction,
+  dataSourceMock,
   newMockEvent,
   test,
 } from "matchstick-as/assembly/index";
@@ -15,6 +16,7 @@ import {
 } from "../generated/templates/Governance/Governor";
 import { _handleRoleGranted } from "../src/dtf/handlers";
 import {
+  handleGovernanceVersionRefresh,
   handleGovernorUpgraded,
   handleLateQuorumVoteExtensionSet,
   handleProposalThresholdSet,
@@ -258,6 +260,20 @@ describe("Governance version", () => {
     handleGovernorUpgraded(upgradedEvent(VLRSR_GOVERNOR));
 
     assert.fieldEquals("Governance", VLRSR_GOVERNOR.toHexString(), "version", "1.1.0");
+  });
+
+  test("reads it once for a governor upgraded before the graft", () => {
+    mockGovernor(VLRSR_GOVERNOR, VLRSR, VLRSR_THRESHOLD_VOTES, VLRSR_SUPPLY);
+    getOrCreateGovernance(VLRSR_GOVERNOR, VLRSR_TIMELOCK);
+    createMockedFunction(VLRSR_GOVERNOR, "version", "version():(string)").returns([
+      ethereum.Value.fromString("1.1.0"),
+    ]);
+    dataSourceMock.setAddress(VLRSR_GOVERNOR.toHexString());
+
+    handleGovernanceVersionRefresh(newMockEvent().block);
+
+    assert.fieldEquals("Governance", VLRSR_GOVERNOR.toHexString(), "version", "1.1.0");
+    dataSourceMock.resetValues();
   });
 
   test("ignores an upgrade of a governor it does not index", () => {

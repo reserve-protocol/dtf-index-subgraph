@@ -1,4 +1,4 @@
-import { Address, BigInt, Bytes, log } from "@graphprotocol/graph-ts";
+import { Address, BigInt, Bytes, dataSource, ethereum, log } from "@graphprotocol/graph-ts";
 import {
   Governance,
   GovernanceTimelock,
@@ -183,11 +183,20 @@ export function handleProposalThresholdSet(event: ProposalThresholdSet): void {
 
 // UUPS upgrades (e.g. vlRSR to 1.1.0) change version(); it is otherwise read only when the governance is created.
 export function handleGovernorUpgraded(event: Upgraded): void {
-  const governance = Governance.load(event.address.toHexString());
+  refreshGovernanceVersion(event.address);
+}
+
+// Runs once at the data source's startBlock, for a governor upgraded before the graft this release starts from.
+export function handleGovernanceVersionRefresh(block: ethereum.Block): void {
+  refreshGovernanceVersion(dataSource.address());
+}
+
+function refreshGovernanceVersion(governor: Address): void {
+  const governance = Governance.load(governor.toHexString());
   if (!governance) return;
-  const version = Governor.bind(event.address).try_version();
+  const version = Governor.bind(governor).try_version();
   if (version.reverted) {
-    log.warning("Upgraded on governor {} but version() reverted", [event.address.toHexString()]);
+    log.warning("version() reverted on governor {}", [governor.toHexString()]);
     return;
   }
   governance.version = version.value;

@@ -54,6 +54,10 @@ const templateData = {
   // Vaults whose share -> asset rate is polled (one vlRSR vault per chain)
   TrackedVault: getWithPostfix(networksData[network].TrackedVault || []),
   BridgedDTF: getWithPostfix(networksData[network].BridgedDTF || []),
+  // Governors whose version() is read once at startBlock: a graft that starts after their upgrade misses Upgraded
+  GovernanceVersionRefresh: getWithPostfix(
+    networksData[network].GovernanceVersionRefresh || []
+  ),
   // One registry per chain; omitted from configs that list every deployer statically (fork profile)
   FolioVersionRegistry: networksData[network].FolioVersionRegistry,
   grafting: hasGrafting,

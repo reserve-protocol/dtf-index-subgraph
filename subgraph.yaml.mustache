@@ -201,6 +201,29 @@ dataSources:
             every: {{exchangeRatePollingBlocks}}
       file: ./src/staking-token/mappings.ts
 {{/TrackedVault}}
+{{#GovernanceVersionRefresh}}
+  - kind: ethereum
+    name: GovernanceVersionRefresh{{postfix}}
+    network: {{network}}
+    source:
+      abi: Governor
+      address: "{{address}}"
+      startBlock: {{startBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Governance
+      abis:
+        - name: Governor
+          file: ./abis/governor.json
+      blockHandlers:
+        - handler: handleGovernanceVersionRefresh
+          filter:
+            kind: once
+      file: ./src/governance/mappings.ts
+{{/GovernanceVersionRefresh}}
 {{#BridgedDTF}}
   - kind: ethereum
     name: BridgedDTF{{postfix}}
