@@ -5,6 +5,18 @@ All notable changes to the DTF Index Subgraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.4] - 2026-11-04
+
+Grafted onto 1.11.3 a few blocks before the vlRSR 1.1.0 upgrades executed (block per chain in `networks.json`),
+so those upgrades are replayed with the new handler.
+
+### Fixed
+
+- **`Governance.version` follows a governor upgrade.** The subgraph read `version()` only when it created the
+  governance, so a UUPS upgrade left the old version. The governor's `Upgraded` event now reads `version()` again.
+  Example: the three vlRSR DAO governors stayed at 1.0.0 after their 1.1.0 upgrade on 2026-11-04. A check of all
+  947 prod governances against the chain found only these three stale.
+
 ## [1.11.3] - 2026-10-27
 
 Deployed as a clean reindex, without a graft, so every governance and timelock indexed before is corrected.
