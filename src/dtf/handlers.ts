@@ -504,6 +504,16 @@ export function _handleFolioFeePaid(
 }
 
 // ROLES
+function syncOwnerAddress(dtf: DTF): void {
+  const admins = dtf.admins;
+  // Keep a current owner stable when a spell or an additional admin is granted.
+  if (admins.indexOf(dtf.ownerAddress.toHexString()) == -1) {
+    dtf.ownerAddress = admins.length == 0
+      ? Address.zero()
+      : Address.fromString(admins[0]);
+  }
+}
+
 export function _handleRoleGranted(
   dtfAddress: Address,
   role: Bytes,
@@ -539,6 +549,7 @@ export function _handleRoleGranted(
     let current = dtf.admins;
     current.push(account.toHexString());
     dtf.admins = current;
+    syncOwnerAddress(dtf);
     dtf.save();
     // Track owner governance
     createGovernanceTimelock(
@@ -607,6 +618,7 @@ export function _handleRoleRevoked(
     if (index != -1) {
       dtf.admins = removeFromArrayAtIndex(current, index);
     }
+    syncOwnerAddress(dtf);
 
     let timelock = getGovernanceTimelock(account);
     let gov =

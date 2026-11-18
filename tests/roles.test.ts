@@ -239,6 +239,7 @@ describe("_handleRoleGranted", () => {
     newTimelock.type = GovernanceType.TRADING;
     newTimelock.save();
 
+    dtf.ownerAddress = OLD_OWNER_TIMELOCK;
     dtf.ownerGovernance = OLD_OWNER_GOVERNOR.toHexString();
     dtf.tradingGovernance = OLD_TRADING_GOVERNOR.toHexString();
     dtf.stToken = OLD_ST_TOKEN.toHexString();
@@ -299,6 +300,12 @@ describe("_handleRoleGranted", () => {
       )
     );
 
+    assert.fieldEquals(
+      "DTF",
+      MAINNET_DTF.toHexString(),
+      "ownerAddress",
+      NEW_TIMELOCK.toHexString()
+    );
     assert.fieldEquals(
       "DTF",
       MAINNET_DTF.toHexString(),
@@ -364,6 +371,70 @@ describe("_handleRoleGranted", () => {
       "legacyTradingGovernances",
       "[" + OLD_TRADING_GOVERNOR.toHexString() + "]"
     );
+  });
+});
+
+describe("ownerAddress follows DEFAULT_ADMIN membership", () => {
+  beforeEach(() => {
+    clearStore();
+    createTestDTF(DTF_ADDR);
+  });
+
+  test("wallet transfer grants the replacement before revoking the owner", () => {
+    const role = Bytes.fromHexString(Role.DEFAULT_ADMIN);
+    _handleRoleGranted(DTF_ADDR, role, ACCOUNT_1);
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "ownerAddress", ACCOUNT_1.toHexString());
+
+    _handleRoleGranted(DTF_ADDR, role, ACCOUNT_2);
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "ownerAddress", ACCOUNT_1.toHexString());
+
+    _handleRoleRevoked(DTF_ADDR, role, ACCOUNT_1);
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "ownerAddress", ACCOUNT_2.toHexString());
+  });
+
+  test("revoking the last admin clears the owner until a new admin is granted", () => {
+    const role = Bytes.fromHexString(Role.DEFAULT_ADMIN);
+    _handleRoleGranted(DTF_ADDR, role, ACCOUNT_1);
+    _handleRoleRevoked(DTF_ADDR, role, ACCOUNT_1);
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "ownerAddress", Address.zero().toHexString());
+
+    _handleRoleGranted(DTF_ADDR, role, ACCOUNT_2);
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "ownerAddress", ACCOUNT_2.toHexString());
+  });
+
+  test("temporary spell grants and revocations preserve a current owner", () => {
+    const role = Bytes.fromHexString(Role.DEFAULT_ADMIN);
+    _handleRoleGranted(DTF_ADDR, role, ACCOUNT_1);
+    _handleRoleGranted(DTF_ADDR, role, SPELL);
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "ownerAddress", ACCOUNT_1.toHexString());
+
+    _handleRoleRevoked(DTF_ADDR, role, SPELL);
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "ownerAddress", ACCOUNT_1.toHexString());
+  });
+
+  test("non-admin role changes do not replace the owner", () => {
+    const role = Bytes.fromHexString(Role.DEFAULT_ADMIN);
+    _handleRoleGranted(DTF_ADDR, role, ACCOUNT_1);
+    _handleRoleGranted(DTF_ADDR, Bytes.fromHexString(Role.REBALANCE_MANAGER), ACCOUNT_2);
+    _handleRoleRevoked(DTF_ADDR, Bytes.fromHexString(Role.REBALANCE_MANAGER), ACCOUNT_2);
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "ownerAddress", ACCOUNT_1.toHexString());
+  });
+
+  test("MAG7's stale owner is repaired on the next admin role change", () => {
+    // Observed on Base 1.11.4: ownerAddress is the retired timelock, while admins
+    // already contains only the replacement. Synthetic follow-up grant/revoke.
+    const mag7 = Address.fromString("0xcef8db49e456f872e288e1c042f916e9ced7c781");
+    const currentAdmin = Address.fromString("0xdb29158ce7ab8f9c59cb20dfcd0221160b4eae37");
+    let dtf = createTestDTF(mag7);
+    dtf.ownerAddress = Address.fromString("0x5688A3183AD6B180093f4E515Fb93acb1dceB8C6");
+    dtf.admins = [currentAdmin.toHexString()];
+    dtf.save();
+
+    const role = Bytes.fromHexString(Role.DEFAULT_ADMIN);
+    _handleRoleGranted(mag7, role, SPELL);
+    assert.fieldEquals("DTF", mag7.toHexString(), "ownerAddress", currentAdmin.toHexString());
+    _handleRoleRevoked(mag7, role, SPELL);
+    assert.fieldEquals("DTF", mag7.toHexString(), "ownerAddress", currentAdmin.toHexString());
   });
 });
 

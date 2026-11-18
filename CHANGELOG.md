@@ -5,6 +5,20 @@ All notable changes to the DTF Index Subgraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `DTF.ownerAddress` follows default-admin grants and revocations for all DTFs,
+  including governance migrations and wallet-admin transfers. Keep a current
+  primary stable through temporary spell grants; select the first remaining
+  admin when it is revoked, or zero when no admins remain. Previously this field
+  was only set at deployment, leaving MAG7's SDK `roles.admin.primary` pointing
+  to its retired timelock even after its governance links and admin list changed.
+- Existing stale records require a clean reindex or a validated pre-transition
+  graft; the current release's graft configuration must not be reused as a
+  backfill. See the README's owner-address replay requirements.
+
 ## [1.11.4] - 2026-11-04
 
 Grafted onto 1.11.3 (block per chain in `networks.json`). On Ethereum and Base the graft block is before the
