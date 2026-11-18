@@ -1,9 +1,5 @@
 {
   "mainnet": {
-    "grafting": {
-      "base": "dtf-index-mainnet/1.11.3",
-      "block": 26342590
-    },
     "secondsPerBlock": 12,
     "FolioDeployer": [
       {
@@ -83,10 +79,6 @@
     }
   },
   "base": {
-    "grafting": {
-      "base": "dtf-index-base/1.11.3",
-      "block": 53508914
-    },
     "secondsPerBlock": 2,
     "FolioDeployer": [
       {
@@ -173,10 +165,6 @@
     }
   },
   "bsc": {
-    "grafting": {
-      "base": "dtf-index-bsc/1.11.3",
-      "block": 131671362
-    },
     "GovernanceVersionRefresh": [
       {
         "address": "0xbaf703e7891943d46ee462a4ec74945b09c67b86",
