@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   admin when it is revoked, or zero when no admins remain. Previously this field
   was only set at deployment, leaving MAG7's SDK `roles.admin.primary` pointing
   to its retired timelock even after its governance links and admin list changed.
+- `DTF.ownerGovernance` and `DTF.tradingGovernance` are cleared (or moved to a
+  remaining governance timelock) when their timelock loses the role. Previously
+  a DTF that revoked all its roles kept its former governances as current: 13
+  deprecated DTFs on Ethereum and Base. The former governance stays in the
+  legacy lists, and `stToken` is kept so fees to the vault remain governance
+  revenue.
+- `StakingToken.governance` is cleared when its timelock transfers or renounces
+  vault ownership to an address that is not a governance timelock (vlALTT-ABX on
+  Base renounced ownership and still showed its former governance).
 - Existing stale records require a clean reindex or a validated pre-transition
   graft; the current release's graft configuration must not be reused as a
   backfill. See the README's owner-address replay requirements.

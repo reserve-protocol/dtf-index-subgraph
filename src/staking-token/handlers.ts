@@ -310,6 +310,14 @@ export function _handleOwnershipTransferred(
     let legacy = stakingToken.legacyGovernance;
     legacy.push(gov!);
     stakingToken.legacyGovernance = legacy;
+    // A new timelock owner links its own governance in createGovernanceTimelock below.
+    if (
+      timelock !== null &&
+      timelock.governance !== null &&
+      stakingToken.governance == timelock.governance
+    ) {
+      stakingToken.governance = null;
+    }
   }
 
   stakingToken.save();

@@ -8,7 +8,7 @@ import {
   beforeEach,
   newMockEvent,
 } from "matchstick-as/assembly/index";
-import { GovernanceTimelock } from "../generated/schema";
+import { DTF, GovernanceTimelock } from "../generated/schema";
 import { RoleGranted, RoleRevoked } from "../generated/templates/DTF/DTF";
 import { _handleRoleGranted, _handleRoleRevoked } from "../src/dtf/handlers";
 import { handleRoleGranted, handleRoleRevoked } from "../src/dtf/mappings";
@@ -435,6 +435,116 @@ describe("ownerAddress follows DEFAULT_ADMIN membership", () => {
     assert.fieldEquals("DTF", mag7.toHexString(), "ownerAddress", currentAdmin.toHexString());
     _handleRoleRevoked(mag7, role, SPELL);
     assert.fieldEquals("DTF", mag7.toHexString(), "ownerAddress", currentAdmin.toHexString());
+  });
+});
+
+describe("governance links follow role membership", () => {
+  beforeEach(() => {
+    clearStore();
+    let dtf = createTestDTF(DTF_ADDR);
+    createTestGovernance(OLD_OWNER_GOVERNOR, OLD_OWNER_TIMELOCK, OLD_ST_TOKEN);
+    createTestGovernance(OLD_TRADING_GOVERNOR, OLD_TRADING_TIMELOCK, OLD_ST_TOKEN);
+    attachGovernance(OLD_OWNER_TIMELOCK, OLD_OWNER_GOVERNOR);
+    attachGovernance(OLD_TRADING_TIMELOCK, OLD_TRADING_GOVERNOR);
+    dtf.ownerAddress = OLD_OWNER_TIMELOCK;
+    dtf.ownerGovernance = OLD_OWNER_GOVERNOR.toHexString();
+    dtf.tradingGovernance = OLD_TRADING_GOVERNOR.toHexString();
+    dtf.stToken = OLD_ST_TOKEN.toHexString();
+    dtf.stTokenAddress = OLD_ST_TOKEN;
+    dtf.admins = [OLD_OWNER_TIMELOCK.toHexString()];
+    dtf.auctionApprovers = [OLD_TRADING_TIMELOCK.toHexString()];
+    dtf.save();
+  });
+
+  test("a DTF that revokes its only admin timelock has no owner governance", () => {
+    _handleRoleRevoked(
+      DTF_ADDR,
+      Bytes.fromHexString(Role.DEFAULT_ADMIN),
+      OLD_OWNER_TIMELOCK
+    );
+
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "ownerGovernance", "null");
+    assert.fieldEquals(
+      "DTF",
+      DTF_ADDR.toHexString(),
+      "legacyAdminGovernances",
+      "[" + OLD_OWNER_GOVERNOR.toHexString() + "]"
+    );
+    // The vault link stays: fees to it are still governance revenue.
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "stToken", OLD_ST_TOKEN.toHexString());
+    assert.fieldEquals(
+      "DTF",
+      DTF_ADDR.toHexString(),
+      "tradingGovernance",
+      OLD_TRADING_GOVERNOR.toHexString()
+    );
+  });
+
+  test("a DTF that revokes its trading timelock has no trading governance", () => {
+    _handleRoleRevoked(
+      DTF_ADDR,
+      Bytes.fromHexString(Role.REBALANCE_MANAGER),
+      OLD_TRADING_TIMELOCK
+    );
+
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "tradingGovernance", "null");
+    assert.fieldEquals(
+      "DTF",
+      DTF_ADDR.toHexString(),
+      "ownerGovernance",
+      OLD_OWNER_GOVERNOR.toHexString()
+    );
+  });
+
+  test("revoking another member keeps a governance whose timelock has no governor link", () => {
+    let timelock = GovernanceTimelock.load(OLD_TRADING_TIMELOCK.toHexString())!;
+    timelock.governance = null;
+    timelock.save();
+    _handleRoleGranted(DTF_ADDR, Bytes.fromHexString(Role.REBALANCE_MANAGER), ACCOUNT_1);
+    _handleRoleRevoked(DTF_ADDR, Bytes.fromHexString(Role.REBALANCE_MANAGER), ACCOUNT_1);
+    _handleRoleGranted(DTF_ADDR, Bytes.fromHexString(Role.DEFAULT_ADMIN), ACCOUNT_1);
+    _handleRoleRevoked(DTF_ADDR, Bytes.fromHexString(Role.DEFAULT_ADMIN), ACCOUNT_1);
+
+    assert.fieldEquals(
+      "DTF",
+      DTF_ADDR.toHexString(),
+      "tradingGovernance",
+      OLD_TRADING_GOVERNOR.toHexString()
+    );
+    assert.fieldEquals(
+      "DTF",
+      DTF_ADDR.toHexString(),
+      "ownerGovernance",
+      OLD_OWNER_GOVERNOR.toHexString()
+    );
+  });
+
+  test("revoking the owner governance falls back to a remaining admin governance and its vault", () => {
+    createTestGovernance(NEW_GOVERNOR, NEW_TIMELOCK, NEW_ST_TOKEN);
+    attachGovernance(NEW_TIMELOCK, NEW_GOVERNOR);
+    let dtf = DTF.load(DTF_ADDR.toHexString())!;
+    dtf.admins = [NEW_TIMELOCK.toHexString(), OLD_OWNER_TIMELOCK.toHexString()];
+    dtf.save();
+
+    _handleRoleRevoked(
+      DTF_ADDR,
+      Bytes.fromHexString(Role.DEFAULT_ADMIN),
+      OLD_OWNER_TIMELOCK
+    );
+
+    assert.fieldEquals(
+      "DTF",
+      DTF_ADDR.toHexString(),
+      "ownerGovernance",
+      NEW_GOVERNOR.toHexString()
+    );
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "stToken", NEW_ST_TOKEN.toHexString());
+    assert.fieldEquals(
+      "DTF",
+      DTF_ADDR.toHexString(),
+      "stTokenAddress",
+      NEW_ST_TOKEN.toHexString()
+    );
   });
 });
 

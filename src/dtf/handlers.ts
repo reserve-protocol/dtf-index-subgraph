@@ -444,20 +444,23 @@ export function _handleFolioFeePaid(
 
   // Check if recipient is governance token to properly track revenue type
   let isGovernanceToken = false;
-  if (!isSelf && dtf.ownerGovernance) {
+  // A DTF without an owner governance still pays the vault it was linked to.
+  let vaultId = dtf.stToken;
+  if (dtf.ownerGovernance) {
     let gov = Governance.load(dtf.ownerGovernance as string);
-    if (gov) {
-      let recipientHex = recipient.toHexString();
-      isGovernanceToken = gov.token == recipientHex;
-      if (!isGovernanceToken) {
-        // New StakingVault routes the governance share to a tokenJar (converted
-        // to the underlying and dripped to lockers) — credit it to governance.
-        let stakingToken = StakingToken.load(gov.token);
-        if (stakingToken != null) {
-          let jar = stakingToken.tokenJar;
-          if (jar != null) {
-            isGovernanceToken = jar == recipientHex;
-          }
+    if (gov) vaultId = gov.token;
+  }
+  if (!isSelf && vaultId !== null) {
+    let recipientHex = recipient.toHexString();
+    isGovernanceToken = vaultId == recipientHex;
+    if (!isGovernanceToken) {
+      // New StakingVault routes the governance share to a tokenJar (converted
+      // to the underlying and dripped to lockers) — credit it to governance.
+      let stakingToken = StakingToken.load(vaultId);
+      if (stakingToken != null) {
+        let jar = stakingToken.tokenJar;
+        if (jar != null) {
+          isGovernanceToken = jar == recipientHex;
         }
       }
     }
@@ -512,6 +515,40 @@ function syncOwnerAddress(dtf: DTF): void {
       ? Address.zero()
       : Address.fromString(admins[0]);
   }
+}
+
+// A governance link holds only while its timelock keeps the role.
+function remainingGovernance(
+  current: string | null,
+  members: string[]
+): string | null {
+  if (current !== null) {
+    const governance = Governance.load(current);
+    if (governance !== null && members.indexOf(governance.timelock) != -1) {
+      return current;
+    }
+  }
+  for (let i = 0; i < members.length; i++) {
+    const timelock = getGovernanceTimelock(Address.fromString(members[i]));
+    if (timelock !== null && timelock.governance !== null) {
+      return timelock.governance;
+    }
+  }
+  return null;
+}
+
+function syncOwnerGovernance(dtf: DTF): void {
+  const current = dtf.ownerGovernance;
+  const next = remainingGovernance(current, dtf.admins);
+  if (next !== null && (current === null || next != current)) {
+    const governance = Governance.load(next);
+    if (governance !== null) {
+      dtf.stToken = governance.token;
+      dtf.stTokenAddress = Address.fromString(governance.token);
+    }
+  }
+  // WHY stToken is kept when next is null: fees still go to the vault after the admin role is revoked.
+  dtf.ownerGovernance = next;
 }
 
 export function _handleRoleGranted(
@@ -578,6 +615,10 @@ export function _handleRoleRevoked(
     if (index != -1) {
       dtf.auctionApprovers = removeFromArrayAtIndex(current, index);
     }
+    dtf.tradingGovernance = remainingGovernance(
+      dtf.tradingGovernance,
+      dtf.auctionApprovers
+    );
 
     let timelock = getGovernanceTimelock(account);
     let gov =
@@ -619,6 +660,7 @@ export function _handleRoleRevoked(
       dtf.admins = removeFromArrayAtIndex(current, index);
     }
     syncOwnerAddress(dtf);
+    syncOwnerGovernance(dtf);
 
     let timelock = getGovernanceTimelock(account);
     let gov =

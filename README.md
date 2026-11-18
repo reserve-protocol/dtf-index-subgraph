@@ -131,6 +131,17 @@ repair inactive DTFs. Before promoting a deployment, check that `ownerAddress` i
 in `admins` (or zero when `admins` is empty), including MAG7 on Base, and compare
 the indexed admins with on-chain role membership at the same block.
 
+`DTF.ownerGovernance` and `DTF.tradingGovernance` follow the same rule: a link
+holds only while that governance's timelock keeps the role. When the timelock is
+revoked, the link moves to a remaining member that is a governance timelock, or
+becomes null; the former governance stays in `legacyAdminGovernances` /
+`legacyTradingGovernances`. `DTF.stToken` is kept, because fees still go to that
+vault. `StakingToken.governance` becomes null when its timelock transfers or
+renounces vault ownership to an address that is not a governance timelock. These
+links have the same replay requirement as `ownerAddress`. The Goldsky deployments
+use `prune: auto` and keep only a few thousand blocks, so a graft cannot start
+before the old transitions: a clean reindex is necessary.
+
 ### Interactive Deployment
 
 ```bash
