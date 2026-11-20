@@ -13,6 +13,9 @@ import { _handleOwnershipTransferred } from "../src/staking-token/handlers";
 import { createMockedFunction } from "matchstick-as/assembly/index";
 import { newMockEvent } from "matchstick-as/assembly/index";
 import { ethereum } from "@graphprotocol/graph-ts";
+import { GovernanceTimelock, StakingToken } from "../generated/schema";
+import { GovernanceType } from "../src/utils/constants";
+import { createTestGovernance } from "./helpers/mock-entities";
 import { mockERC20 } from "./helpers/mock-erc20";
 import { mockStakingVault, mockVaultTokenJar } from "./helpers/mock-staking-vault";
 
@@ -63,6 +66,10 @@ const OWNER_TIMELOCK = Address.fromString("0x88888888888888888888888888888888888
 createMockedFunction(DEPLOYER, "getMinDelay", "getMinDelay():(uint256)").reverts();
 createMockedFunction(OWNER_TIMELOCK, "getMinDelay", "getMinDelay():(uint256)").reverts();
 
+const GOVERNOR = Address.fromString("0x9999999999999999999999999999999999999999");
+const GOVERNOR_TIMELOCK = Address.fromString("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+createMockedFunction(Address.zero(), "getMinDelay", "getMinDelay():(uint256)").reverts();
+
 function ownershipEvent(vault: Address): ethereum.Event {
   let event = newMockEvent();
   event.address = vault;
@@ -84,6 +91,44 @@ describe("_handleOwnershipTransferred", () => {
       ST_TOKEN.toHexString(),
       "legacyGovernance",
       "[" + DEPLOYER.toHexString() + "]"
+    );
+  });
+});
+
+describe("_handleOwnershipTransferred: governance link", () => {
+  beforeEach(() => {
+    clearStore();
+    createTestGovernance(GOVERNOR, GOVERNOR_TIMELOCK, ST_TOKEN);
+    let timelock = GovernanceTimelock.load(GOVERNOR_TIMELOCK.toHexString())!;
+    timelock.governance = GOVERNOR.toHexString();
+    timelock.entity = ST_TOKEN.toHexString();
+    timelock.type = GovernanceType.VOTE_LOCKING;
+    timelock.save();
+    let stakingToken = StakingToken.load(ST_TOKEN.toHexString())!;
+    stakingToken.governance = GOVERNOR.toHexString();
+    stakingToken.save();
+  });
+
+  test("a vault whose timelock renounces ownership has no governance", () => {
+    _handleOwnershipTransferred(GOVERNOR_TIMELOCK, Address.zero(), ownershipEvent(ST_TOKEN));
+
+    assert.fieldEquals("StakingToken", ST_TOKEN.toHexString(), "governance", "null");
+    assert.fieldEquals(
+      "StakingToken",
+      ST_TOKEN.toHexString(),
+      "legacyGovernance",
+      "[" + GOVERNOR.toHexString() + "]"
+    );
+  });
+
+  test("a transfer from a previous owner keeps the governance set by the deployer", () => {
+    _handleOwnershipTransferred(DEPLOYER, GOVERNOR_TIMELOCK, ownershipEvent(ST_TOKEN));
+
+    assert.fieldEquals(
+      "StakingToken",
+      ST_TOKEN.toHexString(),
+      "governance",
+      GOVERNOR.toHexString()
     );
   });
 });

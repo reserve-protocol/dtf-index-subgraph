@@ -5,6 +5,32 @@ All notable changes to the DTF Index Subgraph will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2026-11-18
+
+Clean reindex on the three chains, without a graft: Goldsky keeps only a few thousand blocks of 1.11.3 and
+1.11.4, and the stale records are older than that.
+
+### Fixed
+
+- `DTF.ownerAddress` follows default-admin grants and revocations for all DTFs,
+  including governance migrations and wallet-admin transfers. Keep a current
+  primary stable through temporary spell grants; select the first remaining
+  admin when it is revoked, or zero when no admins remain. Previously this field
+  was only set at deployment, leaving MAG7's SDK `roles.admin.primary` pointing
+  to its retired timelock even after its governance links and admin list changed.
+- `DTF.ownerGovernance` and `DTF.tradingGovernance` are cleared (or moved to a
+  remaining governance timelock) when their timelock loses the role. Previously
+  a DTF that revoked all its roles kept its former governances as current: 13
+  deprecated DTFs on Ethereum and Base. The former governance stays in the
+  legacy lists, and `stToken` is kept so fees to the vault remain governance
+  revenue.
+- `StakingToken.governance` is cleared when its timelock transfers or renounces
+  vault ownership to an address that is not a governance timelock (vlALTT-ABX on
+  Base renounced ownership and still showed its former governance).
+- Existing stale records require a clean reindex or a validated pre-transition
+  graft; the current release's graft configuration must not be reused as a
+  backfill. See the README's owner-address replay requirements.
+
 ## [1.11.4] - 2026-11-04
 
 Grafted onto 1.11.3 (block per chain in `networks.json`). On Ethereum and Base the graft block is before the

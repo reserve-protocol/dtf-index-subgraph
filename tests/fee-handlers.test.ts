@@ -157,6 +157,18 @@ describe("_handleFolioFeePaid", () => {
     );
   });
 
+  test("vault recipient stays governanceRevenue after the DTF loses its owner governance", () => {
+    let dtf = createTestDTF(DTF_ADDR);
+    createTestGovernance(GOVERNANCE_ADDR, TIMELOCK_ADDR, ST_TOKEN_ADDR);
+    dtf.stToken = ST_TOKEN_ADDR.toHexString();
+    dtf.save();
+
+    _handleFolioFeePaid(DTF_ADDR, ST_TOKEN_ADDR, BigInt.fromI32(600), createFeeEvent());
+
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "governanceRevenue", "600");
+    assert.fieldEquals("DTF", DTF_ADDR.toHexString(), "externalRevenue", "0");
+  });
+
   test("governance token recipient adds to governanceRevenue", () => {
     let dtf = createTestDTF(DTF_ADDR);
     // Set up governance where .token points to ST_TOKEN_ADDR

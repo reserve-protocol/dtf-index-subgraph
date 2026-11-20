@@ -194,13 +194,13 @@ type DTF @entity(immutable: false) {
   " staking token, backup in case of external staking token not indexed"
   stTokenAddress: Bytes
 
-  " Onwer address - should be the timelock for governed tokens "
+  " Primary default admin (timelock or wallet); kept while still an admin, otherwise first remaining admin, or zero if none "
   ownerAddress: Bytes!
 
-  " Owner governance address "
+  " Governance whose timelock holds DEFAULT_ADMIN; null when no admin is a governance timelock (see legacyAdminGovernances) "
   ownerGovernance: Governance
 
-  " Trading governance address "
+  " Governance whose timelock holds REBALANCE_MANAGER or AUCTION_APPROVER; null when none does (see legacyTradingGovernances) "
   tradingGovernance: Governance
 
   " Deployed block number "
